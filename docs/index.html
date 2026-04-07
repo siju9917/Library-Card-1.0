@@ -168,10 +168,15 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 
 <h3 style="margin-top:4px">Friends of Friends Nearby</h3>
-<div class="card" style="opacity:.8">
+<div class="card" style="opacity:.85">
+<div style="font-size:11px;color:var(--text3);margin-bottom:8px">People your friends know at nearby bars right now</div>
 <div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Alex T. <span style="color:var(--text3);font-size:11px">· via Jake M.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
 <div class="divider"></div>
-<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Emma L. <span style="color:var(--text3);font-size:11px">· via Sarah K.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Bella R. <span style="color:var(--text3);font-size:11px">· via Sarah K.</span></span><span style="font-size:12px;color:var(--primary)">@ Club X</span></div>
+<div class="divider"></div>
+<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Marcus W. <span style="color:var(--text3);font-size:11px">· via Mike R.</span></span><span style="font-size:12px;color:var(--primary)">@ Rooftop Bar</span></div>
+<div class="divider"></div>
+<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Nina C. <span style="color:var(--text3);font-size:11px">· via Emma L.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
 </div>
 
 <h2>🤝 Drinking Partners</h2>
@@ -560,7 +565,12 @@ const dow=[0,0,0,0,0,0,0];filtered.forEach(s=>{const d=new Date(s.time).getDay()
 const dowNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const dowMax=Math.max(...dow,1);
 document.getElementById('dowChart').innerHTML=dow.map((v,i)=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:'+(i===5||i===6?'var(--orange)':'var(--purple)')+';border-radius:4px 4px 0 0;height:'+Math.max(v/dowMax*100,4)+'px;transition:height .3s;opacity:0.8"></div><div style="font-size:10px;color:var(--text3)">'+dowNames[i]+'</div></div>').join('');
 // Top venues
-document.getElementById('topVenues').innerHTML='<div style="padding:8px;color:var(--text3);font-size:13px;text-align:center">Venue tracking available in full app</div>';
+// Top venues from session data
+const venueCount={};filtered.forEach(s=>{if(s.venue)venueCount[s.venue]=(venueCount[s.venue]||0)+1;});
+const venueEntries=Object.entries(venueCount).sort((a,b)=>b[1]-a[1]);
+const tvEl=document.getElementById('topVenues');
+if(venueEntries.length===0){tvEl.innerHTML='<div style="padding:8px;color:var(--text3);font-size:13px;text-align:center">No venue data yet</div>';}
+else{tvEl.innerHTML=venueEntries.slice(0,5).map(([name,visits],i)=>'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(i<venueEntries.length-1?'border-bottom:0.5px solid #333':'')+'"><span style="font-size:14px;font-weight:700;color:var(--primary);width:20px">'+(i+1)+'</span><span style="flex:1;font-size:14px">'+name+'</span><span style="font-size:13px;color:var(--text2)">'+visits+' visits</span></div>').join('');}
 }
 function setStatsPeriod(p){statsPeriod=p;initStats();}
 
