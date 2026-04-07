@@ -21,7 +21,18 @@ struct LibraryCardApp: App {
                 ShowdownTeam.self,
                 ShowdownParticipant.self,
                 SessionPhoto.self,
-                Wrapped.self
+                Wrapped.self,
+                BarCheckIn.self,
+                DirectMessage.self,
+                Conversation.self,
+                SwipeAction.self,
+                Match.self,
+                PreSwipe.self,
+                DrinkGift.self,
+                SOSAlert.self,
+                DepartureNotification.self,
+                PremiumSubscription.self,
+                IDVerification.self
             ])
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
@@ -36,6 +47,7 @@ struct LibraryCardApp: App {
         }
 
         NotificationService.shared.registerCategories()
+        FunNotificationService.shared.registerCategories()
     }
 
     var body: some Scene {

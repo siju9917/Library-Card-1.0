@@ -21,6 +21,9 @@ final class DrinkingSession {
     @Relationship(deleteRule: .nullify, inverse: \Showdown.session)
     var showdown: Showdown?
 
+    @Relationship(deleteRule: .cascade, inverse: \BarCheckIn.session)
+    var barRoute: [BarCheckIn] = []
+
     init(
         user: User? = nil,
         venue: Venue? = nil,
@@ -103,6 +106,21 @@ final class DrinkingSession {
 
     var photoPostsRemaining: Int {
         max(photoPostsEarned - photoPostsUsed, 0)
+    }
+
+    /// Ordered bar route for the night (chronological)
+    var barRouteOrdered: [BarCheckIn] {
+        barRoute.sorted { $0.orderIndex < $1.orderIndex }
+    }
+
+    /// Number of unique venues visited this session
+    var venuesVisited: Int {
+        barRoute.count
+    }
+
+    /// Current venue (latest check-in that hasn't departed)
+    var currentVenue: BarCheckIn? {
+        barRoute.first { $0.isCurrentlyHere }
     }
 
     // MARK: - BAC
