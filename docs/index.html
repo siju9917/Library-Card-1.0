@@ -257,6 +257,16 @@ let drinks=[];
 let allSessions=JSON.parse(localStorage.getItem('lc_sessions')||'[]');
 let allTimeDrinks=parseInt(localStorage.getItem('lc_alltime')||'0');
 let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
+let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // {name: count}
+let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
+
+function getTopDrinks(max){
+return Object.entries(drinkHistory).sort((a,b)=>b[1]-a[1]).slice(0,max);
+}
+function recordDrinkHistory(name){
+drinkHistory[name]=(drinkHistory[name]||0)+1;
+localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
+}
 
 updateHome();
 
@@ -333,9 +343,16 @@ const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
-'<h3>Quick Add</h3><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
+'<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
+// Favorites row
+const favEl=document.getElementById('favDrinks');
+const favs=getTopDrinks(6);
+const defaultNames=['Beer','Wine','Cocktail','Spirit','Shot','Seltzer','Cider','Sake','Other'];
+const customFavs=favs.filter(([n])=>!defaultNames.includes(n));
+if(customFavs.length>0){favEl.innerHTML='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px">'+customFavs.map(([n,c])=>'<button onclick="addDrinkDirect(\''+n.replace(/'/g,"\\'")+'\')" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:10px 16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:999px;color:#fff;cursor:pointer;font-size:13px;font-weight:600">⭐ '+n+' <span style="opacity:.7;font-size:11px">('+c+')</span></button>').join('')+'</div>';}else{favEl.innerHTML='';}
+// Default types grid
 const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'💧'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Sake',e:'🍶'},{n:'Other',e:'❓'}];
 const grid=document.getElementById('drinkGrid');
 grid.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px"><span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
@@ -356,6 +373,14 @@ const custom=prompt('Name this drink (or leave blank for "'+type+'"):','');
 if(custom===null)return; // cancelled
 const name=custom&&custom.trim()?custom.trim():type;
 drinks.push({name:name,type:type,time:Date.now(),rating:null});
+recordDrinkHistory(name);
+updateSessionUI();
+if(navigator.vibrate)navigator.vibrate(50);
+}
+function addDrinkDirect(name){
+if(drinkCap>0&&drinks.length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
+drinks.push({name:name,type:'Custom',time:Date.now(),rating:null});
+recordDrinkHistory(name);
 updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
 }
