@@ -1,0 +1,134 @@
+/*
+  Localizable.strings
+  Library Card
+
+  English (Base) localization.
+  To add a new language, create a new .lproj folder (e.g., es.lproj)
+  and add a translated copy of this file.
+*/
+
+// MARK: - Tab Bar
+"tab.home" = "Home";
+"tab.session" = "Session";
+"tab.stats" = "Stats";
+"tab.profile" = "Profile";
+
+// MARK: - Home
+"home.title" = "Library Card";
+"home.this_week" = "This Week";
+"home.drinks" = "Drinks";
+"home.all_time" = "All Time";
+"home.avg_session" = "Avg/Session";
+"home.dry_streak" = "Dry Streak";
+"home.quick_start" = "Quick Start";
+"home.start_session" = "Start a Session";
+"home.recent_sessions" = "Recent Sessions";
+"home.see_all" = "See All";
+"home.no_sessions" = "No sessions yet";
+"home.no_sessions_subtitle" = "Start your first session to see stats here";
+"home.session_active" = "Session Active";
+
+// MARK: - Session
+"session.title" = "Session";
+"session.ready_title" = "Ready for a Night Out?";
+"session.ready_subtitle" = "Start a session to track your drinks, DPM, and pace in real time.";
+"session.start" = "Start Session";
+"session.end" = "End Session";
+"session.end_confirm" = "End Session?";
+"session.cancel" = "Cancel Session";
+"session.keep_going" = "Keep Going";
+"session.quick_add" = "Quick Add";
+"session.custom" = "Custom";
+"session.drinks_log" = "Drinks Log";
+"session.no_drinks" = "No drinks logged yet. Tap a drink above to add one.";
+
+// MARK: - Add Drink
+"drink.add_title" = "Add Drink";
+"drink.type" = "Type";
+"drink.details" = "Details";
+"drink.name" = "Name";
+"drink.size" = "Size";
+"drink.abv" = "ABV";
+"drink.summary" = "Summary";
+"drink.standard_drinks" = "Standard Drinks";
+"drink.calories" = "Calories";
+"drink.add" = "Add";
+"drink.cancel" = "Cancel";
+
+// MARK: - Stats
+"stats.title" = "Statistics";
+"stats.total_drinks" = "Total Drinks";
+"stats.avg_dpm" = "Avg DPM";
+"stats.avg_pace" = "Avg Pace";
+"stats.sessions" = "Sessions";
+"stats.avg_per_session" = "Avg/Session";
+"stats.calories" = "Calories";
+"stats.drinks_over_time" = "Drinks Over Time";
+"stats.dpm_over_time" = "DPM Over Time";
+"stats.drink_types" = "Drink Types";
+"stats.day_of_week" = "Drinks by Day of Week";
+"stats.top_venues" = "Top Venues";
+"stats.no_data" = "No data yet";
+
+// MARK: - Profile
+"profile.title" = "Profile";
+"profile.member_for" = "Member for %d days";
+"profile.lifetime_stats" = "Lifetime Stats";
+"profile.total_sessions" = "Total Sessions";
+"profile.total_drinks" = "Total Drinks";
+"profile.avg_dpm" = "Avg DPM";
+"profile.favorite_venue" = "Favorite Venue";
+"profile.favorite_drink" = "Favorite Drink";
+"profile.settings" = "Settings";
+"profile.weekly_goal" = "Weekly Drink Goal";
+"profile.notifications" = "Notifications";
+"profile.appearance" = "Appearance";
+"profile.legal" = "Legal & Privacy";
+"profile.about" = "About";
+"profile.version" = "Version";
+
+// MARK: - Showdown
+"showdown.title" = "Showdown";
+"showdown.create" = "Create Showdown";
+"showdown.start" = "Start Showdown";
+"showdown.end" = "End Showdown";
+"showdown.winner" = "Winner!";
+
+// MARK: - Wrapped
+"wrapped.title" = "Your Wrapped";
+"wrapped.generate" = "Generate";
+"wrapped.weekly" = "Weekly Wrapped";
+"wrapped.monthly" = "Monthly Wrapped";
+"wrapped.yearly" = "Yearly Wrapped";
+
+// MARK: - Safety
+"sos.title" = "SOS";
+"sos.send" = "Send SOS";
+"sos.message" = "I need help. Here's my location.";
+"sos.disclaimer" = "This alerts your friends. In a real emergency, call 911.";
+
+// MARK: - Common
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.done" = "Done";
+"common.edit" = "Edit";
+"common.error" = "Error";
+"common.success" = "Success";
+"common.loading" = "Loading...";
+"common.none_yet" = "None yet";
+"common.not_set" = "Not set";
+
+// MARK: - Notifications
+"notification.morning.title_0" = "Designated driver mode";
+"notification.morning.body_0" = "Respect. Your liver says thanks.";
+"notification.morning.title_light" = "Easy night?";
+"notification.morning.title_medium" = "Rough morning I presume?";
+"notification.morning.title_heavy" = "Are you alive?";
+
+// MARK: - Errors
+"error.persistence" = "Something went wrong saving your data. Please try again.";
+"error.authentication" = "Authentication failed. Please try again.";
+"error.network" = "Network error. Please check your connection.";
+"error.unknown" = "An unexpected error occurred.";

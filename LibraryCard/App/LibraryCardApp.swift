@@ -50,14 +50,20 @@ struct LibraryCardApp: App {
         FunNotificationService.shared.registerCategories()
     }
 
+    @AppStorage("prefersDarkMode") private var prefersDarkMode: Bool?
+
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                ContentView()
-                    .environmentObject(sessionManager)
-            } else {
-                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+            Group {
+                if hasCompletedOnboarding {
+                    ContentView()
+                        .environmentObject(sessionManager)
+                } else {
+                    OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+                }
             }
+            .withGlobalAlerts()
+            .preferredColorScheme(prefersDarkMode.map { $0 ? .dark : .light })
         }
         .modelContainer(modelContainer)
     }
