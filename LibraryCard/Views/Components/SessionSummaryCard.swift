@@ -4,17 +4,16 @@ struct SessionSummaryCard: View {
     let session: DrinkingSession
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
             // Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(session.venue?.name ?? "Night Out")
-                        .font(.headline)
-                        .fontWeight(.bold)
+                        .font(AppFont.headline)
 
                     Text(session.startTime, style: .date)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppFont.caption)
+                        .foregroundStyle(AppColor.textSecondary)
                 }
 
                 Spacer()
@@ -25,7 +24,7 @@ struct SessionSummaryCard: View {
             Divider()
 
             // Stats grid
-            HStack(spacing: 16) {
+            HStack(spacing: AppSpacing.lg) {
                 MiniStat(
                     icon: "mug.fill",
                     value: "\(session.totalDrinks)",
@@ -53,9 +52,12 @@ struct SessionSummaryCard: View {
                 }
             }
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .cardStyle()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(session.venue?.name ?? "Night Out") on \(session.startTime, format: .dateTime.month().day()). \(session.totalDrinks) drinks, \(session.durationFormatted), \(String(format: "%.1f", session.drinksPerHour)) per hour"
+        )
+        .accessibilityHint("Tap to view session details")
     }
 }
 
@@ -65,18 +67,18 @@ struct MiniStat: View {
     let label: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: AppSpacing.xs) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.purple)
+                .foregroundStyle(AppColor.primary)
 
             Text(value)
-                .font(.subheadline)
+                .font(AppFont.subheadline)
                 .fontWeight(.semibold)
 
             Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(AppFont.caption2)
+                .foregroundStyle(AppColor.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -87,20 +89,21 @@ struct StatusBadge: View {
 
     var color: Color {
         switch status {
-        case .active: return .green
-        case .completed: return .blue
-        case .cancelled: return .gray
+        case .active: return AppColor.success
+        case .completed: return AppColor.info
+        case .cancelled: return Color.gray
         }
     }
 
     var body: some View {
         Text(status.rawValue)
-            .font(.caption2)
+            .font(AppFont.caption2)
             .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, AppSpacing.sm)
+            .padding(.vertical, AppSpacing.xs)
             .background(color.opacity(0.2))
             .foregroundStyle(color)
             .clipShape(Capsule())
+            .accessibilityLabel("Status: \(status.rawValue)")
     }
 }

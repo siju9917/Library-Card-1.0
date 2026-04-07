@@ -92,13 +92,8 @@ struct HomeView: View {
                         Image(systemName: "play.circle.fill")
                             .font(.title2)
                         Text("Start a Session")
-                            .font(.headline)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.purple)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .primaryButtonStyle()
                 }
             }
         }
@@ -114,7 +109,7 @@ struct HomeView: View {
                     SessionHistoryView()
                 }
                 .font(.caption)
-                .foregroundStyle(.purple)
+                .foregroundStyle(AppColor.primary)
             }
 
             if viewModel.recentSessions.isEmpty {

@@ -52,7 +52,7 @@ struct ProfileView: View {
             HStack(spacing: 16) {
                 Image(systemName: "person.circle.fill")
                     .font(.system(size: 56))
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(AppColor.primary)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(currentUser?.displayName ?? "Set Up Profile")
@@ -77,7 +77,7 @@ struct ProfileView: View {
                 } label: {
                     Image(systemName: "pencil.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(AppColor.primary)
                 }
             }
             .padding(.vertical, 8)
@@ -91,7 +91,7 @@ struct ProfileView: View {
             if currentUser?.cardLinked == true {
                 HStack {
                     Image(systemName: "creditcard.fill")
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(AppColor.primary)
                     VStack(alignment: .leading) {
                         Text("Card Connected")
                             .font(.subheadline)
@@ -110,7 +110,7 @@ struct ProfileView: View {
                 } label: {
                     HStack {
                         Image(systemName: "creditcard.fill")
-                            .foregroundStyle(.purple)
+                            .foregroundStyle(AppColor.primary)
                         VStack(alignment: .leading) {
                             Text("Set Up Library Card")
                                 .font(.subheadline)
@@ -322,7 +322,7 @@ struct CardSetupSheet: View {
 
                 Image(systemName: "creditcard.and.123")
                     .font(.system(size: 64))
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(AppColor.primary)
 
                 VStack(spacing: 8) {
                     Text("Library Card Setup")
@@ -351,12 +351,7 @@ struct CardSetupSheet: View {
                     dismiss()
                 } label: {
                     Text("Set Up Card")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.purple)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .primaryButtonStyle()
                 }
                 .padding(.horizontal, 32)
 
@@ -383,7 +378,7 @@ struct FeatureRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundStyle(.purple)
+                .foregroundStyle(AppColor.primary)
                 .frame(width: 24)
             Text(text)
                 .font(.subheadline)
