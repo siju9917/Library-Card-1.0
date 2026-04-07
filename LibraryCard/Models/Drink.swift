@@ -16,6 +16,7 @@ final class Drink {
     var session: DrinkingSession?
     var venue: Venue?
 
+    /// Validated initializer. Throws `ValidationError` for invalid inputs.
     init(
         type: DrinkType,
         name: String,
@@ -25,10 +26,25 @@ final class Drink {
         isAutoLogged: Bool = false,
         session: DrinkingSession? = nil,
         venue: Venue? = nil
-    ) {
+    ) throws {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyName("Drink name cannot be empty.")
+        }
+        guard sizeMl > 0, sizeMl <= 5000 else {
+            throw ValidationError.invalidSize("Drink size must be between 1ml and 5000ml.")
+        }
+        guard alcoholPercentage >= 0, alcoholPercentage <= 100 else {
+            throw ValidationError.invalidPercentage("ABV must be between 0% and 100%.")
+        }
+        if let price = price {
+            guard price >= 0 else {
+                throw ValidationError.invalidPrice("Price cannot be negative.")
+            }
+        }
+
         self.id = UUID()
         self.type = type
-        self.name = name
+        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.sizeMl = sizeMl
         self.alcoholPercentage = alcoholPercentage
         self.price = price
@@ -54,7 +70,7 @@ final class Drink {
     }
 
     static func calculateCalories(sizeMl: Double, alcoholPercentage: Double) -> Double {
-        let mlAlcohol = sizeMl * (alcoholPercentage / 100)
+        let mlAlcohol = max(sizeMl, 0) * (max(alcoholPercentage, 0) / 100)
         let gramsAlcohol = mlAlcohol * 0.789
         return gramsAlcohol * 7.0 // 7 calories per gram of alcohol
     }

@@ -2,49 +2,60 @@ import Foundation
 
 /// Classifies incoming transactions to determine if they are drink-related
 /// and auto-creates Drink records when possible.
-struct TransactionClassifier {
+struct TransactionClassifier: TransactionClassifying {
 
-    /// Determine if a transaction is likely a drink purchase based on MCC code
-    static func isDrinkRelated(merchantCategoryCode: String?) -> Bool {
+    /// All MCC codes related to alcohol/dining
+    static let drinkMCCs: Set<String> = [
+        "5813", // Bars, Cocktail Lounges, Taverns, Nightclubs
+        "5812", // Eating Places, Restaurants
+        "5921", // Package Stores, Beer, Wine, Liquor
+        "5811", // Caterers
+        "5814", // Fast Food Restaurants
+        "7032", // Sporting and Recreation Camps (often have bars)
+        "7995", // Gambling (casinos have bars)
+    ]
+
+    /// High-confidence bar/tavern MCC codes
+    static let definiteBarMCCs: Set<String> = [
+        "5813", // Bars, Cocktail Lounges, Taverns
+        "5921", // Package Stores, Beer, Wine, Liquor
+    ]
+
+    func isDrinkRelated(merchantCategoryCode: String?) -> Bool {
         guard let mcc = merchantCategoryCode else { return false }
-        return Transaction.drinkRelatedMCCs.contains(mcc)
+        return Self.drinkMCCs.contains(mcc)
     }
 
-    /// Classify a transaction and return a suggested drink entry
-    static func classify(_ transaction: TransactionDTO) -> ClassificationResult {
+    func classify(_ transaction: TransactionDTO) -> ClassificationResult {
         let mcc = transaction.merchantCategoryCode ?? ""
 
-        // Direct bar/tavern MCC
-        if mcc == "5813" {
+        if Self.definiteBarMCCs.contains(mcc) {
             return ClassificationResult(
                 isDrinkPurchase: true,
                 confidence: .high,
-                suggestedDrinkType: nil, // Can't determine type from transaction
-                category: .barOrTavern
+                suggestedDrinkType: nil,
+                category: mcc == "5921" ? .liquorStore : .barOrTavern
             )
         }
 
-        // Restaurant
         if mcc == "5812" || mcc == "5814" {
             return ClassificationResult(
-                isDrinkPurchase: false, // Could be food or drinks
+                isDrinkPurchase: false,
                 confidence: .medium,
                 suggestedDrinkType: nil,
                 category: .restaurant
             )
         }
 
-        // Liquor store
-        if mcc == "5921" {
+        if mcc == "5811" {
             return ClassificationResult(
-                isDrinkPurchase: true,
-                confidence: .high,
+                isDrinkPurchase: false,
+                confidence: .low,
                 suggestedDrinkType: nil,
-                category: .liquorStore
+                category: .caterer
             )
         }
 
-        // Not drink-related
         return ClassificationResult(
             isDrinkPurchase: false,
             confidence: .high,
@@ -53,8 +64,7 @@ struct TransactionClassifier {
         )
     }
 
-    /// Estimate number of drinks from a bar transaction amount
-    static func estimateDrinkCount(amount: Double, averageDrinkPrice: Double = 8.0) -> Int {
+    func estimateDrinkCount(amount: Double, averageDrinkPrice: Double = 8.0) -> Int {
         guard amount > 0, averageDrinkPrice > 0 else { return 0 }
         return max(1, Int(round(amount / averageDrinkPrice)))
     }
@@ -66,17 +76,17 @@ struct ClassificationResult {
     let suggestedDrinkType: DrinkType?
     let category: MerchantCategory
 
-    enum Confidence {
-        case high
-        case medium
-        case low
+    enum Confidence: String {
+        case high = "High"
+        case medium = "Medium"
+        case low = "Low"
     }
 
-    enum MerchantCategory {
-        case barOrTavern
-        case restaurant
-        case liquorStore
-        case caterer
-        case other
+    enum MerchantCategory: String {
+        case barOrTavern = "Bar/Tavern"
+        case restaurant = "Restaurant"
+        case liquorStore = "Liquor Store"
+        case caterer = "Caterer"
+        case other = "Other"
     }
 }

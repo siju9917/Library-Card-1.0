@@ -3,40 +3,57 @@ import AuthenticationServices
 import LocalAuthentication
 import SwiftUI
 
+/// Result returned after successful Apple Sign In.
+struct AppleSignInResult {
+    let displayName: String
+    let email: String?
+    let userIdentifier: String
+}
+
 @MainActor
-final class AuthenticationService: ObservableObject {
+final class AuthenticationService: ObservableObject, Authenticating {
     @Published var isAuthenticated: Bool = false
     @Published var isLoading: Bool = false
     @Published var authError: String?
 
-    private let keychainKey = "com.librarycard.userIdentifier"
+    private let keychainKey: String
+
+    init(keychainKey: String = "\(Bundle.main.bundleIdentifier ?? "com.librarycard").userIdentifier") {
+        self.keychainKey = keychainKey
+    }
 
     // MARK: - Sign in with Apple
 
-    func handleSignInWithApple(result: Result<ASAuthorization, Error>, modelContext: Any) {
+    @discardableResult
+    func handleSignInWithApple(result: Result<ASAuthorization, Error>, modelContext: Any) -> AppleSignInResult? {
         switch result {
         case .success(let authorization):
-            if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-                let userIdentifier = appleIDCredential.user
-                let fullName = appleIDCredential.fullName
-                let email = appleIDCredential.email
-
-                // Store identifier in Keychain
-                saveToKeychain(userIdentifier)
-
-                let displayName = [fullName?.givenName, fullName?.familyName]
-                    .compactMap { $0 }
-                    .joined(separator: " ")
-
-                isAuthenticated = true
-                authError = nil
-
-                // Note: User creation in SwiftData handled by the calling view
-                _ = (displayName.isEmpty ? "User" : displayName, email, userIdentifier)
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                authError = "Invalid credential type."
+                return nil
             }
+
+            let userIdentifier = credential.user
+            saveToKeychain(userIdentifier)
+
+            let displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
+                .compactMap { $0 }
+                .joined(separator: " ")
+
+            isAuthenticated = true
+            authError = nil
+
+            return AppleSignInResult(
+                displayName: displayName.isEmpty ? "User" : displayName,
+                email: credential.email,
+                userIdentifier: userIdentifier
+            )
+
         case .failure(let error):
+            AppError.log(.authentication(error.localizedDescription))
             authError = error.localizedDescription
             isAuthenticated = false
+            return nil
         }
     }
 
@@ -47,7 +64,7 @@ final class AuthenticationService: ObservableObject {
         var error: NSError?
 
         guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
-            authError = error?.localizedDescription ?? "Biometrics not available"
+            authError = error?.localizedDescription ?? "Biometrics not available on this device."
             return false
         }
 
@@ -61,6 +78,7 @@ final class AuthenticationService: ObservableObject {
             }
             return success
         } catch {
+            AppError.log(.authentication(error.localizedDescription))
             authError = error.localizedDescription
             return false
         }
@@ -69,20 +87,19 @@ final class AuthenticationService: ObservableObject {
     // MARK: - Check Existing Auth
 
     func checkExistingAuth() {
-        if let identifier = loadFromKeychain() {
-            // Verify the Apple ID credential state
-            let provider = ASAuthorizationAppleIDProvider()
-            provider.getCredentialState(forUserID: identifier) { [weak self] state, _ in
-                Task { @MainActor in
-                    switch state {
-                    case .authorized:
-                        self?.isAuthenticated = true
-                    case .revoked, .notFound:
-                        self?.isAuthenticated = false
-                        self?.removeFromKeychain()
-                    default:
-                        break
-                    }
+        guard let identifier = loadFromKeychain() else { return }
+
+        let provider = ASAuthorizationAppleIDProvider()
+        provider.getCredentialState(forUserID: identifier) { [weak self] state, _ in
+            Task { @MainActor in
+                switch state {
+                case .authorized:
+                    self?.isAuthenticated = true
+                case .revoked, .notFound:
+                    self?.isAuthenticated = false
+                    self?.removeFromKeychain()
+                default:
+                    break
                 }
             }
         }
@@ -91,6 +108,7 @@ final class AuthenticationService: ObservableObject {
     func signOut() {
         removeFromKeychain()
         isAuthenticated = false
+        authError = nil
     }
 
     // MARK: - Keychain Helpers
@@ -103,7 +121,10 @@ final class AuthenticationService: ObservableObject {
             kSecValueData as String: data
         ]
         SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status != errSecSuccess {
+            AppError.log(.persistence("Keychain save failed with status: \(status)"))
+        }
     }
 
     private func loadFromKeychain() -> String? {

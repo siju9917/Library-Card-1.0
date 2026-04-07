@@ -4,49 +4,75 @@ import SwiftData
 import Combine
 
 @MainActor
-final class SessionManager: ObservableObject {
+final class SessionManager: ObservableObject, SessionManaging {
     @Published var activeSession: DrinkingSession?
     @Published var isSessionActive: Bool = false
     @Published var elapsedTime: TimeInterval = 0
 
+    private let haptics: HapticService
+    private let notifications: NotificationManaging
     private var timer: Timer?
 
+    init(
+        haptics: HapticService = .shared,
+        notifications: NotificationManaging = NotificationService.shared
+    ) {
+        self.haptics = haptics
+        self.notifications = notifications
+    }
+
     func startSession(user: User?, venue: Venue?, in context: ModelContext) {
+        guard !isSessionActive else { return }
+
         let session = DrinkingSession(user: user, venue: venue)
         context.insert(session)
         activeSession = session
         isSessionActive = true
         startTimer()
+        haptics.sessionStart()
+        notifications.scheduleInactivityReminder(afterMinutes: 60)
 
         if let venue = venue {
             venue.recordVisit(amount: 0)
         }
+
+        do {
+            try context.save()
+        } catch {
+            AppError.log(.persistence("Failed to save new session: \(error.localizedDescription)"))
+        }
     }
 
     func endSession(in context: ModelContext) {
-        guard let session = activeSession else { return }
+        guard let session = activeSession, session.isActive else { return }
         session.end()
 
         if let venue = session.venue {
             venue.totalSpent += session.totalSpend
         }
 
-        try? context.save()
-        stopTimer()
-        activeSession = nil
-        isSessionActive = false
-        elapsedTime = 0
+        do {
+            try context.save()
+        } catch {
+            AppError.log(.persistence("Failed to save ended session: \(error.localizedDescription)"))
+        }
+
+        cleanup()
+        haptics.sessionEnd()
     }
 
     func cancelSession(in context: ModelContext) {
         guard let session = activeSession else { return }
         session.status = .cancelled
         session.endTime = Date()
-        try? context.save()
-        stopTimer()
-        activeSession = nil
-        isSessionActive = false
-        elapsedTime = 0
+
+        do {
+            try context.save()
+        } catch {
+            AppError.log(.persistence("Failed to save cancelled session: \(error.localizedDescription)"))
+        }
+
+        cleanup()
     }
 
     func addDrink(
@@ -60,21 +86,40 @@ final class SessionManager: ObservableObject {
     ) {
         guard let session = activeSession else { return }
 
-        let drink = Drink(
-            type: type,
-            name: name,
-            sizeMl: sizeMl,
-            alcoholPercentage: alcoholPercentage,
-            price: price,
-            session: session,
-            venue: venue
-        )
-        context.insert(drink)
-        session.drinks.append(drink)
-        try? context.save()
+        do {
+            let drink = try Drink(
+                type: type,
+                name: name,
+                sizeMl: sizeMl,
+                alcoholPercentage: alcoholPercentage,
+                price: price,
+                session: session,
+                venue: venue
+            )
+            context.insert(drink)
+            session.drinks.append(drink)
+            try context.save()
+            haptics.drinkAdded()
+
+            // Reschedule inactivity reminder
+            notifications.cancelInactivityReminder()
+            notifications.scheduleInactivityReminder(afterMinutes: 60)
+        } catch let error as ValidationError {
+            AppError.log(.validation(error.localizedDescription))
+        } catch {
+            AppError.log(.persistence("Failed to save drink: \(error.localizedDescription)"))
+        }
     }
 
-    // MARK: - Timer
+    // MARK: - Private
+
+    private func cleanup() {
+        stopTimer()
+        notifications.cancelInactivityReminder()
+        activeSession = nil
+        isSessionActive = false
+        elapsedTime = 0
+    }
 
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
