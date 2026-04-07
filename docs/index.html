@@ -17,7 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .screen{display:none;padding:16px}
 .screen.active{display:block}
 .tab-bar{display:flex;justify-content:space-around;align-items:flex-start;padding:8px 0;padding-bottom:calc(8px + var(--safe-bottom));background:var(--bg2);border-top:0.5px solid #333;flex-shrink:0}
-.tab{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--text3);font-size:10px;padding:4px 16px;cursor:pointer;transition:color .2s}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text3);font-size:9px;padding:4px 8px;cursor:pointer;transition:color .2s}
 .tab.active{color:var(--primary)}
 .tab svg{width:24px;height:24px;fill:currentColor}
 h1{font-size:28px;font-weight:700;margin-bottom:16px}
@@ -136,18 +136,60 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--primary);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 </div>
-<h2>Social</h2>
-<div class="nav-link" onclick="alert('Friends list - coming with backend!')"><span class="icon">👥</span><span class="title">Friends</span><span class="chevron">›</span></div>
-<div class="nav-link" onclick="alert('Organizations - coming with backend!')"><span class="icon">🏛️</span><span class="title">Organizations</span><span class="chevron">›</span></div>
-<div class="nav-link" onclick="alert('DMs - coming with backend!')"><span class="icon">💬</span><span class="title">Messages</span><span class="chevron">›</span></div>
-<h2>Safety</h2>
-<div style="margin-bottom:12px"><button class="btn btn-danger" onclick="alert('🚨 SOS Alert would be sent to your friends with your location. In a real emergency, call 911.')">🆘 SOS Button</button></div>
-<p style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:16px">Alerts your friends with your location. In a real emergency, call 911.</p>
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('Privacy Policy - available in the full app')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('Terms of Service - available in the full app')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">Library Card v1.0.0 (1)</div>
 <div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm('Reset all demo data?')){localStorage.clear();location.reload()}">Reset Demo Data</button></div>
+</div>
+
+<!-- SOCIAL & SAFETY SCREEN -->
+<div class="screen" id="screen-social">
+<h1>Social</h1>
+
+<h2>🔴 Safety</h2>
+<div style="margin-bottom:12px"><button class="btn btn-danger" onclick="alert('🚨 SOS Alert sent to all friends with your live location.\n\nIn a real emergency, always call 911.')">🆘 SOS — Share Location Now</button></div>
+<div class="card" style="margin-bottom:16px">
+<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('📱 Low battery alert sent to your friends:\n\n&quot;Hey, my phone is at 8%. Last seen at The Pub.&quot;')"><span class="icon">🔋</span><span class="title">Low Battery Alert</span><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('📍 Your bar route tonight:\n\n1. The Pub — 8:30 PM\n2. Tavern on Main — 10:15 PM\n3. Club X — 11:45 PM\n\nFriends can see this for safety.')"><span class="icon">🗺️</span><span class="title">My Bar Route</span><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🔔 Your friends will be notified when you leave a venue.')"><span class="icon">🚪</span><span class="title">Departure Alerts</span><span class="chevron">›</span></div>
+</div>
+
+<h2>👥 Friends</h2>
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Leaderboard</span><span style="font-size:12px;color:var(--text2)">This Week</span></div>
+<div id="friendLeaderboard">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0"><span style="font-size:16px;font-weight:700;color:var(--primary);width:24px">1</span><span>🏆</span><span style="flex:1;font-weight:500">You</span><span style="font-weight:700" id="lbYou">0</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.7"><span style="font-size:16px;font-weight:700;color:var(--text2);width:24px">2</span><span>😎</span><span style="flex:1">Jake M.</span><span style="font-weight:700">14</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.7"><span style="font-size:16px;font-weight:700;color:var(--text2);width:24px">3</span><span>🎉</span><span style="flex:1">Sarah K.</span><span style="font-weight:700">11</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.5"><span style="font-size:16px;font-weight:700;color:var(--text3);width:24px">4</span><span>🍻</span><span style="flex:1">Mike R.</span><span style="font-weight:700">8</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
+</div>
+</div>
+
+<h3 style="margin-top:4px">Friends of Friends Nearby</h3>
+<div class="card" style="opacity:.8">
+<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Alex T. <span style="color:var(--text3);font-size:11px">· via Jake M.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
+<div class="divider"></div>
+<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Emma L. <span style="color:var(--text3);font-size:11px">· via Sarah K.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
+</div>
+
+<h3>Find Friends</h3>
+<div class="card" onclick="alert('📡 AR Friend Finder\n\nHold your phone up at a crowded bar or concert. An arrow will point toward your friend with estimated distance.\n\nComing soon!')">
+<div style="display:flex;align-items:center;gap:12px"><span style="font-size:28px">📡</span><div><div style="font-weight:600">AR Friend Locator</div><div style="font-size:12px;color:var(--text2)">Point your phone to find friends in crowds</div></div></div>
+</div>
+
+<h2>💬 Messages</h2>
+<div class="nav-link" onclick="alert('DMs - Add someone on the Library instead of exchanging numbers!')"><span class="icon">💬</span><span class="title">Direct Messages</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="switchTab('showdown')"><span class="icon">⚔️</span><span class="title">Showdown Mode</span><span class="chevron">›</span></div>
+
+<h2>🏛️ Organizations</h2>
+<div class="nav-link" onclick="alert('Create or join an org — shared leaderboards, org-wide Wrapped, inter-org showdowns!')"><span class="icon">🏛️</span><span class="title">My Organizations</span><span class="chevron">›</span></div>
+
+<h2>💘 Matching</h2>
+<div class="nav-link" onclick="alert('Swipe on people at the bar. Mutual swipes = match!\n\nBuy someone a drink by loading their Library Card. They need a Live Photo to verify.')"><span class="icon">💘</span><span class="title">Swipe at This Bar</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('Premium Feature: Pre-swipe on people planning to go out tonight. If you both match and they show up, you get notified!')"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
 </div>
 
 <!-- SHOWDOWN -->
@@ -176,6 +218,10 @@ Home
 <button class="tab" data-tab="session" onclick="switchTab('session')">
 <svg viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
 Session
+</button>
+<button class="tab" data-tab="social" onclick="switchTab('social')">
+<svg viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+Social
 </button>
 <button class="tab" data-tab="stats" onclick="switchTab('stats')">
 <svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -417,11 +463,18 @@ render();
 showdownTimer=setInterval(render,1000);
 }
 
+// ========== SOCIAL ==========
+function initSocial(){
+const el=document.getElementById('lbYou');
+if(el)el.textContent=allTimeDrinks;
+}
+
 // ========== TAB HOOKS ==========
 const origSwitchTab=switchTab;
 switchTab=function(tab){
 origSwitchTab(tab);
 if(tab==='stats')initStats();
+if(tab==='social')initSocial();
 if(tab==='profile')initProfile();
 };
 
