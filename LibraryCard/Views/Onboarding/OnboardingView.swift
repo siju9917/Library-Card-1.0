@@ -8,7 +8,6 @@ struct OnboardingView: View {
     @State private var displayName = ""
     @State private var selectedSex: BiologicalSex = .preferNotToSay
     @State private var weightKg = ""
-    @State private var monthlyBudget = ""
     @State private var weeklyGoal = ""
 
     private let totalPages = 4
@@ -63,7 +62,7 @@ struct OnboardingView: View {
                     .font(AppFont.largeTitle)
                     .multilineTextAlignment(.center)
 
-                Text("Track your nights out with real-time drink logging, spending insights, and Strava-style session recaps.")
+                Text("Track your nights out with real-time drink logging, DPM stats, leaderboards, and Wrapped recaps.")
                     .font(AppFont.subheadline)
                     .foregroundStyle(AppColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -73,7 +72,7 @@ struct OnboardingView: View {
             Spacer()
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Welcome to Library Card. Track your nights out with real-time drink logging and spending insights.")
+        .accessibilityLabel("Welcome to Library Card. Track your nights out with real-time drink logging, DPM stats, and social features.")
     }
 
     private var trackingPage: some View {
@@ -89,7 +88,7 @@ struct OnboardingView: View {
                 OnboardingFeature(
                     icon: "speedometer",
                     title: "Live Pace",
-                    description: "See your drinks per hour, spending, and estimated BAC in real time."
+                    description: "See your DPM, drinks per hour, and estimated BAC in real time."
                 )
                 OnboardingFeature(
                     icon: "chart.bar.fill",
@@ -97,9 +96,9 @@ struct OnboardingView: View {
                     description: "Weekly trends, drink type breakdowns, venue rankings, and more."
                 )
                 OnboardingFeature(
-                    icon: "creditcard.fill",
-                    title: "Card Integration",
-                    description: "Connect a payment card to auto-detect purchases at bars."
+                    icon: "person.2.fill",
+                    title: "Social & Showdowns",
+                    description: "Add friends, join orgs, and compete in team showdowns."
                 )
             }
             .padding(.horizontal, AppSpacing.xxl)
@@ -145,13 +144,6 @@ struct OnboardingView: View {
                         title: "Weight (kg)",
                         placeholder: "For BAC estimation",
                         text: $weightKg,
-                        keyboardType: .decimalPad
-                    )
-
-                    OnboardingTextField(
-                        title: "Monthly Budget ($)",
-                        placeholder: "Optional spending limit",
-                        text: $monthlyBudget,
                         keyboardType: .decimalPad
                     )
 
@@ -241,7 +233,6 @@ struct OnboardingView: View {
             displayName: name.isEmpty ? "User" : name,
             weightKg: Double(weightKg),
             biologicalSex: selectedSex,
-            monthlyBudget: Double(monthlyBudget),
             weeklyDrinkGoal: Int(weeklyGoal)
         )
         modelContext.insert(user)

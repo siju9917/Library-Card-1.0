@@ -30,6 +30,9 @@ struct HomeView: View {
 
                     // Recent sessions
                     recentSessionsSection
+
+                    // Navigation links
+                    navigationLinksSection
                 }
                 .padding()
             }
@@ -55,10 +58,10 @@ struct HomeView: View {
                     icon: "mug.fill"
                 )
                 StatCard(
-                    title: "Spent",
-                    value: String(format: "$%.0f", viewModel.totalSpendThisWeek),
-                    icon: "dollarsign.circle.fill",
-                    color: .green
+                    title: "All Time",
+                    value: "\(viewModel.totalDrinksAllTime)",
+                    icon: "trophy.fill",
+                    color: .yellow
                 )
             }
 
@@ -96,6 +99,46 @@ struct HomeView: View {
                     .primaryButtonStyle()
                 }
             }
+        }
+    }
+
+    private var navigationLinksSection: some View {
+        VStack(spacing: 12) {
+            NavigationLink {
+                WrappedListView()
+            } label: {
+                HStack {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(.yellow)
+                    Text("Your Wrapped")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink {
+                ShowdownView()
+            } label: {
+                HStack {
+                    Image(systemName: "person.2.fill")
+                        .foregroundStyle(.orange)
+                    Text("Showdown")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
     }
 

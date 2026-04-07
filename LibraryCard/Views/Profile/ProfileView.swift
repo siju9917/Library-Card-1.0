@@ -9,7 +9,6 @@ struct ProfileView: View {
 
     @State private var viewModel = ProfileViewModel()
     @State private var showingEditProfile = false
-    @State private var showingCardSetup = false
 
     private var currentUser: User? { users.first }
 
@@ -19,11 +18,11 @@ struct ProfileView: View {
                 // Profile header
                 profileHeader
 
-                // Card section
-                cardSection
-
                 // Lifetime stats
                 lifetimeStats
+
+                // Wrapped
+                wrappedSection
 
                 // Settings
                 settingsSection
@@ -38,9 +37,6 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileSheet(user: currentUser)
-            }
-            .sheet(isPresented: $showingCardSetup) {
-                CardSetupSheet()
             }
         }
     }
@@ -84,59 +80,34 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Card Section
-
-    private var cardSection: some View {
-        Section("Library Card") {
-            if currentUser?.cardLinked == true {
-                HStack {
-                    Image(systemName: "creditcard.fill")
-                        .foregroundStyle(AppColor.primary)
-                    VStack(alignment: .leading) {
-                        Text("Card Connected")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Text("**** \(currentUser?.cardLastFour ?? "----")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-            } else {
-                Button {
-                    showingCardSetup = true
-                } label: {
-                    HStack {
-                        Image(systemName: "creditcard.fill")
-                            .foregroundStyle(AppColor.primary)
-                        VStack(alignment: .leading) {
-                            Text("Set Up Library Card")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                            Text("Connect a card to auto-track purchases")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - Lifetime Stats
 
     private var lifetimeStats: some View {
         Section("Lifetime Stats") {
             StatRow(label: "Total Sessions", value: "\(viewModel.totalSessions)")
             StatRow(label: "Total Drinks", value: "\(viewModel.totalLifetimeDrinks)")
-            StatRow(label: "Total Spent", value: String(format: "$%.2f", viewModel.totalLifetimeSpend))
+            StatRow(label: "Avg DPM", value: String(format: "%.3f", viewModel.totalDPM))
             StatRow(label: "Favorite Venue", value: viewModel.favoriteVenue)
             StatRow(label: "Favorite Drink", value: viewModel.favoriteDrinkType)
+        }
+    }
+
+    // MARK: - Wrapped
+
+    private var wrappedSection: some View {
+        Section {
+            NavigationLink {
+                WrappedListView()
+            } label: {
+                HStack {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(.yellow)
+                    Text("Your Wrapped")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+            }
         }
     }
 
@@ -145,13 +116,6 @@ struct ProfileView: View {
     private var settingsSection: some View {
         Section("Settings") {
             if let user = currentUser {
-                HStack {
-                    Text("Monthly Budget")
-                    Spacer()
-                    Text(user.monthlyBudget.map { String(format: "$%.0f", $0) } ?? "Not set")
-                        .foregroundStyle(.secondary)
-                }
-
                 HStack {
                     Text("Weekly Drink Goal")
                     Spacer()
@@ -222,7 +186,6 @@ struct EditProfileSheet: View {
     @State private var displayName: String = ""
     @State private var weightKg: String = ""
     @State private var selectedSex: BiologicalSex = .preferNotToSay
-    @State private var monthlyBudget: String = ""
     @State private var weeklyGoal: String = ""
 
     var body: some View {
@@ -248,15 +211,6 @@ struct EditProfileSheet: View {
                 }
 
                 Section("Goals") {
-                    HStack {
-                        Text("Monthly Budget")
-                        Spacer()
-                        Text("$")
-                        TextField("0", text: $monthlyBudget)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                    }
                     HStack {
                         Text("Weekly Drink Limit")
                         Spacer()
@@ -294,7 +248,6 @@ struct EditProfileSheet: View {
                     displayName = user.displayName
                     weightKg = user.weightKg.map { String(format: "%.1f", $0) } ?? ""
                     selectedSex = user.biologicalSex ?? .preferNotToSay
-                    monthlyBudget = user.monthlyBudget.map { String(format: "%.0f", $0) } ?? ""
                     weeklyGoal = user.weeklyDrinkGoal.map { "\($0)" } ?? ""
                 }
             }
@@ -306,83 +259,8 @@ struct EditProfileSheet: View {
         user.displayName = displayName
         user.weightKg = Double(weightKg)
         user.biologicalSex = selectedSex
-        user.monthlyBudget = Double(monthlyBudget)
         user.weeklyDrinkGoal = Int(weeklyGoal)
         try? modelContext.save()
     }
 }
 
-struct CardSetupSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(systemName: "creditcard.and.123")
-                    .font(.system(size: 64))
-                    .foregroundStyle(AppColor.primary)
-
-                VStack(spacing: 8) {
-                    Text("Library Card Setup")
-                        .font(.title2)
-                        .fontWeight(.bold)
-
-                    Text("Connect a payment card to automatically track your purchases at bars and restaurants.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
-
-                VStack(spacing: 12) {
-                    FeatureRow(icon: "bolt.fill", text: "Auto-detect bar & restaurant purchases")
-                    FeatureRow(icon: "chart.bar.fill", text: "Track spending in real-time")
-                    FeatureRow(icon: "bell.fill", text: "Get notified when a drink is logged")
-                    FeatureRow(icon: "lock.fill", text: "Bank-level encryption & security")
-                }
-                .padding(.horizontal, 32)
-
-                Spacer()
-
-                Button {
-                    // Card setup flow will be implemented with Lithic integration
-                    dismiss()
-                } label: {
-                    Text("Set Up Card")
-                        .primaryButtonStyle()
-                }
-                .padding(.horizontal, 32)
-
-                Button("Skip for Now") {
-                    dismiss()
-                }
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 16)
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-struct FeatureRow: View {
-    let icon: String
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(AppColor.primary)
-                .frame(width: 24)
-            Text(text)
-                .font(.subheadline)
-            Spacer()
-        }
-    }
-}

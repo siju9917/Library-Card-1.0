@@ -25,12 +25,6 @@ struct AppErrorTests {
         #expect(error.userMessage == "Network error. Please check your connection.")
     }
 
-    @Test("Card service error provides generic user message")
-    func cardServiceErrorMessage() {
-        let error = AppError.cardService("API down")
-        #expect(error.userMessage == "Card service unavailable. Please try again later.")
-    }
-
     @Test("Unknown error provides generic user message")
     func unknownErrorMessage() {
         let error = AppError.unknown("something broke")
@@ -57,31 +51,5 @@ struct ValidationErrorTests {
     func invalidCoordsDescription() {
         let error = ValidationError.invalidCoordinates("Out of range")
         #expect(error.errorDescription == "Out of range")
-    }
-}
-
-@Suite("CardServiceError Tests")
-struct CardServiceErrorTests {
-
-    @Test("Not implemented error has description")
-    func notImplementedDescription() {
-        let error = CardServiceError.notImplemented
-        #expect(error.errorDescription != nil)
-        #expect(error.errorDescription!.contains("not yet configured"))
-    }
-
-    @Test("All error cases have descriptions")
-    func allCasesHaveDescriptions() {
-        let errors: [CardServiceError] = [
-            .notImplemented,
-            .networkError("timeout"),
-            .authenticationRequired,
-            .cardNotFound,
-            .insufficientFunds
-        ]
-        for error in errors {
-            #expect(error.errorDescription != nil)
-            #expect(!error.errorDescription!.isEmpty)
-        }
     }
 }

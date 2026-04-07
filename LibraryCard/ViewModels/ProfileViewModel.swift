@@ -5,7 +5,7 @@ import SwiftData
 final class ProfileViewModel {
     var user: User?
     var totalLifetimeDrinks: Int = 0
-    var totalLifetimeSpend: Double = 0
+    var totalDPM: Double = 0
     var totalSessions: Int = 0
     var memberSinceDays: Int = 0
     var favoriteVenue: String = "None yet"
@@ -17,7 +17,10 @@ final class ProfileViewModel {
         let completed = sessions.filter { $0.status == .completed }
         totalSessions = completed.count
         totalLifetimeDrinks = completed.reduce(0) { $0 + $1.totalDrinks }
-        totalLifetimeSpend = completed.reduce(0) { $0 + $1.totalSpend }
+
+        if !completed.isEmpty {
+            totalDPM = completed.reduce(0.0) { $0 + $1.dpm } / Double(completed.count)
+        }
 
         if let createdAt = user?.createdAt {
             memberSinceDays = Calendar.current.dateComponents([.day], from: createdAt, to: Date()).day ?? 0
