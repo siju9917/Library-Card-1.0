@@ -133,7 +133,10 @@ struct HomeView: View {
                 .padding(.vertical, 32)
             } else {
                 ForEach(viewModel.recentSessions) { session in
-                    SessionSummaryCard(session: session)
+                    NavigationLink(destination: SessionDetailView(session: session)) {
+                        SessionSummaryCard(session: session)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -189,9 +192,12 @@ struct SessionHistoryView: View {
     var body: some View {
         List {
             ForEach(sessions) { session in
-                SessionSummaryCard(session: session)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                NavigationLink(destination: SessionDetailView(session: session)) {
+                    SessionSummaryCard(session: session)
+                }
+                .buttonStyle(.plain)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
             }
         }
         .listStyle(.plain)
