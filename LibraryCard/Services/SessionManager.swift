@@ -56,6 +56,12 @@ final class SessionManager: ObservableObject, SessionManaging {
             AppError.log(.persistence("Failed to save ended session: \(error.localizedDescription)"))
         }
 
+        // Schedule funny morning-after notification
+        FunNotificationService.shared.scheduleMorningAfter(
+            totalDrinks: session.totalDrinks,
+            sessionEndTime: Date()
+        )
+
         cleanup()
         haptics.sessionEnd()
     }
