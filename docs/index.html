@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#000000">
 <title>Library Card</title>
 <style>
-:root{--purple:#8B5CF6;--purple-light:#A78BFA;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#000;--bg2:#111;--card:#1C1C1E;--card2:#2C2C2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+:root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100dvh;width:100vw;position:fixed;top:0;left:0}
 .app{height:100dvh;display:flex;flex-direction:column}
@@ -18,7 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .screen.active{display:block}
 .tab-bar{display:flex;justify-content:space-around;align-items:flex-start;padding:8px 0;padding-bottom:calc(8px + var(--safe-bottom));background:var(--bg2);border-top:0.5px solid #333;flex-shrink:0}
 .tab{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--text3);font-size:10px;padding:4px 16px;cursor:pointer;transition:color .2s}
-.tab.active{color:var(--purple)}
+.tab.active{color:var(--primary)}
 .tab svg{width:24px;height:24px;fill:currentColor}
 h1{font-size:28px;font-weight:700;margin-bottom:16px}
 h2{font-size:18px;font-weight:600;margin-bottom:12px}
@@ -32,7 +32,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 .stat-card .label{font-size:12px;color:var(--text2);margin-top:4px}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border:none;border-radius:var(--radius);font-size:17px;font-weight:600;cursor:pointer;transition:transform .1s,opacity .1s}
 .btn:active{transform:scale(0.97);opacity:0.8}
-.btn-primary{background:var(--purple);color:#fff}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
 .btn-danger{background:var(--red);color:#fff}
 .btn-secondary{background:var(--card2);color:var(--text)}
 .session-card{display:flex;flex-direction:column;gap:10px}
@@ -125,7 +125,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="screen" id="screen-profile">
 <h1>Profile</h1>
 <div class="card" style="display:flex;align-items:center;gap:16px">
-<div style="width:56px;height:56px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:24px">👤</div>
+<div style="width:56px;height:56px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:24px">👤</div>
 <div style="flex:1"><div style="font-size:17px;font-weight:700" id="profileName">Library Card User</div><div style="font-size:13px;color:var(--text2)" id="profileUsername">@user</div><div style="font-size:11px;color:var(--text3)">Member since today</div></div>
 </div>
 <h2 style="margin-top:16px">Lifetime Stats</h2>
@@ -134,7 +134,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Dark Mode</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" id="darkToggle" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--card2);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 <div class="divider"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--purple);border-radius:31px;transition:.3s" class="slider"></span></label></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--primary);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 </div>
 <h2>Social</h2>
 <div class="nav-link" onclick="alert('Friends list - coming with backend!')"><span class="icon">👥</span><span class="title">Friends</span><span class="chevron">›</span></div>
@@ -153,7 +153,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <!-- SHOWDOWN -->
 <div class="screen" id="screen-showdown">
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-<button onclick="switchTab('home')" style="background:none;border:none;color:var(--purple);font-size:16px;cursor:pointer">← Back</button>
+<button onclick="switchTab('home')" style="background:none;border:none;color:var(--primary);font-size:16px;cursor:pointer">← Back</button>
 <h1 style="margin:0">Showdown</h1>
 </div>
 <div id="showdownContent">
@@ -280,7 +280,7 @@ const elapsed=Date.now()-sessionStart;
 const dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
 const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
-'<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--purple)">'+formatTimer(elapsed)+'</div></div>'+
+'<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
 '<h3>Quick Add</h3><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
@@ -296,10 +296,11 @@ const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
 }
 
-function addDrink(name){
-drinks.push({name:name,time:Date.now()});
+function addDrink(type){
+const custom=prompt('Name this drink (or leave blank for "'+type+'"):','');
+const name=custom&&custom.trim()?custom.trim():type;
+drinks.push({name:name,type:type,time:Date.now(),rating:null});
 updateSessionUI();
-// haptic
 if(navigator.vibrate)navigator.vibrate(50);
 }
 
@@ -318,7 +319,7 @@ const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:8px">🎉</div><h2>Session Complete!</h2></div>'+
-'<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--purple)">'+drinks.length+'</div><div style="color:var(--text2);margin-bottom:16px">drinks</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div></div></div>'+
+'<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+drinks.length+'</div><div style="color:var(--text2);margin-bottom:16px">drinks</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div></div></div>'+
 '<div style="margin-top:16px"><button class="btn btn-primary" onclick="resetSession()">Done</button></div>';
 updateHome();
 }
@@ -365,7 +366,7 @@ const typeEl=document.getElementById('drinkTypesChart');
 const typeEntries=Object.entries(types).sort((a,b)=>b[1]-a[1]);
 if(typeEntries.length===0){typeEl.innerHTML='<div class="empty-state" style="padding:16px"><div class="sub">No drink data yet</div></div>';}
 else{const total=typeEntries.reduce((a,e)=>a+e[1],0);
-typeEl.innerHTML=typeEntries.map(([n,c])=>{const pct=Math.round(c/total*100);return'<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span style="font-size:14px;min-width:80px">'+n+'</span><div style="flex:1;height:20px;background:var(--card2);border-radius:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--purple);border-radius:10px;transition:width .3s"></div></div><span style="font-size:13px;color:var(--text2);min-width:36px;text-align:right">'+c+'</span></div>';}).join('');}
+typeEl.innerHTML=typeEntries.map(([n,c])=>{const pct=Math.round(c/total*100);return'<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span style="font-size:14px;min-width:80px">'+n+'</span><div style="flex:1;height:20px;background:var(--card2);border-radius:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--primary);border-radius:10px;transition:width .3s"></div></div><span style="font-size:13px;color:var(--text2);min-width:36px;text-align:right">'+c+'</span></div>';}).join('');}
 // Day of week
 const dow=[0,0,0,0,0,0,0];filtered.forEach(s=>{const d=new Date(s.time).getDay();dow[d]+=s.drinks;});
 const dowNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const dowMax=Math.max(...dow,1);
@@ -425,7 +426,7 @@ if(tab==='profile')initProfile();
 };
 
 // Toggle slider CSS
-document.head.insertAdjacentHTML('beforeend','<style>.slider::before{position:absolute;content:"";height:27px;width:27px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.3s}input:checked+.slider{background:var(--purple)}input:checked+.slider::before{transform:translateX(20px)}</style>');
+document.head.insertAdjacentHTML('beforeend','<style>.slider::before{position:absolute;content:"";height:27px;width:27px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.3s}input:checked+.slider{background:var(--primary)}input:checked+.slider::before{transform:translateX(20px)}</style>');
 </script>
 </body>
 </html>
