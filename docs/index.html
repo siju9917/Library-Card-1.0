@@ -404,6 +404,7 @@ document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
 '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:16px"></div>'+
+'<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
@@ -419,12 +420,52 @@ const grid=document.getElementById('drinkGrid');
 grid.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px"><span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
 // Bar distribution chart (you vs bar avg vs top drinker)
 renderBarDist(elapsed);
+renderRewards(drinks.length);
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a drink above to add one.</p>';}
 else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';return'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #333"><div><span style="font-weight:500">'+d.name+'</span><div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
+}
+
+// ========== REWARDS & PROMOS ==========
+const rewardTiers=[
+{drinks:2,reward:'🎫 10% off your next visit to Rooftop Bar',unlocked:false,venue:'Rooftop Bar'},
+{drinks:4,reward:'🍺 Free appetizer at Tavern on Main',unlocked:false,venue:'Tavern on Main'},
+{drinks:6,reward:'🎉 Buy 1 Get 1 free at Brews & Views',unlocked:false,venue:'Brews & Views'},
+{drinks:8,reward:'⭐ VIP skip-the-line at Club X this weekend',unlocked:false,venue:'Club X'},
+{drinks:10,reward:'🏆 Free drink at The Library Lounge',unlocked:false,venue:'The Library Lounge'},
+{drinks:15,reward:'💎 Premium status unlocked for 24 hours',unlocked:false,venue:'All venues'},
+];
+const promos=[
+{text:'Happy Hour at Rooftop Bar — $5 margaritas until 9 PM',emoji:'🌅',color:'#F97316'},
+{text:'DJ Night at Club X — 2-for-1 shots before midnight',emoji:'🎵',color:'#8B5CF6'},
+{text:'Trivia Tuesday at The Pub — free round for winners',emoji:'🧠',color:'#22C55E'},
+];
+function renderRewards(drinkCount){
+const el=document.getElementById('rewardsSection');
+if(!el)return;
+// Find next unlockable reward
+const nextReward=rewardTiers.find(r=>drinkCount<r.drinks);
+const unlockedRewards=rewardTiers.filter(r=>drinkCount>=r.drinks);
+const latestUnlock=unlockedRewards.length>0?unlockedRewards[unlockedRewards.length-1]:null;
+// Rotating promo
+const promoIdx=Math.floor(Date.now()/10000)%promos.length;
+const promo=promos[promoIdx];
+let html='<h3>🎁 Rewards & Promos</h3>';
+// Active promo banner
+html+='<div class="card" style="background:linear-gradient(135deg,'+promo.color+'22,'+promo.color+'11);border:1px solid '+promo.color+'44;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">'+promo.emoji+'</span><div style="flex:1;font-size:13px">'+promo.text+'</div></div></div>';
+// Latest unlocked reward
+if(latestUnlock){
+html+='<div class="card" style="border:1px solid var(--primary);padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🎉</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--primary)">UNLOCKED!</div><div style="font-size:13px">'+latestUnlock.reward+'</div></div></div></div>';
+}
+// Progress to next reward
+if(nextReward){
+const progress=Math.round((drinkCount/nextReward.drinks)*100);
+html+='<div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text2)">Next reward at '+nextReward.drinks+' drinks</span><span style="font-size:12px;font-weight:600">'+drinkCount+'/'+nextReward.drinks+'</span></div><div style="height:6px;background:var(--card2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+progress+'%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:3px;transition:width .3s"></div></div><div style="font-size:11px;color:var(--text3);margin-top:6px">'+nextReward.reward+'</div></div>';
+}
+el.innerHTML=html;
 }
 
 // Kahoot-style anonymous bar names
