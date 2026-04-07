@@ -32,9 +32,7 @@ final class SessionManager: ObservableObject, SessionManaging {
         haptics.sessionStart()
         notifications.scheduleInactivityReminder(afterMinutes: 60)
 
-        if let venue = venue {
-            venue.recordVisit(amount: 0)
-        }
+        venue?.recordVisit()
 
         do {
             try context.save()
@@ -47,8 +45,9 @@ final class SessionManager: ObservableObject, SessionManaging {
         guard let session = activeSession, session.isActive else { return }
         session.end()
 
-        if let venue = session.venue {
-            venue.totalSpent += session.totalSpend
+        // Update user lifetime stats
+        if let user = session.user {
+            user.totalLifetimeDrinks += session.totalDrinks
         }
 
         do {
@@ -80,7 +79,6 @@ final class SessionManager: ObservableObject, SessionManaging {
         name: String,
         sizeMl: Double,
         alcoholPercentage: Double,
-        price: Double?,
         venue: Venue?,
         in context: ModelContext
     ) {
@@ -92,7 +90,6 @@ final class SessionManager: ObservableObject, SessionManaging {
                 name: name,
                 sizeMl: sizeMl,
                 alcoholPercentage: alcoholPercentage,
-                price: price,
                 session: session,
                 venue: venue
             )
@@ -101,7 +98,6 @@ final class SessionManager: ObservableObject, SessionManaging {
             try context.save()
             haptics.drinkAdded()
 
-            // Reschedule inactivity reminder
             notifications.cancelInactivityReminder()
             notifications.scheduleInactivityReminder(afterMinutes: 60)
         } catch let error as ValidationError {

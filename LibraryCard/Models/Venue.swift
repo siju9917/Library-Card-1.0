@@ -10,7 +10,6 @@ final class Venue {
     var longitude: Double?
     var category: VenueCategory
     var visitCount: Int
-    var totalSpent: Double
     var lastVisited: Date?
     var isFavorite: Bool
 
@@ -20,7 +19,6 @@ final class Venue {
     @Relationship(deleteRule: .nullify, inverse: \Drink.venue)
     var drinks: [Drink] = []
 
-    /// Validated initializer. Throws `ValidationError` for invalid inputs.
     init(
         name: String,
         address: String? = nil,
@@ -32,7 +30,6 @@ final class Venue {
         guard !trimmedName.isEmpty else {
             throw ValidationError.emptyName("Venue name cannot be empty.")
         }
-
         if let lat = latitude {
             guard lat >= -90, lat <= 90 else {
                 throw ValidationError.invalidCoordinates("Latitude must be between -90 and 90.")
@@ -51,19 +48,27 @@ final class Venue {
         self.longitude = longitude
         self.category = category
         self.visitCount = 0
-        self.totalSpent = 0
         self.lastVisited = nil
         self.isFavorite = false
     }
 
-    var averageSpendPerVisit: Double {
-        guard visitCount > 0 else { return 0 }
-        return totalSpent / Double(visitCount)
+    /// Total drinks ever consumed at this venue
+    var totalDrinksHere: Int {
+        drinks.count
     }
 
-    func recordVisit(amount: Double) {
+    /// Number of active Library Card users at this venue right now
+    var currentActiveUsers: Int {
+        sessions.filter { $0.isActive }.count
+    }
+
+    /// Number of drinks being consumed right now (active sessions)
+    var currentLiveDrinks: Int {
+        sessions.filter { $0.isActive }.reduce(0) { $0 + $1.totalDrinks }
+    }
+
+    func recordVisit() {
         visitCount += 1
-        totalSpent += max(amount, 0)
         lastVisited = Date()
     }
 }
@@ -74,7 +79,6 @@ enum VenueCategory: String, Codable, CaseIterable, Identifiable {
     case club = "Club"
     case brewery = "Brewery"
     case winery = "Winery"
-    case liquorStore = "Liquor Store"
     case home = "Home"
     case event = "Event"
     case other = "Other"
@@ -88,7 +92,6 @@ enum VenueCategory: String, Codable, CaseIterable, Identifiable {
         case .club: return "music.note"
         case .brewery: return "mug"
         case .winery: return "leaf"
-        case .liquorStore: return "bag"
         case .home: return "house"
         case .event: return "star"
         case .other: return "mappin"

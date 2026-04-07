@@ -8,7 +8,6 @@ final class Drink {
     var name: String
     var sizeMl: Double
     var alcoholPercentage: Double
-    var price: Double?
     var timestamp: Date
     var isAutoLogged: Bool
     var calories: Double
@@ -22,7 +21,6 @@ final class Drink {
         name: String,
         sizeMl: Double,
         alcoholPercentage: Double,
-        price: Double? = nil,
         isAutoLogged: Bool = false,
         session: DrinkingSession? = nil,
         venue: Venue? = nil
@@ -36,18 +34,12 @@ final class Drink {
         guard alcoholPercentage >= 0, alcoholPercentage <= 100 else {
             throw ValidationError.invalidPercentage("ABV must be between 0% and 100%.")
         }
-        if let price = price {
-            guard price >= 0 else {
-                throw ValidationError.invalidPrice("Price cannot be negative.")
-            }
-        }
 
         self.id = UUID()
         self.type = type
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.sizeMl = sizeMl
         self.alcoholPercentage = alcoholPercentage
-        self.price = price
         self.timestamp = Date()
         self.isAutoLogged = isAutoLogged
         self.calories = Drink.calculateCalories(sizeMl: sizeMl, alcoholPercentage: alcoholPercentage)
