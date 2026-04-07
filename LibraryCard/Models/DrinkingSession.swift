@@ -15,8 +15,11 @@ final class DrinkingSession {
     @Relationship(deleteRule: .cascade, inverse: \Drink.session)
     var drinks: [Drink] = []
 
-    @Relationship(deleteRule: .nullify, inverse: \Transaction.session)
-    var transactions: [Transaction] = []
+    @Relationship(deleteRule: .cascade, inverse: \SessionPhoto.session)
+    var photos: [SessionPhoto] = []
+
+    @Relationship(deleteRule: .nullify, inverse: \Showdown.session)
+    var showdown: Showdown?
 
     init(
         user: User? = nil,
@@ -32,7 +35,7 @@ final class DrinkingSession {
         self.venue = venue
     }
 
-    // MARK: - Computed Properties
+    // MARK: - Core Stats
 
     var isActive: Bool {
         status == .active
@@ -56,18 +59,16 @@ final class DrinkingSession {
         drinks.count
     }
 
-    var totalSpend: Double {
-        drinks.reduce(0) { $0 + ($1.price ?? 0) }
+    /// Drinks Per Minute — the signature metric
+    var dpm: Double {
+        let minutes = max(duration / 60, 0.1)
+        return Double(totalDrinks) / minutes
     }
 
+    /// Drinks Per Hour (display-friendly version of pace)
     var drinksPerHour: Double {
         let hours = max(duration / 3600, 0.01)
         return Double(totalDrinks) / hours
-    }
-
-    var averageDrinkPrice: Double {
-        guard totalDrinks > 0 else { return 0 }
-        return totalSpend / Double(totalDrinks)
     }
 
     var drinkTypeBreakdown: [DrinkType: Int] {
@@ -78,9 +79,33 @@ final class DrinkingSession {
         return breakdown
     }
 
+    /// Most consumed drink type this session
+    var drinkOfChoice: DrinkType? {
+        drinkTypeBreakdown.max(by: { $0.value < $1.value })?.key
+    }
+
     var standardUnits: Double {
         drinks.reduce(0) { $0 + $1.standardUnits }
     }
+
+    var totalCalories: Double {
+        drinks.reduce(0) { $0 + $1.calories }
+    }
+
+    /// Number of photo posts earned this session (1 per drink)
+    var photoPostsEarned: Int {
+        totalDrinks
+    }
+
+    var photoPostsUsed: Int {
+        photos.count
+    }
+
+    var photoPostsRemaining: Int {
+        max(photoPostsEarned - photoPostsUsed, 0)
+    }
+
+    // MARK: - BAC
 
     var estimatedBAC: Double? {
         guard let user = user,
@@ -90,10 +115,23 @@ final class DrinkingSession {
             return nil
         }
         let r: Double = (sex == .male) ? 0.68 : 0.55
-        let gramsAlcohol = standardUnits * 14.0 // 1 US standard drink = 14g alcohol
+        let gramsAlcohol = standardUnits * 14.0
         let hours = duration / 3600
         let bac = (gramsAlcohol / (weightKg * 1000 * r)) * 100 - (0.015 * hours)
         return max(bac, 0)
+    }
+
+    // MARK: - Live Distribution Data
+
+    /// Cumulative drink count at each timestamp for charting pace over time
+    var cumulativeDrinkTimeline: [(timestamp: Date, count: Int)] {
+        let sorted = drinks.sorted { $0.timestamp < $1.timestamp }
+        var timeline: [(timestamp: Date, count: Int)] = []
+        timeline.append((timestamp: startTime, count: 0))
+        for (index, drink) in sorted.enumerated() {
+            timeline.append((timestamp: drink.timestamp, count: index + 1))
+        }
+        return timeline
     }
 
     // MARK: - Actions

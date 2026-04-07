@@ -2,7 +2,6 @@ import Foundation
 import SwiftData
 
 /// Protocol for session lifecycle management.
-/// Enables dependency injection and testability.
 @MainActor
 protocol SessionManaging: ObservableObject {
     var activeSession: DrinkingSession? { get }
@@ -17,7 +16,6 @@ protocol SessionManaging: ObservableObject {
         name: String,
         sizeMl: Double,
         alcoholPercentage: Double,
-        price: Double?,
         venue: Venue?,
         in context: ModelContext
     )

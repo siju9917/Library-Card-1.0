@@ -14,7 +14,14 @@ struct LibraryCardApp: App {
                 DrinkingSession.self,
                 Drink.self,
                 Venue.self,
-                Transaction.self
+                Friendship.self,
+                Organization.self,
+                OrganizationMember.self,
+                Showdown.self,
+                ShowdownTeam.self,
+                ShowdownParticipant.self,
+                SessionPhoto.self,
+                Wrapped.self
             ])
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
@@ -28,7 +35,6 @@ struct LibraryCardApp: App {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
 
-        // Register notification categories on launch
         NotificationService.shared.registerCategories()
     }
 

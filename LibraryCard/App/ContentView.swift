@@ -7,6 +7,7 @@ struct ContentView: View {
     enum Tab: String, CaseIterable {
         case home = "Home"
         case session = "Session"
+        case social = "Social"
         case stats = "Stats"
         case profile = "Profile"
 
@@ -14,6 +15,7 @@ struct ContentView: View {
             switch self {
             case .home: return "house.fill"
             case .session: return "play.circle.fill"
+            case .social: return "person.2.fill"
             case .stats: return "chart.bar.fill"
             case .profile: return "person.fill"
             }
@@ -34,6 +36,12 @@ struct ContentView: View {
                 }
                 .tag(Tab.session)
 
+            SocialView()
+                .tabItem {
+                    Label(Tab.social.rawValue, systemImage: Tab.social.icon)
+                }
+                .tag(Tab.social)
+
             StatsView()
                 .tabItem {
                     Label(Tab.stats.rawValue, systemImage: Tab.stats.icon)
@@ -48,16 +56,4 @@ struct ContentView: View {
         }
         .tint(AppColor.primary)
     }
-}
-
-#Preview {
-    ContentView()
-        .environmentObject(SessionManager())
-        .modelContainer(for: [
-            User.self,
-            DrinkingSession.self,
-            Drink.self,
-            Venue.self,
-            Transaction.self
-        ], inMemory: true)
 }
