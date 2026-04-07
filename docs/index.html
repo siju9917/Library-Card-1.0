@@ -392,6 +392,7 @@ const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
+'<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:16px"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
@@ -405,12 +406,65 @@ if(customFavs.length>0){favEl.innerHTML='<div style="display:flex;gap:8px;overfl
 const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'💧'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Sake',e:'🍶'},{n:'Other',e:'❓'}];
 const grid=document.getElementById('drinkGrid');
 grid.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px"><span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
+// Bar distribution chart (you vs bar avg vs top drinker)
+renderBarDist(elapsed);
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a drink above to add one.</p>';}
 else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';return'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #333"><div><span style="font-weight:500">'+d.name+'</span><div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
+}
+
+function renderBarDist(elapsed){
+const chart=document.getElementById('barDistChart');
+if(!chart)return;
+// Build time points every 15 min since session start
+const intervals=Math.max(Math.floor(elapsed/(15*60000)),1);
+const points=[];
+for(let i=0;i<=intervals;i++){
+const t=i*15; // minutes
+// Your drinks at this time
+const cutoff=sessionStart+t*60000;
+const you=drinks.filter(d=>d.time<=cutoff).length;
+// Simulate bar average (slower drinker)
+const barAvg=Math.max(0,Math.round((t/60)*1.8*10)/10); // ~1.8/hr
+// Simulate top drinker (faster)
+const topD=Math.max(0,Math.round((t/60)*3.5*10)/10); // ~3.5/hr
+points.push({t,you,barAvg,topD});
+}
+// Add current point
+const nowMin=Math.round(elapsed/60000);
+const youNow=drinks.length;
+const barAvgNow=Math.round((nowMin/60)*1.8*10)/10;
+const topNow=Math.round((nowMin/60)*3.5*10)/10;
+points.push({t:nowMin,you:youNow,barAvg:barAvgNow,topD:topNow});
+const maxVal=Math.max(...points.map(p=>Math.max(p.you,p.topD)),1);
+const w=chart.clientWidth-40;const h=140;
+// SVG chart
+const toX=(t)=>20+(t/Math.max(nowMin,1))*w;
+const toY=(v)=>h-(v/maxVal)*h+10;
+let youPath='M'+points.map(p=>toX(p.t)+','+toY(p.you)).join(' L');
+let avgPath='M'+points.map(p=>toX(p.t)+','+toY(p.barAvg)).join(' L');
+let topPath='M'+points.map(p=>toX(p.t)+','+toY(p.topD)).join(' L');
+// Percentile
+const barPop=22; // fake 22 people at bar
+const rank=Math.max(1,Math.round(barPop*(1-youNow/Math.max(topNow,1))));
+const pct=Math.round((1-rank/barPop)*100);
+chart.innerHTML=
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+'<div style="font-size:12px;color:var(--text2)">Drinks over time</div>'+
+'<div style="font-size:12px"><span style="color:var(--primary);font-weight:600">Top '+pct+'%</span> at this bar</div></div>'+
+'<svg width="100%" height="'+h+'" viewBox="0 0 '+(w+40)+' '+(h+20)+'" style="overflow:visible">'+
+'<path d="'+topPath+'" fill="none" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.5"/>'+
+'<path d="'+avgPath+'" fill="none" stroke="#666" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.6"/>'+
+'<path d="'+youPath+'" fill="none" stroke="'+getComputedStyle(document.documentElement).getPropertyValue('--primary')+'" stroke-width="2.5"/>'+
+'<circle cx="'+toX(nowMin)+'" cy="'+toY(youNow)+'" r="4" fill="'+getComputedStyle(document.documentElement).getPropertyValue('--primary')+'"/>'+
+'</svg>'+
+'<div style="display:flex;gap:16px;justify-content:center;margin-top:4px;font-size:11px">'+
+'<span><span style="color:var(--primary)">━</span> You</span>'+
+'<span><span style="color:#666">╌</span> Bar Avg</span>'+
+'<span><span style="color:#EF4444">╌</span> Top Drinker</span></div>';
 }
 
 function addDrink(type){
