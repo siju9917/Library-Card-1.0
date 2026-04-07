@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
+<meta http-equiv="cache-control" content="no-cache,no-store,must-revalidate">
+<meta http-equiv="pragma" content="no-cache">
 <title>The Library</title>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
@@ -249,6 +251,9 @@ Profile
 </div>
 
 <script>
+// Always fresh demo on every load
+localStorage.clear();
+
 // Tab switching
 function switchTab(tab){
 document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -271,8 +276,8 @@ let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // 
 let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
 
 // ========== SEED DEMO DATA ==========
-// Re-seed if no data exists (even if previously seeded)
-if(!localStorage.getItem('lc_seeded')||allSessions.length===0){
+// Seed demo data on every load
+{
 const now=Date.now();const day=86400000;const hr=3600000;const min=60000;
 const venues=['The Pub','Tavern on Main','Club X','Brews & Views','The Library Lounge','Rooftop Bar'];
 const dTypes=['Beer','Wine','Cocktail','Spirit','Shot','Seltzer'];
