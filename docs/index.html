@@ -105,25 +105,65 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 </div>
 
-<!-- STATS SCREEN (placeholder - built in commit 3) -->
+<!-- STATS SCREEN -->
 <div class="screen" id="screen-stats">
 <h1>Statistics</h1>
-<p style="color:var(--text2)">Stats coming in next update...</p>
+<div style="display:flex;gap:6px;margin-bottom:16px" id="periodPicker"></div>
+<div class="card-row"><div class="card stat-card"><div class="icon">🍺</div><div class="value" id="statsDrinks">0</div><div class="label">Total Drinks</div></div><div class="card stat-card"><div class="icon">⚡</div><div class="value" id="statsDPM">0.000</div><div class="label">Avg DPM</div></div></div>
+<div class="card-row"><div class="card stat-card"><div class="icon">🏃</div><div class="value" id="statsPace">0.0/hr</div><div class="label">Avg Pace</div></div><div class="card stat-card"><div class="icon">📅</div><div class="value" id="statsSessions">0</div><div class="label">Sessions</div></div></div>
+<h2 style="margin-top:8px">Drinks Over Time</h2>
+<div class="card" id="drinksChart" style="height:160px;display:flex;align-items:flex-end;gap:4px;padding-bottom:24px;position:relative"><div class="empty-state" style="width:100%;padding:20px"><div class="icon">📊</div><div class="sub">No data yet</div></div></div>
+<h2>Drink Types</h2>
+<div class="card" id="drinkTypesChart"></div>
+<h2>Day of Week</h2>
+<div class="card" id="dowChart" style="height:140px;display:flex;align-items:flex-end;gap:6px;padding-bottom:24px;position:relative"></div>
+<h2>Top Venues</h2>
+<div class="card" id="topVenues"><div class="empty-state" style="padding:16px"><div class="sub">No venue data yet</div></div></div>
 </div>
 
-<!-- PROFILE SCREEN (placeholder - built in commit 4) -->
+<!-- PROFILE SCREEN -->
 <div class="screen" id="screen-profile">
 <h1>Profile</h1>
-<p style="color:var(--text2)">Profile coming in next update...</p>
+<div class="card" style="display:flex;align-items:center;gap:16px">
+<div style="width:56px;height:56px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:24px">👤</div>
+<div style="flex:1"><div style="font-size:17px;font-weight:700" id="profileName">Library Card User</div><div style="font-size:13px;color:var(--text2)" id="profileUsername">@user</div><div style="font-size:11px;color:var(--text3)">Member since today</div></div>
+</div>
+<h2 style="margin-top:16px">Lifetime Stats</h2>
+<div class="card" id="profileStats"></div>
+<h2>Settings</h2>
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Dark Mode</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" id="darkToggle" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--card2);border-radius:31px;transition:.3s" class="slider"></span></label></div>
+<div class="divider"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--purple);border-radius:31px;transition:.3s" class="slider"></span></label></div>
+</div>
+<h2>Social</h2>
+<div class="nav-link" onclick="alert('Friends list - coming with backend!')"><span class="icon">👥</span><span class="title">Friends</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('Organizations - coming with backend!')"><span class="icon">🏛️</span><span class="title">Organizations</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('DMs - coming with backend!')"><span class="icon">💬</span><span class="title">Messages</span><span class="chevron">›</span></div>
+<h2>Safety</h2>
+<div style="margin-bottom:12px"><button class="btn btn-danger" onclick="alert('🚨 SOS Alert would be sent to your friends with your location. In a real emergency, call 911.')">🆘 SOS Button</button></div>
+<p style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:16px">Alerts your friends with your location. In a real emergency, call 911.</p>
+<h2>Legal</h2>
+<div class="nav-link" onclick="alert('Privacy Policy - available in the full app')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('Terms of Service - available in the full app')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">Library Card v1.0.0 (1)</div>
+<div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm('Reset all demo data?')){localStorage.clear();location.reload()}">Reset Demo Data</button></div>
 </div>
 
-<!-- SHOWDOWN (hidden, accessed via nav) -->
+<!-- SHOWDOWN -->
 <div class="screen" id="screen-showdown">
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
 <button onclick="switchTab('home')" style="background:none;border:none;color:var(--purple);font-size:16px;cursor:pointer">← Back</button>
 <h1 style="margin:0">Showdown</h1>
 </div>
-<p style="color:var(--text2)">Showdown coming in next update...</p>
+<div id="showdownContent">
+<div style="text-align:center;padding:40px 20px">
+<div style="font-size:64px;margin-bottom:16px">⚔️</div>
+<h2>Team vs Team</h2>
+<p style="color:var(--text2);font-size:14px;margin-bottom:24px">Challenge another team to a session-long drinking showdown. Track drinks in real-time and see who comes out on top.</p>
+<button class="btn btn-primary" onclick="startShowdownDemo()">Start Demo Showdown</button>
+</div>
+</div>
 </div>
 </div>
 
@@ -287,6 +327,105 @@ function resetSession(){
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:60px 20px"><div style="font-size:64px;margin-bottom:16px">▶</div><h2>Ready for a Night Out?</h2><p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your drinks, DPM, and pace in real time.</p><button class="btn btn-primary" onclick="startSession()">Start Session</button></div>';
 }
+
+// ========== STATS ==========
+let statsPeriod='7D';
+function initStats(){
+const periods=['7D','1M','3M','1Y','All'];
+document.getElementById('periodPicker').innerHTML=periods.map(p=>
+'<button onclick="setStatsPeriod(\''+p+'\')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:'+(statsPeriod===p?'var(--purple)':'var(--card)')+';color:'+(statsPeriod===p?'#fff':'var(--text2)')+'">'+p+'</button>'
+).join('');
+const now=Date.now();
+let cutoff=0;
+if(statsPeriod==='7D')cutoff=now-7*86400000;
+else if(statsPeriod==='1M')cutoff=now-30*86400000;
+else if(statsPeriod==='3M')cutoff=now-90*86400000;
+else if(statsPeriod==='1Y')cutoff=now-365*86400000;
+const filtered=allSessions.filter(s=>s.time>=cutoff);
+const totalD=filtered.reduce((a,s)=>a+s.drinks,0);
+const totalS=filtered.length;
+const avgDPM=totalS>0?filtered.reduce((a,s)=>a+(s.duration>0?s.drinks/(s.duration/60000):0),0)/totalS:0;
+const totalH=filtered.reduce((a,s)=>a+s.duration/3600000,0);
+const avgPace=totalH>0?(totalD/totalH).toFixed(1):'0.0';
+document.getElementById('statsDrinks').textContent=totalD;
+document.getElementById('statsDPM').textContent=avgDPM.toFixed(3);
+document.getElementById('statsPace').textContent=avgPace+'/hr';
+document.getElementById('statsSessions').textContent=totalS;
+// Drinks over time bar chart
+const chart=document.getElementById('drinksChart');
+if(filtered.length===0){chart.innerHTML='<div class="empty-state" style="width:100%;padding:20px"><div class="icon">📊</div><div class="sub">No data yet</div></div>';
+}else{
+const byDay={};filtered.forEach(s=>{const d=new Date(s.time).toLocaleDateString();byDay[d]=(byDay[d]||0)+s.drinks;});
+const vals=Object.values(byDay);const max=Math.max(...vals,1);
+chart.innerHTML=Object.entries(byDay).map(([d,v])=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:20px"><div style="width:100%;background:linear-gradient(var(--purple),var(--purple-light));border-radius:4px 4px 0 0;height:'+Math.max(v/max*100,8)+'px;transition:height .3s"></div><div style="font-size:9px;color:var(--text3);white-space:nowrap">'+d.split('/').slice(0,2).join('/')+'</div></div>').join('');
+}
+// Drink types
+const types={};filtered.forEach(s=>{if(s.drinkList)s.drinkList.forEach(d=>{types[d.name]=(types[d.name]||0)+1;});});
+const typeEl=document.getElementById('drinkTypesChart');
+const typeEntries=Object.entries(types).sort((a,b)=>b[1]-a[1]);
+if(typeEntries.length===0){typeEl.innerHTML='<div class="empty-state" style="padding:16px"><div class="sub">No drink data yet</div></div>';}
+else{const total=typeEntries.reduce((a,e)=>a+e[1],0);
+typeEl.innerHTML=typeEntries.map(([n,c])=>{const pct=Math.round(c/total*100);return'<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span style="font-size:14px;min-width:80px">'+n+'</span><div style="flex:1;height:20px;background:var(--card2);border-radius:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--purple);border-radius:10px;transition:width .3s"></div></div><span style="font-size:13px;color:var(--text2);min-width:36px;text-align:right">'+c+'</span></div>';}).join('');}
+// Day of week
+const dow=[0,0,0,0,0,0,0];filtered.forEach(s=>{const d=new Date(s.time).getDay();dow[d]+=s.drinks;});
+const dowNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const dowMax=Math.max(...dow,1);
+document.getElementById('dowChart').innerHTML=dow.map((v,i)=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;background:'+(i===5||i===6?'var(--orange)':'var(--purple)')+';border-radius:4px 4px 0 0;height:'+Math.max(v/dowMax*100,4)+'px;transition:height .3s;opacity:0.8"></div><div style="font-size:10px;color:var(--text3)">'+dowNames[i]+'</div></div>').join('');
+// Top venues
+document.getElementById('topVenues').innerHTML='<div style="padding:8px;color:var(--text3);font-size:13px;text-align:center">Venue tracking available in full app</div>';
+}
+function setStatsPeriod(p){statsPeriod=p;initStats();}
+
+// ========== PROFILE ==========
+function initProfile(){
+document.getElementById('profileStats').innerHTML=
+'<div style="display:flex;justify-content:space-around;text-align:center;padding:8px 0">'+
+'<div><div style="font-size:20px;font-weight:700">'+allSessions.length+'</div><div style="font-size:11px;color:var(--text2)">Sessions</div></div>'+
+'<div><div style="font-size:20px;font-weight:700">'+allTimeDrinks+'</div><div style="font-size:11px;color:var(--text2)">Drinks</div></div>'+
+'<div><div style="font-size:20px;font-weight:700">'+(allSessions.length>0?(allTimeDrinks/allSessions.length).toFixed(1):'0')+'</div><div style="font-size:11px;color:var(--text2)">Avg/Session</div></div></div>';
+}
+
+// ========== SHOWDOWN DEMO ==========
+let showdownTimer=null;
+function startShowdownDemo(){
+let team1=0,team2=0;
+const startTime=Date.now();
+const el=document.getElementById('showdownContent');
+function render(){
+const elapsed=Date.now()-startTime;
+const t1dpm=elapsed>0?(team1/(elapsed/60000)).toFixed(3):'0.000';
+const t2dpm=elapsed>0?(team2/(elapsed/60000)).toFixed(3):'0.000';
+const leading=team1>team2?1:team2>team1?2:0;
+el.innerHTML=
+'<div class="card" style="text-align:center;margin-bottom:12px"><div style="font-size:13px;color:var(--text2);margin-bottom:4px">LIVE</div><div style="font-size:28px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--green)">'+formatTimer(elapsed)+'</div></div>'+
+'<div class="card-row" style="margin-bottom:16px">'+
+'<div class="card" style="text-align:center;border:'+(leading===1?'2px solid var(--green)':'2px solid transparent')+'"><div style="font-size:13px;font-weight:600;color:var(--orange);margin-bottom:8px">🔥 Team Alpha</div><div style="font-size:36px;font-weight:700">'+team1+'</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">DPM: '+t1dpm+'</div><button class="btn btn-primary" style="padding:12px;font-size:14px" onclick="sdAdd(1)">+ Drink</button></div>'+
+'<div class="card" style="text-align:center;border:'+(leading===2?'2px solid var(--green)':'2px solid transparent')+'"><div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px">💎 Team Beta</div><div style="font-size:36px;font-weight:700">'+team2+'</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">DPM: '+t2dpm+'</div><button class="btn btn-primary" style="padding:12px;font-size:14px" onclick="sdAdd(2)">+ Drink</button></div>'+
+'</div>'+
+'<button class="btn btn-danger" onclick="endShowdownDemo()">End Showdown</button>';
+}
+window.sdAdd=function(team){if(team===1)team1++;else team2++;render();if(navigator.vibrate)navigator.vibrate(50);};
+window.endShowdownDemo=function(){
+clearInterval(showdownTimer);
+const winner=team1>team2?'🔥 Team Alpha':team2>team1?'💎 Team Beta':'Tie!';
+el.innerHTML='<div style="text-align:center;padding:40px 20px"><div style="font-size:60px;margin-bottom:12px">🏆</div><h2>'+winner+(team1===team2?' 🤝':' Wins!')+'</h2><div style="color:var(--text2);margin:12px 0">Final Score: '+team1+' - '+team2+'</div><button class="btn btn-secondary" style="margin-top:16px" onclick="resetShowdown()">Back</button></div>';
+};
+window.resetShowdown=function(){
+el.innerHTML='<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:16px">⚔️</div><h2>Team vs Team</h2><p style="color:var(--text2);font-size:14px;margin-bottom:24px">Challenge another team to a session-long drinking showdown.</p><button class="btn btn-primary" onclick="startShowdownDemo()">Start Demo Showdown</button></div>';
+};
+render();
+showdownTimer=setInterval(render,1000);
+}
+
+// ========== TAB HOOKS ==========
+const origSwitchTab=switchTab;
+switchTab=function(tab){
+origSwitchTab(tab);
+if(tab==='stats')initStats();
+if(tab==='profile')initProfile();
+};
+
+// Toggle slider CSS
+document.head.insertAdjacentHTML('beforeend','<style>.slider::before{position:absolute;content:"";height:27px;width:27px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.3s}input:checked+.slider{background:var(--purple)}input:checked+.slider::before{transform:translateX(20px)}</style>');
 </script>
 </body>
 </html>
