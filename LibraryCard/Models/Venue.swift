@@ -20,15 +20,32 @@ final class Venue {
     @Relationship(deleteRule: .nullify, inverse: \Drink.venue)
     var drinks: [Drink] = []
 
+    /// Validated initializer. Throws `ValidationError` for invalid inputs.
     init(
         name: String,
         address: String? = nil,
         latitude: Double? = nil,
         longitude: Double? = nil,
         category: VenueCategory = .bar
-    ) {
+    ) throws {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            throw ValidationError.emptyName("Venue name cannot be empty.")
+        }
+
+        if let lat = latitude {
+            guard lat >= -90, lat <= 90 else {
+                throw ValidationError.invalidCoordinates("Latitude must be between -90 and 90.")
+            }
+        }
+        if let lon = longitude {
+            guard lon >= -180, lon <= 180 else {
+                throw ValidationError.invalidCoordinates("Longitude must be between -180 and 180.")
+            }
+        }
+
         self.id = UUID()
-        self.name = name
+        self.name = trimmedName
         self.address = address
         self.latitude = latitude
         self.longitude = longitude
@@ -46,12 +63,12 @@ final class Venue {
 
     func recordVisit(amount: Double) {
         visitCount += 1
-        totalSpent += amount
+        totalSpent += max(amount, 0)
         lastVisited = Date()
     }
 }
 
-enum VenueCategory: String, Codable, CaseIterable {
+enum VenueCategory: String, Codable, CaseIterable, Identifiable {
     case bar = "Bar"
     case restaurant = "Restaurant"
     case club = "Club"
@@ -61,6 +78,8 @@ enum VenueCategory: String, Codable, CaseIterable {
     case home = "Home"
     case event = "Event"
     case other = "Other"
+
+    var id: String { rawValue }
 
     var icon: String {
         switch self {

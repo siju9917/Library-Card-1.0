@@ -4,7 +4,7 @@ import Foundation
 /// This is a placeholder that defines the interface. The actual API calls
 /// will be implemented when the card issuing platform is integrated.
 @MainActor
-final class CardService: ObservableObject {
+final class CardService: ObservableObject, CardManaging {
     @Published var isCardActive: Bool = false
     @Published var cardLastFour: String?
     @Published var cardBalance: Double?
