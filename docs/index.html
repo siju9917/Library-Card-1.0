@@ -203,9 +203,13 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>🏛️ Organizations</h2>
 <div class="nav-link" onclick="alert('🏛️ Organizations\n\nCreate or join an org (fraternities, friend groups, bar crawl crews). Features:\n\n• Org-wide leaderboard — who is the top performer?\n• Org Wrapped — monthly and yearly recaps for the whole group\n• Inter-org showdowns — challenge another org\n• Admin dashboard with member stats\n\nOrg Premium unlocks custom branding and advanced analytics.\n\n🔧 Coming soon — requires backend for group management.')"><span class="icon">🏛️</span><span class="title">My Organizations</span><span class="chevron">›</span></div>
 
-<h2>💘 Matching</h2>
-<div class="nav-link" onclick="alert('💘 Swipe at This Bar\n\nSee other Library Card users at the same bar. Swipe right if interested — if they swipe right too, it is a match!\n\nYou can then DM them or buy them a drink (loaded to their Library Card). They must upload a Live Photo to verify identity before receiving a gifted drink.\n\n🔧 Coming soon — requires location-based matching and backend.')"><span class="icon">💘</span><span class="title">Swipe at This Bar</span><span class="chevron">›</span></div>
-<div class="nav-link" onclick="alert('⭐ Pre-Swipe (Premium)\n\nBrowse people who are planning to go to bars tonight. Swipe right before they even get there.\n\nIf you both pre-swipe right AND they show up at the same bar as you, you both get a notification:\n\n&quot;Your pre-match Sarah just checked in at The Pub!&quot;\n\n🔧 Coming soon — Premium feature, requires matching backend.')"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
+<h2>💘 Swipe at The Pub</h2>
+<div id="swipeArea" style="position:relative;height:380px;margin-bottom:16px"></div>
+<div style="display:flex;justify-content:center;gap:24px;margin-bottom:16px">
+<button onclick="swipeLeft()" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--red);background:none;font-size:24px;cursor:pointer;color:var(--red)">✕</button>
+<button onclick="swipeRight()" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--green);background:none;font-size:24px;cursor:pointer;color:var(--green)">♥</button>
+</div>
+<div class="nav-link" onclick="alert('⭐ Pre-Swipe (Premium)\n\nBrowse people who are planning to go to bars tonight. Swipe right before they even get there.\n\nIf you both pre-swipe right AND they show up at the same bar, you both get notified.\n\n🔧 Coming soon — Premium feature.')"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
 </div>
 
 <!-- SHOWDOWN -->
@@ -800,6 +804,7 @@ return'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(isY
 }).join('');
 }
 renderPartners();
+renderSwipeCard();
 }
 function addPartner(){
 const name=prompt('Enter your drinking partner\'s name:','');
@@ -826,6 +831,63 @@ el.innerHTML=drinkPartners.map(p=>
 '<button onclick="removePartner('+p.id+')" style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer">✕</button>'+
 '</div>'
 ).join('');
+}
+
+// ========== SWIPE MATCHING ==========
+const swipeProfiles=[
+{name:'Sophia',age:23,bio:'Espresso martini enthusiast. Will judge your drink order.',venue:'The Pub',gradient:'linear-gradient(135deg,#ff6b6b,#ee5a24)',emoji:'👩‍🦰',drinks:4,vibe:'Dancing to 2000s hits'},
+{name:'Olivia',age:22,bio:'Tequila shots are my love language.',venue:'The Pub',gradient:'linear-gradient(135deg,#a29bfe,#6c5ce7)',emoji:'👱‍♀️',drinks:3,vibe:'Winning at beer pong'},
+{name:'Emma',age:24,bio:'Looking for someone to split a pitcher with.',venue:'The Pub',gradient:'linear-gradient(135deg,#fd79a8,#e84393)',emoji:'👩',drinks:5,vibe:'Vibing at the jukebox'},
+{name:'Mia',age:21,bio:'Here for a good time, not a long time.',venue:'The Pub',gradient:'linear-gradient(135deg,#55efc4,#00b894)',emoji:'👩‍🦱',drinks:2,vibe:'Just got here'},
+{name:'Isabella',age:23,bio:'Craft beer snob. No hard seltzers please.',venue:'The Pub',gradient:'linear-gradient(135deg,#fdcb6e,#e17055)',emoji:'👩‍🦳',drinks:6,vibe:'Debating best IPA'},
+{name:'Ava',age:22,bio:'Buy me a drink and I will tell you a secret.',venue:'The Pub',gradient:'linear-gradient(135deg,#74b9ff,#0984e3)',emoji:'💁‍♀️',drinks:3,vibe:'Laughing with friends'},
+];
+let swipeIdx=0;
+function renderSwipeCard(){
+const area=document.getElementById('swipeArea');
+if(!area)return;
+if(swipeIdx>=swipeProfiles.length){
+area.innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:48px;margin-bottom:16px">🎉</div><h3>No more people nearby</h3><p style="color:var(--text2);font-size:13px">Check back later or try a different bar!</p></div>';
+return;
+}
+const p=swipeProfiles[swipeIdx];
+area.innerHTML=
+'<div style="position:absolute;inset:0;border-radius:var(--radius);overflow:hidden;'+p.gradient+';display:flex;flex-direction:column;justify-content:flex-end" id="swipeCard">'+
+'<div style="padding:60px 20px 0;text-align:center"><div style="font-size:80px;margin-bottom:8px">'+p.emoji+'</div><div style="font-size:11px;background:rgba(0,0,0,.3);display:inline-block;padding:4px 12px;border-radius:999px;margin-bottom:8px">📸 Live Photo verified</div></div>'+
+'<div style="background:linear-gradient(transparent,rgba(0,0,0,.8));padding:20px">'+
+'<div style="font-size:22px;font-weight:700">'+p.name+', '+p.age+'</div>'+
+'<div style="font-size:13px;color:rgba(255,255,255,.8);margin:6px 0">'+p.bio+'</div>'+
+'<div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">'+
+'<span style="font-size:11px;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:999px">📍 '+p.venue+'</span>'+
+'<span style="font-size:11px;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:999px">🍺 '+p.drinks+' drinks in</span>'+
+'<span style="font-size:11px;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:999px">✨ '+p.vibe+'</span>'+
+'</div></div></div>';
+// Touch swipe
+const card=document.getElementById('swipeCard');
+let startX=0;
+card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;},{passive:true});
+card.addEventListener('touchend',e=>{
+const diff=e.changedTouches[0].clientX-startX;
+if(diff>60)swipeRight();
+else if(diff<-60)swipeLeft();
+},{passive:true});
+}
+function swipeLeft(){
+const card=document.getElementById('swipeCard');
+if(card){card.style.transition='transform .3s,opacity .3s';card.style.transform='translateX(-120%) rotate(-15deg)';card.style.opacity='0';}
+setTimeout(()=>{swipeIdx++;renderSwipeCard();},300);
+}
+function swipeRight(){
+const card=document.getElementById('swipeCard');
+if(card){card.style.transition='transform .3s,opacity .3s';card.style.transform='translateX(120%) rotate(15deg)';card.style.opacity='0';}
+const p=swipeProfiles[swipeIdx];
+setTimeout(()=>{
+swipeIdx++;
+if(Math.random()>0.5){
+alert('It is a match! 🎉\n\nYou and '+p.name+' both swiped right!\n\nYou can now:\n- Send a DM\n- Buy '+p.name+' a drink (loaded to their Library Card)\n\n🔧 Coming soon — requires matching backend.');
+}
+renderSwipeCard();
+},300);
 }
 
 // ========== TAB HOOKS ==========
