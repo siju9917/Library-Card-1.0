@@ -164,12 +164,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>👥 Friends</h2>
 <div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Leaderboard</span><span style="font-size:12px;color:var(--text2)">This Week</span></div>
-<div id="friendLeaderboard">
-<div style="display:flex;align-items:center;gap:12px;padding:8px 0"><span style="font-size:16px;font-weight:700;color:var(--primary);width:24px">1</span><span>🏆</span><span style="flex:1;font-weight:500">You</span><span style="font-weight:700" id="lbYou">0</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
-<div style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.7"><span style="font-size:16px;font-weight:700;color:var(--text2);width:24px">2</span><span>😎</span><span style="flex:1">Jake M.</span><span style="font-weight:700">14</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
-<div style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.7"><span style="font-size:16px;font-weight:700;color:var(--text2);width:24px">3</span><span>🎉</span><span style="flex:1">Sarah K.</span><span style="font-weight:700">11</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
-<div style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.5"><span style="font-size:16px;font-weight:700;color:var(--text3);width:24px">4</span><span>🍻</span><span style="flex:1">Mike R.</span><span style="font-weight:700">8</span><span style="font-size:11px;color:var(--text3)">drinks</span></div>
-</div>
+<div id="friendLeaderboard"></div>
 </div>
 
 <h3 style="margin-top:4px">Friends of Friends Nearby</h3>
@@ -266,6 +261,53 @@ let allTimeDrinks=parseInt(localStorage.getItem('lc_alltime')||'0');
 let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
 let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // {name: count}
 let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
+
+// ========== SEED DEMO DATA ==========
+if(!localStorage.getItem('lc_seeded')){
+const now=Date.now();const day=86400000;const hr=3600000;const min=60000;
+const venues=['The Pub','Tavern on Main','Club X','Brews & Views','The Library Lounge','Rooftop Bar'];
+const dTypes=['Beer','Wine','Cocktail','Spirit','Shot','Seltzer'];
+const customDrinks=['Rum & Coke','Vodka Soda','Margarita','Old Fashioned','Gin & Tonic','IPA','Fat Albert','Espresso Martini'];
+const fakeSessions=[];
+// Generate 12 past sessions over last 30 days
+const sessionData=[
+{daysAgo:1,venue:venues[0],numDrinks:6,durHrs:3.5},
+{daysAgo:3,venue:venues[4],numDrinks:4,durHrs:2},
+{daysAgo:5,venue:venues[1],numDrinks:8,durHrs:4},
+{daysAgo:7,venue:venues[2],numDrinks:10,durHrs:5},
+{daysAgo:8,venue:venues[3],numDrinks:3,durHrs:1.5},
+{daysAgo:10,venue:venues[0],numDrinks:5,durHrs:2.5},
+{daysAgo:14,venue:venues[5],numDrinks:7,durHrs:3},
+{daysAgo:17,venue:venues[1],numDrinks:4,durHrs:2},
+{daysAgo:21,venue:venues[2],numDrinks:9,durHrs:4.5},
+{daysAgo:24,venue:venues[4],numDrinks:6,durHrs:3},
+{daysAgo:27,venue:venues[0],numDrinks:5,durHrs:2.5},
+{daysAgo:30,venue:venues[3],numDrinks:3,durHrs:1.5},
+];
+let totalD=0;
+sessionData.forEach(s=>{
+const startT=now-s.daysAgo*day-s.durHrs*hr;
+const dList=[];
+for(let i=0;i<s.numDrinks;i++){
+const dn=Math.random()>0.4?customDrinks[Math.floor(Math.random()*customDrinks.length)]:dTypes[Math.floor(Math.random()*dTypes.length)];
+dList.push({name:dn,type:dTypes.includes(dn)?dn:'Custom',time:startT+((i+1)/(s.numDrinks+1))*s.durHrs*hr,rating:Math.random()>0.6?Math.floor(Math.random()*3)+3:null});
+}
+fakeSessions.push({time:startT,drinks:s.numDrinks,duration:s.durHrs*hr,venue:s.venue,drinkList:dList});
+totalD+=s.numDrinks;
+});
+allSessions=fakeSessions;
+allTimeDrinks=totalD;
+// Seed drink history from all fake drinks
+const dh={};fakeSessions.forEach(s=>s.drinkList.forEach(d=>{dh[d.name]=(dh[d.name]||0)+1;}));
+drinkHistory=dh;
+// Seed partners
+drinkPartners=[{name:'Jake M.',id:1},{name:'Sarah K.',id:2}];
+localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
+localStorage.setItem('lc_alltime',String(allTimeDrinks));
+localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
+localStorage.setItem('lc_partners',JSON.stringify(drinkPartners));
+localStorage.setItem('lc_seeded','true');
+}
 
 function getTopDrinks(max){
 return Object.entries(drinkHistory).sort((a,b)=>b[1]-a[1]).slice(0,max);
@@ -523,9 +565,25 @@ if(btn)btn.textContent=drinkCap>0?drinkCap+' drinks':'Not set';
 }
 
 // ========== SOCIAL ==========
+const fakeFriends=[
+{name:'Jake M.',emoji:'😎',weekly:14,allTime:203},
+{name:'Sarah K.',emoji:'🎉',weekly:11,allTime:178},
+{name:'Mike R.',emoji:'🍻',weekly:8,allTime:156},
+{name:'Emma L.',emoji:'💃',weekly:6,allTime:134},
+{name:'Chris P.',emoji:'🤙',weekly:5,allTime:98},
+{name:'Rachel T.',emoji:'✨',weekly:3,allTime:67},
+];
 function initSocial(){
-const el=document.getElementById('lbYou');
-if(el)el.textContent=allTimeDrinks;
+// Build leaderboard
+const lb=document.getElementById('friendLeaderboard');
+if(lb){
+const you={name:'You',emoji:'🏆',weekly:allSessions.filter(s=>s.time>Date.now()-7*86400000).reduce((a,s)=>a+s.drinks,0),allTime:allTimeDrinks};
+const all=[you,...fakeFriends].sort((a,b)=>b.weekly-a.weekly);
+lb.innerHTML=all.map((f,i)=>{
+const isYou=f.name==='You';
+return'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(isYou?'':'opacity:.8')+'"><span style="font-size:16px;font-weight:700;width:24px;color:'+(i===0?'var(--primary)':'var(--text3)')+';">'+(i+1)+'</span><span>'+f.emoji+'</span><span style="flex:1;font-weight:'+(isYou?'600':'400')+'">'+f.name+'</span><span style="font-weight:700">'+f.weekly+'</span><span style="font-size:11px;color:var(--text3)">this week</span></div>';
+}).join('');
+}
 renderPartners();
 }
 function addPartner(){
