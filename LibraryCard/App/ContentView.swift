@@ -46,7 +46,7 @@ struct ContentView: View {
                 }
                 .tag(Tab.profile)
         }
-        .tint(.purple)
+        .tint(AppColor.primary)
     }
 }
 

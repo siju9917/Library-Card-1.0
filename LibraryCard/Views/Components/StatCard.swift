@@ -4,11 +4,11 @@ struct StatCard: View {
     let title: String
     let value: String
     let icon: String
-    var color: Color = .purple
+    var color: Color = AppColor.primary
     var subtitle: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
             HStack {
                 Image(systemName: icon)
                     .font(.title3)
@@ -17,23 +17,22 @@ struct StatCard: View {
             }
 
             Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
+                .font(AppFont.statValue)
+                .foregroundStyle(AppColor.textPrimary)
 
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(AppFont.statLabel)
+                .foregroundStyle(AppColor.textSecondary)
 
             if let subtitle = subtitle {
                 Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(AppFont.caption2)
+                    .foregroundStyle(AppColor.textTertiary)
             }
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }
 
@@ -49,7 +48,7 @@ struct StatCard: View {
             title: "Total Spent",
             value: "$87.50",
             icon: "dollarsign.circle.fill",
-            color: .green
+            color: AppColor.success
         )
     }
     .padding()

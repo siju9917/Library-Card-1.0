@@ -29,7 +29,7 @@ struct SessionView: View {
 
             Image(systemName: "play.circle.fill")
                 .font(.system(size: 80))
-                .foregroundStyle(.purple)
+                .foregroundStyle(AppColor.primary)
 
             VStack(spacing: 8) {
                 Text("Ready for a Night Out?")
@@ -48,11 +48,7 @@ struct SessionView: View {
             } label: {
                 Text("Start Session")
                     .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.purple)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .primaryButtonStyle()
             }
             .padding(.horizontal, 48)
 
@@ -101,8 +97,9 @@ struct SessionView: View {
         VStack(spacing: 16) {
             // Timer
             Text(formatDuration(sessionManager.elapsedTime))
-                .font(.system(size: 48, weight: .light, design: .monospaced))
-                .foregroundStyle(.purple)
+                .font(AppFont.timerDisplay)
+                .foregroundStyle(AppColor.primary)
+                .accessibilityLabel("Session time: \(sessionManager.elapsedTime.durationFormatted)")
 
             if let session = sessionManager.activeSession {
                 // Live stats
@@ -145,15 +142,16 @@ struct SessionView: View {
                 if let bac = session.estimatedBAC {
                     HStack {
                         Image(systemName: "heart.text.square.fill")
-                            .foregroundStyle(bacColor(bac))
+                            .foregroundStyle(AppColor.bacColor(for: bac))
                         Text(String(format: "Est. BAC: %.3f%%", bac))
-                            .font(.caption)
-                            .foregroundStyle(bacColor(bac))
+                            .font(AppFont.caption)
+                            .foregroundStyle(AppColor.bacColor(for: bac))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(bacColor(bac).opacity(0.1))
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(AppColor.bacColor(for: bac).opacity(0.1))
                     .clipShape(Capsule())
+                    .accessibilityLabel("Estimated blood alcohol: \(String(format: "%.3f", bac)) percent")
                 }
             }
         }
@@ -172,7 +170,7 @@ struct SessionView: View {
                     showingAddDrink = true
                 }
                 .font(.caption)
-                .foregroundStyle(.purple)
+                .foregroundStyle(AppColor.primary)
             }
 
             DrinkQuickAddGrid { type in
@@ -216,11 +214,7 @@ struct SessionView: View {
         } label: {
             Text("End Session")
                 .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(.red.opacity(0.9))
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .destructiveButtonStyle()
         }
     }
 
@@ -233,11 +227,6 @@ struct SessionView: View {
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 
-    private func bacColor(_ bac: Double) -> Color {
-        if bac < 0.04 { return .green }
-        if bac < 0.08 { return .yellow }
-        return .red
-    }
 }
 
 // MARK: - Drink Log Row
@@ -248,7 +237,7 @@ struct DrinkLogRow: View {
     var body: some View {
         HStack {
             Image(systemName: drink.type.icon)
-                .foregroundStyle(.purple)
+                .foregroundStyle(AppColor.primary)
                 .frame(width: 28)
 
             VStack(alignment: .leading) {

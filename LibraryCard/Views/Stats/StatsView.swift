@@ -119,7 +119,7 @@ struct StatsView: View {
                         x: .value("Date", point.date, unit: .day),
                         y: .value("Drinks", point.value)
                     )
-                    .foregroundStyle(.purple.gradient)
+                    .foregroundStyle(AppColor.primary.gradient)
                     .cornerRadius(4)
                 }
                 .chartYAxisLabel("Drinks")
@@ -259,7 +259,7 @@ struct ChartSection<Content: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: icon)
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(AppColor.primary)
                 Text(title)
                     .font(.headline)
             }
