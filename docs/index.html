@@ -412,7 +412,7 @@ const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
-'<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:16px"></div>'+
+'<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
@@ -603,7 +603,7 @@ document.getElementById('sessionContent').innerHTML=
 }
 
 // ========== STATS ==========
-let statsPeriod='7D';
+let statsPeriod='All';
 function initStats(){
 const periods=['7D','1M','3M','1Y','All'];
 document.getElementById('periodPicker').innerHTML=periods.map(p=>
@@ -843,6 +843,9 @@ document.head.insertAdjacentHTML('beforeend','<style>.slider::before{position:ab
 // ========== INIT (must be last) ==========
 updateHome();
 renderCardPromo();
+initStats();
+initProfile();
+initSocial();
 </script>
 </body>
 </html>
