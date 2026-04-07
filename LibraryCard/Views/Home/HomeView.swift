@@ -36,6 +36,10 @@ struct HomeView: View {
                 }
                 .padding()
             }
+            .refreshable {
+                viewModel.loadData(sessions: completedSessions)
+            }
+            .dismissKeyboardOnScroll()
             .navigationTitle("Library Card")
             .onAppear {
                 viewModel.loadData(sessions: completedSessions)
@@ -220,6 +224,7 @@ struct ActiveSessionBanner: View {
 }
 
 struct SessionHistoryView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(
         filter: #Predicate<DrinkingSession> { $0.endTime != nil },
         sort: \DrinkingSession.startTime,
@@ -228,17 +233,33 @@ struct SessionHistoryView: View {
     private var sessions: [DrinkingSession]
 
     var body: some View {
-        List {
-            ForEach(sessions) { session in
-                NavigationLink(destination: SessionDetailView(session: session)) {
-                    SessionSummaryCard(session: session)
+        Group {
+            if sessions.isEmpty {
+                EmptyStateView(
+                    icon: "moon.zzz.fill",
+                    title: "No Sessions Yet",
+                    subtitle: "Your completed sessions will appear here."
+                )
+            } else {
+                List {
+                    ForEach(sessions) { session in
+                        NavigationLink(destination: SessionDetailView(session: session)) {
+                            SessionSummaryCard(session: session)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+                    .onDelete { offsets in
+                        for index in offsets {
+                            modelContext.delete(sessions[index])
+                        }
+                        try? modelContext.save()
+                    }
                 }
-                .buttonStyle(.plain)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                .listStyle(.plain)
             }
         }
-        .listStyle(.plain)
         .navigationTitle("All Sessions")
     }
 }

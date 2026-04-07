@@ -9,25 +9,18 @@ struct ProfileView: View {
 
     @State private var viewModel = ProfileViewModel()
     @State private var showingEditProfile = false
+    @AppStorage("prefersDarkMode") private var prefersDarkMode: Bool?
 
     private var currentUser: User? { users.first }
 
     var body: some View {
         NavigationStack {
             List {
-                // Profile header
                 profileHeader
-
-                // Lifetime stats
                 lifetimeStats
-
-                // Wrapped
                 wrappedSection
-
-                // Settings
                 settingsSection
-
-                // About
+                legalSection
                 aboutSection
             }
             .navigationTitle("Profile")
@@ -45,25 +38,25 @@ struct ProfileView: View {
 
     private var profileHeader: some View {
         Section {
-            HStack(spacing: 16) {
+            HStack(spacing: AppSpacing.lg) {
                 Image(systemName: "person.circle.fill")
                     .font(.system(size: 56))
                     .foregroundStyle(AppColor.primary)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(currentUser?.displayName ?? "Set Up Profile")
                         .font(.title3)
                         .fontWeight(.bold)
 
-                    if let email = currentUser?.email {
-                        Text(email)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    if let username = currentUser?.username {
+                        Text("@\(username)")
+                            .font(AppFont.caption)
+                            .foregroundStyle(AppColor.textSecondary)
                     }
 
                     Text("Member for \(viewModel.memberSinceDays) days")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .font(AppFont.caption2)
+                        .foregroundStyle(AppColor.textTertiary)
                 }
 
                 Spacer()
@@ -76,7 +69,7 @@ struct ProfileView: View {
                         .foregroundStyle(AppColor.primary)
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, AppSpacing.sm)
         }
     }
 
@@ -103,9 +96,8 @@ struct ProfileView: View {
                     Image(systemName: "star.fill")
                         .foregroundStyle(.yellow)
                     Text("Your Wrapped")
-                        .font(.subheadline)
+                        .font(AppFont.subheadline)
                         .fontWeight(.medium)
-                    Spacer()
                 }
             }
         }
@@ -120,13 +112,38 @@ struct ProfileView: View {
                     Text("Weekly Drink Goal")
                     Spacer()
                     Text(user.weeklyDrinkGoal.map { "\($0) drinks" } ?? "Not set")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.textSecondary)
                 }
 
                 Toggle("Notifications", isOn: Binding(
                     get: { user.notificationsEnabled },
                     set: { user.notificationsEnabled = $0 }
                 ))
+            }
+
+            Picker("Appearance", selection: Binding(
+                get: { prefersDarkMode },
+                set: { prefersDarkMode = $0 }
+            )) {
+                Text("System").tag(nil as Bool?)
+                Text("Light").tag(false as Bool?)
+                Text("Dark").tag(true as Bool?)
+            }
+        }
+    }
+
+    // MARK: - Legal
+
+    private var legalSection: some View {
+        Section("Legal & Privacy") {
+            NavigationLink("Privacy Policy") {
+                PrivacyPolicyView()
+            }
+            NavigationLink("Terms of Service") {
+                TermsOfServiceView()
+            }
+            NavigationLink("Account & Data") {
+                AccountManagementView()
             }
         }
     }
@@ -138,14 +155,8 @@ struct ProfileView: View {
             HStack {
                 Text("Version")
                 Spacer()
-                Text("1.0.0")
-                    .foregroundStyle(.secondary)
-            }
-            HStack {
-                Text("Build")
-                Spacer()
-                Text("1")
-                    .foregroundStyle(.secondary)
+                Text(AppInfo.displayVersion)
+                    .foregroundStyle(AppColor.textSecondary)
             }
         }
     }
@@ -172,7 +183,7 @@ struct StatRow: View {
             Text(label)
             Spacer()
             Text(value)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColor.textSecondary)
                 .fontWeight(.medium)
         }
     }
@@ -194,7 +205,7 @@ struct EditProfileSheet: View {
                 Section("Personal") {
                     TextField("Display Name", text: $displayName)
                     Picker("Biological Sex", selection: $selectedSex) {
-                        ForEach(BiologicalSex.allCases, id: \.self) { sex in
+                        ForEach(BiologicalSex.allCases) { sex in
                             Text(sex.rawValue).tag(sex)
                         }
                     }
@@ -206,7 +217,7 @@ struct EditProfileSheet: View {
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
                         Text("kg")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.textSecondary)
                     }
                 }
 
@@ -219,14 +230,14 @@ struct EditProfileSheet: View {
                             .multilineTextAlignment(.trailing)
                             .frame(width: 60)
                         Text("drinks")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.textSecondary)
                     }
                 }
 
                 Section {
                     Text("Weight and sex are used to estimate BAC. This is for informational purposes only and should not be relied upon for safety decisions.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppFont.caption)
+                        .foregroundStyle(AppColor.textSecondary)
                 }
             }
             .navigationTitle("Edit Profile")
@@ -257,10 +268,9 @@ struct EditProfileSheet: View {
     private func saveProfile() {
         guard let user = user else { return }
         user.displayName = displayName
-        user.weightKg = Double(weightKg)
+        user.updateWeight(Double(weightKg))
         user.biologicalSex = selectedSex
-        user.weeklyDrinkGoal = Int(weeklyGoal)
+        user.updateWeeklyGoal(Int(weeklyGoal))
         try? modelContext.save()
     }
 }
-

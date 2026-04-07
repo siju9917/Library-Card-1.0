@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle Configuration -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>Library Card</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <!-- Required Device Capabilities -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+    </array>
+
+    <!-- Supported Interface Orientations -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- Launch Screen -->
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>LaunchScreenBackground</string>
+        <key>UIImageName</key>
+        <string>LaunchIcon</string>
+    </dict>
+
+    <!-- Privacy Descriptions (Required for App Store) -->
+    <key>NSCameraUsageDescription</key>
+    <string>Library Card uses your camera to take session photos that you can share with friends.</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Library Card accesses your photo library to let you choose a profile picture or share session photos.</string>
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Library Card uses your location to check you in at bars and enable safety features like SOS alerts.</string>
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Library Card uses your location in the background to notify friends when you leave a venue (safety feature).</string>
+
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>Library Card sends notifications for session reminders, friend activity, safety alerts, and morning-after messages.</string>
+
+    <key>NSFaceIDUsageDescription</key>
+    <string>Library Card uses Face ID to securely unlock the app and protect your data.</string>
+
+    <key>NSContactsUsageDescription</key>
+    <string>Library Card can access your contacts to help you find friends who are already using the app.</string>
+
+    <!-- App Transport Security -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+
+    <!-- Appearance -->
+    <key>UIUserInterfaceStyle</key>
+    <string>Automatic</string>
+
+    <!-- Status Bar -->
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <true/>
+</dict>
+</plist>
