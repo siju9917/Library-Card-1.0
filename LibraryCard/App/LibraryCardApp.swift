@@ -4,6 +4,8 @@ import SwiftData
 @main
 struct LibraryCardApp: App {
     let modelContainer: ModelContainer
+    @StateObject private var sessionManager = SessionManager()
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     init() {
         do {
@@ -25,12 +27,19 @@ struct LibraryCardApp: App {
         } catch {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
+
+        // Register notification categories on launch
+        NotificationService.shared.registerCategories()
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(SessionManager())
+            if hasCompletedOnboarding {
+                ContentView()
+                    .environmentObject(sessionManager)
+            } else {
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+            }
         }
         .modelContainer(modelContainer)
     }
