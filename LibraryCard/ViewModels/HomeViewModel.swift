@@ -6,7 +6,7 @@ import SwiftUI
 final class HomeViewModel {
     var recentSessions: [DrinkingSession] = []
     var totalDrinksThisWeek: Int = 0
-    var totalSpendThisWeek: Double = 0
+    var totalDrinksAllTime: Int = 0
     var averageDrinksPerSession: Double = 0
     var currentStreak: Int = 0
 
@@ -27,13 +27,12 @@ final class HomeViewModel {
             $0.status == .completed && $0.startTime >= weekAgo
         }
         totalDrinksThisWeek = thisWeekSessions.reduce(0) { $0 + $1.totalDrinks }
-        totalSpendThisWeek = thisWeekSessions.reduce(0) { $0 + $1.totalSpend }
 
         // Average drinks per session (all time)
         let completedSessions = sessions.filter { $0.status == .completed }
+        totalDrinksAllTime = completedSessions.reduce(0) { $0 + $1.totalDrinks }
         if !completedSessions.isEmpty {
-            let totalDrinks = completedSessions.reduce(0) { $0 + $1.totalDrinks }
-            averageDrinksPerSession = Double(totalDrinks) / Double(completedSessions.count)
+            averageDrinksPerSession = Double(totalDrinksAllTime) / Double(completedSessions.count)
         }
 
         // Dry day streak

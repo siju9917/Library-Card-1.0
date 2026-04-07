@@ -36,7 +36,7 @@ struct SessionView: View {
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Text("Start a session to track your drinks, spending, and pace in real time.")
+                Text("Start a session to track your drinks and pace in real time.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -129,10 +129,10 @@ struct SessionView: View {
                         .frame(height: 40)
 
                     VStack {
-                        Text(String(format: "$%.0f", session.totalSpend))
+                        Text(String(format: "%.3f", session.dpm))
                             .font(.title)
                             .fontWeight(.bold)
-                        Text("Spent")
+                        Text("DPM")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -179,7 +179,6 @@ struct SessionView: View {
                     name: type.rawValue,
                     sizeMl: type.defaultSizeMl,
                     alcoholPercentage: type.defaultAlcoholPercentage,
-                    price: nil,
                     venue: sessionManager.activeSession?.venue,
                     in: modelContext
                 )
@@ -251,16 +250,9 @@ struct DrinkLogRow: View {
 
             Spacer()
 
-            VStack(alignment: .trailing) {
-                if let price = drink.price {
-                    Text(String(format: "$%.2f", price))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                }
-                Text(drink.timestamp, style: .time)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            Text(drink.timestamp, style: .time)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 6)
     }

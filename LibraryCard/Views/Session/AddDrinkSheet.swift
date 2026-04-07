@@ -9,7 +9,6 @@ struct AddDrinkSheet: View {
     @State private var customName: String = ""
     @State private var sizeMl: Double = 355
     @State private var alcoholPercentage: Double = 5.0
-    @State private var price: String = ""
 
     var body: some View {
         NavigationStack {
@@ -58,15 +57,6 @@ struct AddDrinkSheet: View {
                     }
                 }
 
-                // Price
-                Section("Price (Optional)") {
-                    HStack {
-                        Text("$")
-                        TextField("0.00", text: $price)
-                            .keyboardType(.decimalPad)
-                    }
-                }
-
                 // Preview
                 Section("Summary") {
                     let units = Drink(
@@ -106,13 +96,11 @@ struct AddDrinkSheet: View {
     }
 
     private func addDrink() {
-        let drinkPrice = Double(price)
         sessionManager.addDrink(
             type: selectedType,
             name: customName.isEmpty ? selectedType.rawValue : customName,
             sizeMl: sizeMl,
             alcoholPercentage: alcoholPercentage,
-            price: drinkPrice,
             venue: sessionManager.activeSession?.venue,
             in: modelContext
         )

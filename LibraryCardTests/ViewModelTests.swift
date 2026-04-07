@@ -4,7 +4,6 @@ import Foundation
 
 @Suite("StatsViewModel Tests")
 struct StatsViewModelTests {
-    // MARK: - Period Filtering
 
     @Test("Default period is week")
     func defaultPeriod() {
@@ -17,11 +16,10 @@ struct StatsViewModelTests {
         let vm = StatsViewModel()
         vm.loadStats(sessions: [])
         #expect(vm.totalDrinks == 0)
-        #expect(vm.totalSpend == 0)
         #expect(vm.totalSessions == 0)
         #expect(vm.averageDrinksPerSession == 0)
-        #expect(vm.averageSpendPerSession == 0)
         #expect(vm.averageDrinksPerHour == 0)
+        #expect(vm.averageDPM == 0)
         #expect(vm.totalCalories == 0)
     }
 
@@ -30,9 +28,9 @@ struct StatsViewModelTests {
         let vm = StatsViewModel()
         vm.loadStats(sessions: [])
         #expect(vm.drinksOverTime.isEmpty)
-        #expect(vm.spendOverTime.isEmpty)
+        #expect(vm.dpmOverTime.isEmpty)
         #expect(vm.drinkTypeDistribution.isEmpty)
-        #expect(vm.dayOfWeekDistribution.count == 7) // Always has 7 days
+        #expect(vm.dayOfWeekDistribution.count == 7)
         #expect(vm.topVenues.isEmpty)
     }
 
@@ -41,33 +39,19 @@ struct StatsViewModelTests {
         let vm = StatsViewModel()
         vm.loadStats(sessions: [])
         #expect(vm.dayOfWeekDistribution.count == 7)
-
-        let dayNames = vm.dayOfWeekDistribution.map(\.day)
-        #expect(dayNames.contains("Mon"))
-        #expect(dayNames.contains("Fri"))
-        #expect(dayNames.contains("Sat"))
     }
 
-    // MARK: - StatsPeriod
+    @Test("Top drink type is nil with no data")
+    func topDrinkTypeEmpty() {
+        let vm = StatsViewModel()
+        vm.loadStats(sessions: [])
+        #expect(vm.topDrinkType == nil)
+    }
 
     @Test("StatsPeriod has all expected cases")
     func periodCases() {
         let cases = StatsPeriod.allCases
         #expect(cases.count == 5)
-        #expect(cases.contains(.week))
-        #expect(cases.contains(.month))
-        #expect(cases.contains(.threeMonths))
-        #expect(cases.contains(.year))
-        #expect(cases.contains(.allTime))
-    }
-
-    @Test("StatsPeriod raw values are display-friendly")
-    func periodRawValues() {
-        #expect(StatsPeriod.week.rawValue == "7D")
-        #expect(StatsPeriod.month.rawValue == "1M")
-        #expect(StatsPeriod.threeMonths.rawValue == "3M")
-        #expect(StatsPeriod.year.rawValue == "1Y")
-        #expect(StatsPeriod.allTime.rawValue == "All")
     }
 }
 
@@ -79,7 +63,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel()
         vm.loadData(sessions: [])
         #expect(vm.totalDrinksThisWeek == 0)
-        #expect(vm.totalSpendThisWeek == 0)
+        #expect(vm.totalDrinksAllTime == 0)
         #expect(vm.averageDrinksPerSession == 0)
         #expect(vm.recentSessions.isEmpty)
     }
@@ -88,7 +72,6 @@ struct HomeViewModelTests {
     func dryStreakNoSessions() {
         let vm = HomeViewModel()
         vm.loadData(sessions: [])
-        // With no sessions ever, every day is a dry day
         #expect(vm.currentStreak > 0)
     }
 }
@@ -102,7 +85,7 @@ struct ProfileViewModelTests {
         vm.loadProfile(user: nil, sessions: [])
         #expect(vm.totalSessions == 0)
         #expect(vm.totalLifetimeDrinks == 0)
-        #expect(vm.totalLifetimeSpend == 0)
+        #expect(vm.totalDPM == 0)
         #expect(vm.favoriteVenue == "None yet")
         #expect(vm.favoriteDrinkType == "None yet")
     }

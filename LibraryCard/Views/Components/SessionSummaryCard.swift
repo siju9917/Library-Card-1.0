@@ -43,13 +43,11 @@ struct SessionSummaryCard: View {
                     label: "Pace"
                 )
 
-                if session.totalSpend > 0 {
-                    MiniStat(
-                        icon: "dollarsign.circle.fill",
-                        value: String(format: "$%.0f", session.totalSpend),
-                        label: "Spent"
-                    )
-                }
+                MiniStat(
+                    icon: "gauge.with.needle.fill",
+                    value: String(format: "%.3f", session.dpm),
+                    label: "DPM"
+                )
             }
         }
         .cardStyle()

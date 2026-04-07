@@ -8,30 +8,33 @@ final class StatsViewModel {
 
     // Computed stats
     var totalDrinks: Int = 0
-    var totalSpend: Double = 0
     var totalSessions: Int = 0
     var averageDrinksPerSession: Double = 0
-    var averageSpendPerSession: Double = 0
     var averageDrinksPerHour: Double = 0
+    var averageDPM: Double = 0
     var totalCalories: Double = 0
 
     // Chart data
     var drinksOverTime: [DateDataPoint] = []
-    var spendOverTime: [DateDataPoint] = []
+    var dpmOverTime: [DateDataPoint] = []
     var drinkTypeDistribution: [DrinkTypeDataPoint] = []
     var dayOfWeekDistribution: [DayOfWeekDataPoint] = []
     var topVenues: [VenueDataPoint] = []
+
+    // Top drink type
+    var topDrinkType: DrinkType? {
+        drinkTypeDistribution.first?.type
+    }
 
     func loadStats(sessions: [DrinkingSession]) {
         let filtered = filteredSessions(from: sessions)
 
         totalSessions = filtered.count
         totalDrinks = filtered.reduce(0) { $0 + $1.totalDrinks }
-        totalSpend = filtered.reduce(0) { $0 + $1.totalSpend }
 
         if totalSessions > 0 {
             averageDrinksPerSession = Double(totalDrinks) / Double(totalSessions)
-            averageSpendPerSession = totalSpend / Double(totalSessions)
+            averageDPM = filtered.reduce(0.0) { $0 + $1.dpm } / Double(totalSessions)
         }
 
         let totalHours = filtered.reduce(0.0) { $0 + $1.duration / 3600 }
@@ -40,7 +43,7 @@ final class StatsViewModel {
         totalCalories = filtered.flatMap(\.drinks).reduce(0) { $0 + $1.calories }
 
         buildDrinksOverTimeChart(filtered)
-        buildSpendOverTimeChart(filtered)
+        buildDPMOverTimeChart(filtered)
         buildDrinkTypeChart(filtered)
         buildDayOfWeekChart(filtered)
         buildTopVenuesChart(filtered)
@@ -83,17 +86,18 @@ final class StatsViewModel {
             .sorted { $0.date < $1.date }
     }
 
-    private func buildSpendOverTimeChart(_ sessions: [DrinkingSession]) {
+    private func buildDPMOverTimeChart(_ sessions: [DrinkingSession]) {
         let calendar = Calendar.current
-        var dataByDate: [Date: Double] = [:]
+        var dataByDate: [Date: (totalDPM: Double, count: Int)] = [:]
 
         for session in sessions {
             let day = calendar.startOfDay(for: session.startTime)
-            dataByDate[day, default: 0] += session.totalSpend
+            dataByDate[day, default: (0, 0)].totalDPM += session.dpm
+            dataByDate[day, default: (0, 0)].count += 1
         }
 
-        spendOverTime = dataByDate
-            .map { DateDataPoint(date: $0.key, value: $0.value) }
+        dpmOverTime = dataByDate
+            .map { DateDataPoint(date: $0.key, value: $0.value.count > 0 ? $0.value.totalDPM / Double($0.value.count) : 0) }
             .sorted { $0.date < $1.date }
     }
 
@@ -128,15 +132,14 @@ final class StatsViewModel {
     }
 
     private func buildTopVenuesChart(_ sessions: [DrinkingSession]) {
-        var venueData: [String: (visits: Int, spend: Double)] = [:]
+        var venueData: [String: Int] = [:]
         for session in sessions {
             let name = session.venue?.name ?? "Unknown"
-            venueData[name, default: (0, 0)].visits += 1
-            venueData[name, default: (0, 0)].spend += session.totalSpend
+            venueData[name, default: 0] += 1
         }
 
         topVenues = venueData
-            .map { VenueDataPoint(name: $0.key, visits: $0.value.visits, totalSpend: $0.value.spend) }
+            .map { VenueDataPoint(name: $0.key, visits: $0.value) }
             .sorted { $0.visits > $1.visits }
             .prefix(5)
             .map { $0 }
@@ -176,5 +179,4 @@ struct VenueDataPoint: Identifiable {
     let id = UUID()
     let name: String
     let visits: Int
-    let totalSpend: Double
 }

@@ -10,8 +10,8 @@ struct UserTests {
         let user = User(displayName: "John Doe")
         #expect(user.displayName == "John Doe")
         #expect(user.notificationsEnabled == true)
-        #expect(user.cardLinked == false)
         #expect(user.sessions.isEmpty)
+        #expect(user.totalLifetimeDrinks == 0)
     }
 
     @Test("Defaults to 'User' for empty display name")
@@ -24,6 +24,12 @@ struct UserTests {
     func whitespaceDisplayNameDefaults() {
         let user = User(displayName: "   ")
         #expect(user.displayName == "User")
+    }
+
+    @Test("Generates default username")
+    func generatesUsername() {
+        let user = User(displayName: "Jane")
+        #expect(user.username.hasPrefix("user_"))
     }
 
     @Test("Rejects invalid weight in constructor")
@@ -50,18 +56,6 @@ struct UserTests {
         #expect(user.weightKg == 70)
     }
 
-    @Test("Rejects negative budget in constructor")
-    func rejectsNegativeBudget() {
-        let user = User(displayName: "Jane", monthlyBudget: -100)
-        #expect(user.monthlyBudget == nil)
-    }
-
-    @Test("Accepts zero budget")
-    func acceptsZeroBudget() {
-        let user = User(displayName: "Jane", monthlyBudget: 0)
-        #expect(user.monthlyBudget == 0)
-    }
-
     @Test("Rejects negative weekly goal")
     func rejectsNegativeGoal() {
         let user = User(displayName: "Jane", weeklyDrinkGoal: -5)
@@ -78,24 +72,10 @@ struct UserTests {
         #expect(user.weightKg == 70)
 
         user.updateWeight(-10)
-        #expect(user.weightKg == 70) // unchanged
+        #expect(user.weightKg == 70)
 
         user.updateWeight(nil)
         #expect(user.weightKg == nil)
-    }
-
-    @Test("updateBudget validates input")
-    func updateBudgetValidation() {
-        let user = User(displayName: "Jane")
-
-        user.updateBudget(200)
-        #expect(user.monthlyBudget == 200)
-
-        user.updateBudget(-50)
-        #expect(user.monthlyBudget == 200) // unchanged
-
-        user.updateBudget(nil)
-        #expect(user.monthlyBudget == nil)
     }
 
     @Test("updateWeeklyGoal validates input")
@@ -106,10 +86,20 @@ struct UserTests {
         #expect(user.weeklyDrinkGoal == 14)
 
         user.updateWeeklyGoal(-3)
-        #expect(user.weeklyDrinkGoal == 14) // unchanged
+        #expect(user.weeklyDrinkGoal == 14)
 
         user.updateWeeklyGoal(nil)
         #expect(user.weeklyDrinkGoal == nil)
+    }
+
+    @Test("Increment lifetime drinks")
+    func incrementLifetimeDrinks() {
+        let user = User(displayName: "Jane")
+        #expect(user.totalLifetimeDrinks == 0)
+        user.incrementLifetimeDrinks()
+        #expect(user.totalLifetimeDrinks == 1)
+        user.incrementLifetimeDrinks()
+        #expect(user.totalLifetimeDrinks == 2)
     }
 
     // MARK: - BiologicalSex Enum

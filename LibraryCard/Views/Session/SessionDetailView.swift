@@ -93,9 +93,9 @@ struct SessionDetailView: View {
                 icon: "speedometer"
             )
             MetricCell(
-                value: session.totalSpend > 0 ? String(format: "$%.0f", session.totalSpend) : "--",
-                label: "Spent",
-                icon: "dollarsign.circle.fill"
+                value: String(format: "%.3f", session.dpm),
+                label: "DPM",
+                icon: "gauge.with.needle.fill"
             )
             MetricCell(
                 value: String(format: "%.1f", session.standardUnits),
@@ -103,9 +103,9 @@ struct SessionDetailView: View {
                 icon: "drop.fill"
             )
             MetricCell(
-                value: session.totalSpend > 0 ? String(format: "$%.2f", session.averageDrinkPrice) : "--",
-                label: "Avg Price",
-                icon: "tag.fill"
+                value: "\(session.photoPostsRemaining)",
+                label: "Photos Left",
+                icon: "camera.fill"
             )
             MetricCell(
                 value: "\(Int(session.drinks.reduce(0) { $0 + $1.calories })) cal",
@@ -252,16 +252,9 @@ struct SessionDetailView: View {
 
                         Spacer()
 
-                        VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                            if let price = drink.price {
-                                Text(String(format: "$%.2f", price))
-                                    .font(AppFont.subheadline)
-                                    .fontWeight(.medium)
-                            }
-                            Text(drink.timestamp, format: .dateTime.hour().minute())
-                                .font(AppFont.caption2)
-                                .foregroundStyle(AppColor.textTertiary)
-                        }
+                        Text(drink.timestamp, format: .dateTime.hour().minute())
+                            .font(AppFont.caption2)
+                            .foregroundStyle(AppColor.textTertiary)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -331,7 +324,7 @@ struct SessionDetailView: View {
                             .font(AppFont.caption)
                             .foregroundStyle(AppColor.textSecondary)
                     }
-                    Text("\(venue.visitCount) total visits \u{2022} \(venue.averageSpendPerVisit.currencyFormatted) avg")
+                    Text("\(venue.visitCount) total visits")
                         .font(AppFont.caption2)
                         .foregroundStyle(AppColor.textTertiary)
                 }

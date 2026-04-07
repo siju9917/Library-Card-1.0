@@ -11,26 +11,13 @@ struct StatsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Period picker
+                VStack(spacing: AppSpacing.xl) {
                     periodPicker
-
-                    // Summary cards
                     summaryCards
-
-                    // Drinks over time chart
                     drinksOverTimeChart
-
-                    // Spending over time chart
-                    spendOverTimeChart
-
-                    // Drink type breakdown
+                    dpmOverTimeChart
                     drinkTypeChart
-
-                    // Day of week heatmap
                     dayOfWeekChart
-
-                    // Top venues
                     topVenuesSection
                 }
                 .padding()
@@ -48,8 +35,6 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Period Picker
-
     private var periodPicker: some View {
         Picker("Period", selection: $viewModel.selectedPeriod) {
             ForEach(StatsPeriod.allCases, id: \.self) { period in
@@ -59,55 +44,22 @@ struct StatsView: View {
         .pickerStyle(.segmented)
     }
 
-    // MARK: - Summary Cards
-
     private var summaryCards: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                StatCard(
-                    title: "Total Drinks",
-                    value: "\(viewModel.totalDrinks)",
-                    icon: "mug.fill"
-                )
-                StatCard(
-                    title: "Total Spent",
-                    value: String(format: "$%.0f", viewModel.totalSpend),
-                    icon: "dollarsign.circle.fill",
-                    color: .green
-                )
+        VStack(spacing: AppSpacing.md) {
+            HStack(spacing: AppSpacing.md) {
+                StatCard(title: "Total Drinks", value: "\(viewModel.totalDrinks)", icon: "mug.fill")
+                StatCard(title: "Avg DPM", value: String(format: "%.3f", viewModel.averageDPM), icon: "gauge.with.needle.fill", color: AppColor.info)
             }
-            HStack(spacing: 12) {
-                StatCard(
-                    title: "Avg Pace",
-                    value: String(format: "%.1f/hr", viewModel.averageDrinksPerHour),
-                    icon: "speedometer",
-                    color: .orange
-                )
-                StatCard(
-                    title: "Sessions",
-                    value: "\(viewModel.totalSessions)",
-                    icon: "calendar",
-                    color: .blue
-                )
+            HStack(spacing: AppSpacing.md) {
+                StatCard(title: "Avg Pace", value: String(format: "%.1f/hr", viewModel.averageDrinksPerHour), icon: "speedometer", color: .orange)
+                StatCard(title: "Sessions", value: "\(viewModel.totalSessions)", icon: "calendar", color: AppColor.info)
             }
-            HStack(spacing: 12) {
-                StatCard(
-                    title: "Avg/Session",
-                    value: String(format: "%.1f drinks", viewModel.averageDrinksPerSession),
-                    icon: "chart.line.uptrend.xyaxis",
-                    color: .cyan
-                )
-                StatCard(
-                    title: "Calories",
-                    value: String(format: "%.0f cal", viewModel.totalCalories),
-                    icon: "flame.fill",
-                    color: .red
-                )
+            HStack(spacing: AppSpacing.md) {
+                StatCard(title: "Avg/Session", value: String(format: "%.1f drinks", viewModel.averageDrinksPerSession), icon: "chart.line.uptrend.xyaxis", color: .cyan)
+                StatCard(title: "Calories", value: String(format: "%.0f cal", viewModel.totalCalories), icon: "flame.fill", color: AppColor.danger)
             }
         }
     }
-
-    // MARK: - Drinks Over Time
 
     private var drinksOverTimeChart: some View {
         ChartSection(title: "Drinks Over Time", icon: "chart.line.uptrend.xyaxis") {
@@ -128,35 +80,31 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Spend Over Time
-
-    private var spendOverTimeChart: some View {
-        ChartSection(title: "Spending Over Time", icon: "dollarsign.circle") {
-            if viewModel.spendOverTime.isEmpty {
+    private var dpmOverTimeChart: some View {
+        ChartSection(title: "DPM Over Time", icon: "gauge.with.needle.fill") {
+            if viewModel.dpmOverTime.isEmpty {
                 emptyChartPlaceholder
             } else {
-                Chart(viewModel.spendOverTime) { point in
+                Chart(viewModel.dpmOverTime) { point in
                     LineMark(
                         x: .value("Date", point.date, unit: .day),
-                        y: .value("Spend", point.value)
+                        y: .value("DPM", point.value)
                     )
-                    .foregroundStyle(.green)
+                    .foregroundStyle(AppColor.info)
                     .interpolationMethod(.catmullRom)
 
                     AreaMark(
                         x: .value("Date", point.date, unit: .day),
-                        y: .value("Spend", point.value)
+                        y: .value("DPM", point.value)
                     )
-                    .foregroundStyle(.green.opacity(0.1))
+                    .foregroundStyle(AppColor.info.opacity(0.1))
                     .interpolationMethod(.catmullRom)
                 }
-                .chartYAxisLabel("$")
+                .chartYAxisLabel("DPM")
                 .frame(height: 200)
             }
         }
     }
-
-    // MARK: - Drink Type Distribution
 
     private var drinkTypeChart: some View {
         ChartSection(title: "Drink Types", icon: "chart.pie") {
@@ -178,8 +126,6 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Day of Week
-
     private var dayOfWeekChart: some View {
         ChartSection(title: "Drinks by Day of Week", icon: "calendar") {
             if viewModel.dayOfWeekDistribution.isEmpty {
@@ -198,32 +144,23 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Top Venues
-
     private var topVenuesSection: some View {
         ChartSection(title: "Top Venues", icon: "mappin.and.ellipse") {
             if viewModel.topVenues.isEmpty {
                 emptyChartPlaceholder
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: AppSpacing.sm) {
                     ForEach(viewModel.topVenues) { venue in
                         HStack {
                             Text(venue.name)
-                                .font(.subheadline)
+                                .font(AppFont.subheadline)
                                 .fontWeight(.medium)
-
                             Spacer()
-
                             Text("\(venue.visits) visits")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-
-                            Text(String(format: "$%.0f", venue.totalSpend))
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.green)
+                                .font(AppFont.caption)
+                                .foregroundStyle(AppColor.textSecondary)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, AppSpacing.xs)
 
                         if venue.id != viewModel.topVenues.last?.id {
                             Divider()
@@ -235,20 +172,18 @@ struct StatsView: View {
     }
 
     private var emptyChartPlaceholder: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: AppSpacing.sm) {
             Image(systemName: "chart.bar.xaxis")
                 .font(.title)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColor.textSecondary)
             Text("No data yet")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(AppFont.caption)
+                .foregroundStyle(AppColor.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 120)
     }
 }
-
-// MARK: - Chart Section Container
 
 struct ChartSection<Content: View>: View {
     let title: String
@@ -256,18 +191,15 @@ struct ChartSection<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
             HStack {
                 Image(systemName: icon)
                     .foregroundStyle(AppColor.primary)
                 Text(title)
-                    .font(.headline)
+                    .font(AppFont.headline)
             }
-
             content
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .cardStyle()
     }
 }
