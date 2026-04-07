@@ -71,6 +71,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="screen active" id="screen-home">
 <h1>The Library</h1>
 <div id="homeBanner"></div>
+<div id="cardPromo"></div>
 <h2>This Week</h2>
 <div class="card-row">
 <div class="card stat-card"><div class="icon">🍺</div><div class="value" id="homeWeekDrinks">0</div><div class="label">Drinks</div></div>
@@ -130,6 +131,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 <h2 style="margin-top:16px">Lifetime Stats</h2>
 <div class="card" id="profileStats"></div>
+<h2>My Library Card</h2>
+<div class="card" id="libraryCardSection"></div>
 <h2>Settings</h2>
 <div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Dark Mode</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" id="darkToggle" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--card2);border-radius:31px;transition:.3s" class="slider"></span></label></div>
@@ -323,8 +326,10 @@ localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
 }
 
 updateHome();
+renderCardPromo();
 
 function updateHome(){
+renderCardPromo();
 const now=Date.now();
 const weekAgo=now-7*24*3600*1000;
 const weekDrinks=allSessions.filter(s=>s.time>weekAgo).reduce((a,s)=>a+s.drinks,0);
@@ -598,8 +603,75 @@ else{tvEl.innerHTML=venueEntries.slice(0,5).map(([name,visits],i)=>'<div style="
 function setStatsPeriod(p){statsPeriod=p;initStats();}
 
 // ========== PROFILE ==========
+let hasCard=localStorage.getItem('lc_hascard')==='true';
+let cardType=localStorage.getItem('lc_cardtype')||''; // 'physical','wallet','both'
+let cardFunding=localStorage.getItem('lc_cardfunding')||''; // 'loaded','connected'
+
+function renderCardPromo(){
+const el=document.getElementById('cardPromo');
+if(!el)return;
+if(hasCard){
+el.innerHTML='<div class="card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid var(--primary);position:relative;overflow:hidden">'+
+'<div style="position:absolute;top:10px;right:16px;font-size:11px;color:var(--primary);font-weight:600">ACTIVE</div>'+
+'<div style="font-size:11px;color:var(--text3);letter-spacing:2px;margin-bottom:12px">LIBRARY CARD</div>'+
+'<div style="font-size:18px;font-weight:300;letter-spacing:3px;margin-bottom:8px">•••• •••• •••• 4829</div>'+
+'<div style="display:flex;justify-content:space-between;align-items:flex-end">'+
+'<div><div style="font-size:10px;color:var(--text3)">MEMBER</div><div style="font-size:13px">You</div></div>'+
+'<div style="text-align:right"><div style="font-size:10px;color:var(--text3)">TYPE</div><div style="font-size:13px">'+(cardType==='physical'?'Physical + Digital':cardType==='wallet'?'Digital Only':'Physical + Digital')+'</div></div></div>'+
+'<div style="margin-top:12px;font-size:11px;color:var(--primary)">✓ '+(cardFunding==='connected'?'Connected to card':'Funds loaded')+' · Auto-tracking enabled</div></div>';
+}else{
+el.innerHTML='<div class="card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #333;cursor:pointer" onclick="showCardSetup()">'+
+'<div style="display:flex;align-items:center;gap:16px">'+
+'<div style="font-size:36px">💳</div>'+
+'<div style="flex:1"><div style="font-weight:700;font-size:16px;margin-bottom:4px">Get Your Library Card</div>'+
+'<div style="font-size:12px;color:var(--text2)">Auto-track drinks, skip manual logging, unlock gifting</div></div>'+
+'<span style="color:var(--primary);font-size:20px">›</span></div></div>';
+}
+}
+function showCardSetup(){
+const choice=prompt('Set up your Library Card!\n\n1 — Order a physical card (shipped to you)\n2 — Add to Apple Wallet (instant)\n3 — Both physical + Apple Wallet\n\nEnter 1, 2, or 3:','');
+if(!choice)return;
+const c=choice.trim();
+if(c==='1')cardType='physical';
+else if(c==='2')cardType='wallet';
+else if(c==='3')cardType='both';
+else{alert('Please enter 1, 2, or 3.');return;}
+const fund=prompt('How do you want to fund your Library Card?\n\n1 — Load funds (prepaid balance)\n2 — Connect to an existing debit/credit card\n\nEnter 1 or 2:','');
+if(!fund)return;
+const f=fund.trim();
+if(f==='1')cardFunding='loaded';
+else if(f==='2')cardFunding='connected';
+else{alert('Please enter 1 or 2.');return;}
+hasCard=true;
+localStorage.setItem('lc_hascard','true');
+localStorage.setItem('lc_cardtype',cardType);
+localStorage.setItem('lc_cardfunding',cardFunding);
+renderCardPromo();
+renderLibraryCardSection();
+alert('🎉 Library Card activated!\n\n'+(cardType==='physical'||cardType==='both'?'Your physical card will be shipped in 3-5 business days.\n':'')+(cardType==='wallet'||cardType==='both'?'Digital card added to Apple Wallet.\n':'')+'\nFunding: '+(cardFunding==='connected'?'Connected to your card.':'Prepaid balance loaded.')+'\n\nNow when you pay with your Library Card at any bar, drinks are automatically logged — no manual input needed!');
+}
+function renderLibraryCardSection(){
+const el=document.getElementById('libraryCardSection');
+if(!el)return;
+if(!hasCard){
+el.innerHTML='<div style="text-align:center;padding:12px"><button class="btn btn-primary" style="font-size:14px" onclick="showCardSetup()">Set Up Library Card</button><p style="font-size:11px;color:var(--text3);margin-top:8px">Pay with your Library Card to auto-track drinks</p></div>';
+}else{
+el.innerHTML=
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Card Type</span><span style="color:var(--text2)">'+(cardType==='physical'?'Physical':cardType==='wallet'?'Apple Wallet':'Physical + Wallet')+'</span></div>'+
+'<div class="divider"></div>'+
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Funding</span><span style="color:var(--text2)">'+(cardFunding==='connected'?'Connected card':'Prepaid balance')+'</span></div>'+
+'<div class="divider"></div>'+
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Card Number</span><span style="color:var(--text2)">•••• 4829</span></div>'+
+'<div class="divider"></div>'+
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Auto-Tracking</span><span style="color:var(--green);font-weight:600">Active ✓</span></div>'+
+'<div class="divider"></div>'+
+'<div style="padding:8px 0"><button onclick="alert(\'💳 How Auto-Tracking Works\\n\\nWhen you pay with your Library Card at a bar or restaurant, we detect the purchase via the card network.\\n\\nWe automatically:\\n• Log the drink to your session\\n• Start a session if one isn't active\\n• Identify the venue\\n• Track timestamps for your bar route\\n\\nNo manual input needed — just tap and drink!\')" style="background:none;border:none;color:var(--primary);font-size:13px;cursor:pointer;padding:0">How does auto-tracking work? →</button></div>';
+}
+}
+
 function initProfile(){
 updateCapBtn();
+renderLibraryCardSection();
 document.getElementById('profileStats').innerHTML=
 '<div style="display:flex;justify-content:space-around;text-align:center;padding:8px 0">'+
 '<div><div style="font-size:20px;font-weight:700">'+allSessions.length+'</div><div style="font-size:11px;color:var(--text2)">Sessions</div></div>'+
