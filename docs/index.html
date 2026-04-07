@@ -717,8 +717,12 @@ el.innerHTML=
 '<div class="divider"></div>'+
 '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Auto-Tracking</span><span style="color:var(--green);font-weight:600">Active ✓</span></div>'+
 '<div class="divider"></div>'+
-'<div style="padding:8px 0"><button onclick="alert(\'💳 How Auto-Tracking Works\\n\\nWhen you pay with your Library Card at a bar or restaurant, we detect the purchase via the card network.\\n\\nWe automatically:\\n• Log the drink to your session\\n• Start a session if one isn't active\\n• Identify the venue\\n• Track timestamps for your bar route\\n\\nNo manual input needed — just tap and drink!\')" style="background:none;border:none;color:var(--primary);font-size:13px;cursor:pointer;padding:0">How does auto-tracking work? →</button></div>';
+'<div style="padding:8px 0"><button onclick="showAutoTrackInfo()" style="background:none;border:none;color:var(--primary);font-size:13px;cursor:pointer;padding:0">How does auto-tracking work? →</button></div>';
 }
+}
+
+function showAutoTrackInfo(){
+alert("How Auto-Tracking Works\n\nWhen you pay with your Library Card at a bar or restaurant, we detect the purchase via the card network.\n\nWe automatically:\n- Log the drink to your session\n- Start a session if one is not active\n- Identify the venue\n- Track timestamps for your bar route\n\nNo manual input needed, just tap and drink!");
 }
 
 function initProfile(){
