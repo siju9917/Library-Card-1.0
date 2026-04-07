@@ -17,6 +17,11 @@ let package = Package(
         .target(
             name: "LibraryCard",
             path: "LibraryCard"
+        ),
+        .testTarget(
+            name: "LibraryCardTests",
+            dependencies: ["LibraryCard"],
+            path: "LibraryCardTests"
         )
     ]
 )
