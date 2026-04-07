@@ -135,7 +135,11 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Dark Mode</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" id="darkToggle" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--card2);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 <div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--primary);border-radius:31px;transition:.3s" class="slider"></span></label></div>
+<div class="divider"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Tonight's Drink Cap</span><button onclick="setDrinkCap()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="capBtn">Not set</button></div>
 </div>
+<h2>Gift a Drink</h2>
+<div class="nav-link" onclick="alert('🎁 Buy a friend a drink!\n\nPick a friend → choose a drink → add a message → send!\n\nThey get a notification and the drink is loaded to their Library Card.\n\nOccasions: Birthday 🎂, Celebration 🎉, Just Because ❤️')"><span class="icon">🎁</span><span class="title">Buy a Friend a Drink</span><span class="chevron">›</span></div>
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('Privacy Policy - available in the full app')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('Terms of Service - available in the full app')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
@@ -252,6 +256,7 @@ let sessionTimer=null;
 let drinks=[];
 let allSessions=JSON.parse(localStorage.getItem('lc_sessions')||'[]');
 let allTimeDrinks=parseInt(localStorage.getItem('lc_alltime')||'0');
+let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
 
 updateHome();
 
@@ -336,18 +341,27 @@ const grid=document.getElementById('drinkGrid');
 grid.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px"><span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a drink above to add one.</p>';}
-else{log.innerHTML=drinks.slice().reverse().map(d=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #333"><div><span style="font-weight:500">'+d.name+'</span></div><div style="color:var(--text2);font-size:13px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>').join('');}
+else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';return'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #333"><div><span style="font-weight:500">'+d.name+'</span><div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
 }
 
 function addDrink(type){
+if(drinkCap>0&&drinks.length>=drinkCap){
+alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. You can change it in Profile > Settings.');
+return;
+}
 const custom=prompt('Name this drink (or leave blank for "'+type+'"):','');
+if(custom===null)return; // cancelled
 const name=custom&&custom.trim()?custom.trim():type;
 drinks.push({name:name,type:type,time:Date.now(),rating:null});
 updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
+}
+function rateDrink(index){
+const r=prompt('Rate this drink 1-5 stars:','');
+if(r&&parseInt(r)>=1&&parseInt(r)<=5){drinks[index].rating=parseInt(r);updateSessionUI();}
 }
 
 function endSession(){
@@ -424,6 +438,7 @@ function setStatsPeriod(p){statsPeriod=p;initStats();}
 
 // ========== PROFILE ==========
 function initProfile(){
+updateCapBtn();
 document.getElementById('profileStats').innerHTML=
 '<div style="display:flex;justify-content:space-around;text-align:center;padding:8px 0">'+
 '<div><div style="font-size:20px;font-weight:700">'+allSessions.length+'</div><div style="font-size:11px;color:var(--text2)">Sessions</div></div>'+
@@ -461,6 +476,18 @@ el.innerHTML='<div style="text-align:center;padding:40px 20px"><div style="font-
 };
 render();
 showdownTimer=setInterval(render,1000);
+}
+
+// ========== DRINK CAP ==========
+function setDrinkCap(){
+const val=prompt('Set max drinks per night (0 = no limit):',String(drinkCap));
+if(val===null)return;
+const n=parseInt(val);
+if(!isNaN(n)&&n>=0){drinkCap=n;localStorage.setItem('lc_cap',String(n));updateCapBtn();}
+}
+function updateCapBtn(){
+const btn=document.getElementById('capBtn');
+if(btn)btn.textContent=drinkCap>0?drinkCap+' drinks':'Not set';
 }
 
 // ========== SOCIAL ==========
