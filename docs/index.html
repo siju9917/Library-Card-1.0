@@ -271,7 +271,8 @@ let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // 
 let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
 
 // ========== SEED DEMO DATA ==========
-if(!localStorage.getItem('lc_seeded')){
+// Re-seed if no data exists (even if previously seeded)
+if(!localStorage.getItem('lc_seeded')||allSessions.length===0){
 const now=Date.now();const day=86400000;const hr=3600000;const min=60000;
 const venues=['The Pub','Tavern on Main','Club X','Brews & Views','The Library Lounge','Rooftop Bar'];
 const dTypes=['Beer','Wine','Cocktail','Spirit','Shot','Seltzer'];
@@ -314,6 +315,10 @@ localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
 localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
 localStorage.setItem('lc_partners',JSON.stringify(drinkPartners));
+// Pre-activate Library Card for demo
+localStorage.setItem('lc_hascard','true');
+localStorage.setItem('lc_cardtype','both');
+localStorage.setItem('lc_cardfunding','connected');
 localStorage.setItem('lc_seeded','true');
 }
 
@@ -325,8 +330,7 @@ drinkHistory[name]=(drinkHistory[name]||0)+1;
 localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
 }
 
-updateHome();
-renderCardPromo();
+// init calls moved to end of script
 
 function updateHome(){
 renderCardPromo();
@@ -826,6 +830,10 @@ if(tab==='profile')initProfile();
 
 // Toggle slider CSS
 document.head.insertAdjacentHTML('beforeend','<style>.slider::before{position:absolute;content:"";height:27px;width:27px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.3s}input:checked+.slider{background:var(--primary)}input:checked+.slider::before{transform:translateX(20px)}</style>');
+
+// ========== INIT (must be last) ==========
+updateHome();
+renderCardPromo();
 </script>
 </body>
 </html>
