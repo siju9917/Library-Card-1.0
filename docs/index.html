@@ -87,7 +87,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="empty-state"><div class="icon">🌙</div><div class="title">No sessions yet</div><div class="sub">Start your first session to see stats here</div></div>
 </div>
 <div style="margin-top:16px">
-<div class="nav-link" onclick="alert('Wrapped coming in next update!')"><span class="icon">⭐</span><span class="title">Your Wrapped</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('⭐ Your Wrapped\n\nSpotify Wrapped, but for your nights out. Get weekly, monthly, and yearly recaps:\n\n• Total drinks and sessions\n• Your drink of choice\n• Top venue\n• Peak DPM night\n• Busiest day of the week\n• Friend rankings\n\nGenerate your first Wrapped after completing a few sessions!\n\n🔧 Coming soon — Wrapped generation works offline, sharing requires backend.')"><span class="icon">⭐</span><span class="title">Your Wrapped</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">👥</span><span class="title">Showdown</span><span class="chevron">›</span></div>
 </div>
 </div>
@@ -139,10 +139,10 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Tonight's Drink Cap</span><button onclick="setDrinkCap()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="capBtn">Not set</button></div>
 </div>
 <h2>Gift a Drink</h2>
-<div class="nav-link" onclick="alert('🎁 Buy a friend a drink!\n\nPick a friend → choose a drink → add a message → send!\n\nThey get a notification and the drink is loaded to their Library Card.\n\nOccasions: Birthday 🎂, Celebration 🎉, Just Because ❤️')"><span class="icon">🎁</span><span class="title">Buy a Friend a Drink</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('🎁 Buy a Friend a Drink\n\nPick a friend → choose a drink → add a message → send!\n\nThey get a push notification and the drink is loaded to their Library Card.\n\nOccasions:\n🎂 Birthday\n🎉 Celebration\n❤️ Just Because\n🙏 Apology\n⭐ Congrats\n👋 Welcome\n\nFor gifting a drink to someone you matched with at the bar, they must upload a Live Photo to verify their identity.\n\n🔧 Coming soon — requires payment integration and backend.')"><span class="icon">🎁</span><span class="title">Buy a Friend a Drink</span><span class="chevron">›</span></div>
 <h2>Legal</h2>
-<div class="nav-link" onclick="alert('Privacy Policy - available in the full app')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
-<div class="nav-link" onclick="alert('Terms of Service - available in the full app')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nCovers what data we collect, how it is stored, your rights to export and delete, and our commitment to never selling your data.\n\nFull legal page available in the native app.')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('📄 Terms of Service\n\nEligibility (21+), responsible use guidelines, content policy, safety feature disclaimers, and account management.\n\nFull legal page available in the native app.')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">Library Card v1.0.0 (1)</div>
 <div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm('Reset all demo data?')){localStorage.clear();location.reload()}">Reset Demo Data</button></div>
 </div>
@@ -151,14 +151,14 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="screen" id="screen-social">
 <h1>Social</h1>
 
-<h2>🔴 Safety</h2>
-<div style="margin-bottom:12px"><button class="btn btn-danger" onclick="alert('🚨 SOS Alert sent to all friends with your live location.\n\nIn a real emergency, always call 911.')">🆘 SOS — Share Location Now</button></div>
+<h2>🟠 Safety</h2>
+<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="alert('🆘 SOS Alert\n\nThis sends an emergency message with your live location to your designated emergency contacts (friends you select in Settings).\n\nThey will receive a push notification and can see exactly where you are in real-time.\n\n🔧 Coming soon — requires backend for real-time location sharing.')">🆘 SOS — Alert My Emergency Contacts</button></div>
 <div class="card" style="margin-bottom:16px">
-<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('📱 Low battery alert sent to your friends:\n\n&quot;Hey, my phone is at 8%. Last seen at The Pub.&quot;')"><span class="icon">🔋</span><span class="title">Low Battery Alert</span><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🔋 Low Battery Alert\n\nWhen your phone drops below 10%, your drinking partners and emergency contacts automatically get a message:\n\n&quot;Hey, my phone is about to die. Last seen at The Pub at 11:45 PM.&quot;\n\n🔧 Coming soon — requires background battery monitoring.')"><span class="icon">🔋</span><span class="title">Low Battery Alert</span><span class="chevron">›</span></div>
 <div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('📍 Your bar route tonight:\n\n1. The Pub — 8:30 PM\n2. Tavern on Main — 10:15 PM\n3. Club X — 11:45 PM\n\nFriends can see this for safety.')"><span class="icon">🗺️</span><span class="title">My Bar Route</span><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🗺️ My Bar Route\n\nShows an ordered list of every bar you visit tonight with timestamps:\n\n1. The Pub — arrived 8:30 PM, left 10:10 PM\n2. Tavern on Main — arrived 10:15 PM, left 11:40 PM\n3. Club X — arrived 11:45 PM — still here\n\nYour drinking partners and emergency contacts can see this in real-time to find you or check on you.\n\n🔧 Coming soon — requires location services.')"><span class="icon">🗺️</span><span class="title">My Bar Route</span><span class="chevron">›</span></div>
 <div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🔔 Your friends will be notified when you leave a venue.')"><span class="icon">🚪</span><span class="title">Departure Alerts</span><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🚪 Departure Alerts\n\nYour drinking partners get a push notification when you leave a venue:\n\n&quot;Jake just left The Pub&quot;\n\nHelps friends stay aware of each other throughout the night.\n\n🔧 Coming soon — requires location services and backend.')"><span class="icon">🚪</span><span class="title">Departure Alerts</span><span class="chevron">›</span></div>
 </div>
 
 <h2>👥 Friends</h2>
@@ -187,20 +187,20 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 
 <h3 style="margin-top:16px">Find Friends</h3>
-<div class="card" onclick="alert('📡 AR Friend Finder\n\nHold your phone up at a crowded bar or concert. An arrow will point toward your friend with estimated distance.\n\nComing soon!')">
+<div class="card" onclick="alert('📡 AR Friend Locator\n\nAt a crowded bar or concert, hold your phone up and an arrow points you toward your drinking partner with estimated distance (like a compass).\n\nOnly works with people you have set as drinking partners for the night — they must opt in.\n\n🔧 Coming soon — requires AR framework and real-time location.')">
 <div style="display:flex;align-items:center;gap:12px"><span style="font-size:28px">📡</span><div><div style="font-weight:600">AR Friend Locator</div><div style="font-size:12px;color:var(--text2)">Point your phone to find friends in crowds</div></div></div>
 </div>
 
 <h2>💬 Messages</h2>
-<div class="nav-link" onclick="alert('DMs - Add someone on the Library instead of exchanging numbers!')"><span class="icon">💬</span><span class="title">Direct Messages</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('💬 Direct Messages\n\nMessage anyone on Library Card — no phone number needed. Meet someone at the bar? Just add them on the Library instead of exchanging numbers.\n\nText, photos, and drink gifting all happen here.\n\n🔧 Coming soon — requires backend messaging service.')"><span class="icon">💬</span><span class="title">Direct Messages</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">⚔️</span><span class="title">Showdown Mode</span><span class="chevron">›</span></div>
 
 <h2>🏛️ Organizations</h2>
-<div class="nav-link" onclick="alert('Create or join an org — shared leaderboards, org-wide Wrapped, inter-org showdowns!')"><span class="icon">🏛️</span><span class="title">My Organizations</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('🏛️ Organizations\n\nCreate or join an org (fraternities, friend groups, bar crawl crews). Features:\n\n• Org-wide leaderboard — who is the top performer?\n• Org Wrapped — monthly and yearly recaps for the whole group\n• Inter-org showdowns — challenge another org\n• Admin dashboard with member stats\n\nOrg Premium unlocks custom branding and advanced analytics.\n\n🔧 Coming soon — requires backend for group management.')"><span class="icon">🏛️</span><span class="title">My Organizations</span><span class="chevron">›</span></div>
 
 <h2>💘 Matching</h2>
-<div class="nav-link" onclick="alert('Swipe on people at the bar. Mutual swipes = match!\n\nBuy someone a drink by loading their Library Card. They need a Live Photo to verify.')"><span class="icon">💘</span><span class="title">Swipe at This Bar</span><span class="chevron">›</span></div>
-<div class="nav-link" onclick="alert('Premium Feature: Pre-swipe on people planning to go out tonight. If you both match and they show up, you get notified!')"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('💘 Swipe at This Bar\n\nSee other Library Card users at the same bar. Swipe right if interested — if they swipe right too, it is a match!\n\nYou can then DM them or buy them a drink (loaded to their Library Card). They must upload a Live Photo to verify identity before receiving a gifted drink.\n\n🔧 Coming soon — requires location-based matching and backend.')"><span class="icon">💘</span><span class="title">Swipe at This Bar</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('⭐ Pre-Swipe (Premium)\n\nBrowse people who are planning to go to bars tonight. Swipe right before they even get there.\n\nIf you both pre-swipe right AND they show up at the same bar as you, you both get a notification:\n\n&quot;Your pre-match Sarah just checked in at The Pub!&quot;\n\n🔧 Coming soon — Premium feature, requires matching backend.')"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
 </div>
 
 <!-- SHOWDOWN -->
