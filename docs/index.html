@@ -62,6 +62,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 .active-banner .label{font-size:14px;font-weight:600;flex:1}
 .active-banner .time{font-size:14px;font-variant-numeric:tabular-nums}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes ping{0%{transform:scale(1);opacity:1}100%{transform:scale(3);opacity:0}}
 </style>
 </head>
 <body>
@@ -155,6 +156,12 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <!-- SOCIAL & SAFETY SCREEN -->
 <div class="screen" id="screen-social">
 <h1>Social</h1>
+
+<h2>🗺️ Live Bar Map</h2>
+<div class="card" id="barMap" style="padding:0;overflow:hidden"></div>
+
+<h2>👑 Bar Raids</h2>
+<div class="card" id="barRaids"></div>
 
 <h2>🟠 Safety</h2>
 <div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="alert('🆘 SOS Alert\n\nThis sends an emergency message with your live location to your designated emergency contacts (friends you select in Settings).\n\nThey will receive a push notification and can see exactly where you are in real-time.\n\n🔧 Coming soon — requires backend for real-time location sharing.')">🆘 SOS — Alert My Emergency Contacts</button></div>
@@ -914,7 +921,67 @@ const fakeFriends=[
 {name:'Chris P.',emoji:'🤙',weekly:5,allTime:98},
 {name:'Rachel T.',emoji:'✨',weekly:3,allTime:67},
 ];
+// Live bar data for the map
+const liveBars=[
+{name:'The Pub',x:30,y:35,users:12,heat:'🔥',friends:['Jake M.','Sarah K.','Mike R.'],raid:false},
+{name:'Rooftop Bar',x:70,y:25,users:18,heat:'🔥🔥',friends:['Emma L.'],raid:true,raidOrg:'Sigma Chi'},
+{name:'Club X',x:80,y:65,users:24,heat:'🔥🔥🔥',friends:['Chris P.','Rachel T.'],raid:false},
+{name:'Tavern on Main',x:25,y:70,users:7,heat:'✨',friends:[],raid:false},
+{name:'Brews & Views',x:55,y:80,users:9,heat:'✨',friends:['Jake M.'],raid:false},
+{name:'The Library Lounge',x:50,y:50,users:15,heat:'🔥',friends:['Sarah K.'],raid:false},
+];
+
+function renderBarMap(){
+const el=document.getElementById('barMap');
+if(!el)return;
+el.innerHTML='<div style="position:relative;height:280px;background:linear-gradient(135deg,#0a0e27,#1a1a3e);overflow:hidden">'+
+// Grid overlay
+'<svg width="100%" height="100%" style="position:absolute;inset:0;opacity:.15" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#fff" stroke-width="0.5"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>'+
+// "You are here" pulse
+'<div style="position:absolute;left:48%;top:45%;width:16px;height:16px"><div style="position:absolute;width:16px;height:16px;background:var(--primary);border-radius:50%;border:2px solid #fff;box-shadow:0 0 20px var(--primary)"></div><div style="position:absolute;width:16px;height:16px;background:var(--primary);border-radius:50%;opacity:.4;animation:ping 2s infinite"></div></div>'+
+liveBars.map(b=>{
+const size=Math.min(60+b.users*1.5,90);
+const color=b.raid?'#E8A317':b.friends.length>0?'#22C55E':'#6B7280';
+return '<div onclick="showBarDetails(\''+b.name.replace(/\'/g,"\\\'")+'\')" style="position:absolute;left:'+b.x+'%;top:'+b.y+'%;transform:translate(-50%,-50%);cursor:pointer"><div style="width:'+size+'px;height:'+size+'px;background:'+color+'22;border:2px solid '+color+';border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter:blur(10px)"><div style="font-size:18px">'+(b.raid?'👑':b.heat)+'</div><div style="font-size:10px;font-weight:700;color:#fff">'+b.users+'</div></div><div style="text-align:center;font-size:10px;color:#fff;margin-top:4px;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.8)">'+b.name+'</div></div>';
+}).join('')+
+'</div>'+
+'<div style="padding:12px;display:flex;gap:12px;font-size:11px;justify-content:center;flex-wrap:wrap;color:var(--text2)"><span>🟢 Friends here</span><span>👑 Raid active</span><span>🔥 Popular</span></div>';
+}
+
+function showBarDetails(name){
+const b=liveBars.find(x=>x.name===name);
+if(!b)return;
+const friendsList=b.friends.length>0?'\n\nFriends here: '+b.friends.join(', '):'';
+const raidInfo=b.raid?'\n\n👑 RAIDED by '+b.raidOrg+' — they own this bar tonight!':'';
+alert('📍 '+b.name+'\n\n'+b.heat+' '+b.users+' people drinking right now'+friendsList+raidInfo+'\n\n🔧 Tap to check in, see the full list, and join your friends.');
+}
+
+function renderBarRaids(){
+const el=document.getElementById('barRaids');
+if(!el)return;
+const raids=[
+{bar:'Rooftop Bar',org:'Sigma Chi',count:14,required:5,status:'owned'},
+{bar:'Club X',org:'Kappa Kappa',count:4,required:5,status:'building'},
+{bar:'The Pub',org:'Your Squad',count:3,required:5,status:'available'},
+];
+el.innerHTML=
+'<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Get 5+ friends at the same bar to claim it for your crew. The org with the most drinks owns the bar for the night.</div>'+
+raids.map(r=>{
+const pct=Math.min(100,(r.count/r.required)*100);
+const color=r.status==='owned'?'var(--primary)':r.status==='building'?'var(--orange)':'var(--text2)';
+const icon=r.status==='owned'?'👑':r.status==='building'?'⚡':'🎯';
+return '<div style="padding:10px 0;border-bottom:0.5px solid #333">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div><span style="font-size:16px;margin-right:6px">'+icon+'</span><span style="font-weight:600">'+r.bar+'</span></div><span style="font-size:11px;color:'+color+';font-weight:600">'+(r.status==='owned'?'OWNED by '+r.org:r.status==='building'?'RAID BUILDING':'AVAILABLE')+'</span></div>'+
+'<div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+r.count+'/'+r.required+' crew members</div>'+
+'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:2px"></div></div>'+
+'</div>';
+}).join('')+
+'<div style="padding-top:12px"><button onclick="alert(\'👑 Start a Raid\\n\\nRally 5+ of your friends to meet at the same bar. When you all check in, your squad owns that bar for the night.\\n\\nPerks:\\n- Your org name appears on the live map\\n- Everyone at the bar sees who owns it\\n- Inter-org rivalries get unlocked\\n- Bonus XP for everyone in the raid\\n\\n🔧 Coming soon — requires backend.\')" class="btn btn-primary" style="padding:12px;font-size:13px">Start a Raid</button></div>';
+}
+
 function initSocial(){
+renderBarMap();
+renderBarRaids();
 // Build leaderboard
 const lb=document.getElementById('friendLeaderboard');
 if(lb){
