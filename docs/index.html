@@ -91,7 +91,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="empty-state"><div class="icon">🌙</div><div class="title">No sessions yet</div><div class="sub">Start your first session to see stats here</div></div>
 </div>
 <div style="margin-top:16px">
-<div class="nav-link" onclick="alert('⭐ Your Wrapped\n\nSpotify Wrapped, but for your nights out. Get weekly, monthly, and yearly recaps:\n\n• Total drinks and sessions\n• Your drink of choice\n• Top venue\n• Peak DPM night\n• Busiest day of the week\n• Friend rankings\n\nGenerate your first Wrapped after completing a few sessions!\n\n🔧 Coming soon — Wrapped generation works offline, sharing requires backend.')"><span class="icon">⭐</span><span class="title">Your Wrapped</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="showWrappedDemo()"><span class="icon">⭐</span><span class="title">Your Wrapped</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">👥</span><span class="title">Showdown</span><span class="chevron">›</span></div>
 </div>
 </div>
@@ -1123,6 +1123,61 @@ saveCircles();
 renderCircles();
 }
 
+// ========== MEMORIES ARCHIVE ==========
+function showMemoriesArchive(){
+let txt='📸 Memories Archive\n\nYour best nights, all in one place:\n\n';
+const sorted=[...allSessions].sort((a,b)=>b.drinks-a.drinks).slice(0,8);
+sorted.forEach((s,i)=>{
+const date=new Date(s.time).toLocaleDateString([],{month:'short',day:'numeric'});
+txt+=(i+1)+'. '+(s.venue||'Night Out')+' — '+date+'\n   🍺 '+s.drinks+' drinks · ❤️ '+(s.kudos||0)+' kudos\n';
+});
+txt+='\nThe Library auto-saves your best sessions: highest drink counts, PR nights, friend moments, and milestone events. Tap any to relive.';
+alert(txt);
+}
+
+// ========== WRAPPED ==========
+function showWrappedDemo(){
+const period=prompt('⭐ Your Wrapped\n\nWhich period?\n\n1 — This Week\n2 — This Month\n3 — This Year\n\nEnter 1-3:','3');
+const num=parseInt(period);
+if(!num||num<1||num>3)return;
+const labels=['','THIS WEEK','THIS MONTH','THIS YEAR'];
+const periods=[null,7,30,365];
+const cutoff=Date.now()-periods[num]*86400000;
+const filtered=allSessions.filter(s=>s.time>=cutoff);
+const totalDrinks=filtered.reduce((a,s)=>a+s.drinks,0);
+const totalSessions=filtered.length;
+const totalHours=filtered.reduce((a,s)=>a+s.duration/3600000,0);
+// Top drink
+const drinkCounts={};
+filtered.forEach(s=>(s.drinkList||[]).forEach(d=>{drinkCounts[d.name]=(drinkCounts[d.name]||0)+1;}));
+const topDrink=Object.entries(drinkCounts).sort((a,b)=>b[1]-a[1])[0];
+// Top venue
+const venueCounts={};
+filtered.forEach(s=>{if(s.venue)venueCounts[s.venue]=(venueCounts[s.venue]||0)+1;});
+const topVenue=Object.entries(venueCounts).sort((a,b)=>b[1]-a[1])[0];
+// Peak night
+const peakSession=filtered.reduce((max,s)=>s.drinks>(max?max.drinks:0)?s:max,null);
+// Busiest day
+const dayCounts=[0,0,0,0,0,0,0];
+filtered.forEach(s=>{dayCounts[new Date(s.time).getDay()]+=s.drinks;});
+const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const busiestDay=dayNames[dayCounts.indexOf(Math.max(...dayCounts))];
+
+let txt='⭐ '+labels[num]+' WRAPPED ⭐\n';
+txt+='━━━━━━━━━━━━━━━━━━━━\n\n';
+txt+='🍺 '+totalDrinks+' total drinks\n';
+txt+='📅 '+totalSessions+' sessions\n';
+txt+='⏱ '+Math.round(totalHours)+' hours out\n\n';
+if(topDrink)txt+='🥃 Drink of choice:\n   '+topDrink[0]+' ('+topDrink[1]+'×)\n\n';
+if(topVenue)txt+='📍 Top venue:\n   '+topVenue[0]+' ('+topVenue[1]+' visits)\n\n';
+if(peakSession)txt+='🏆 Peak night:\n   '+peakSession.drinks+' drinks at '+(peakSession.venue||'Night Out')+'\n\n';
+txt+='🔥 Busiest day:\n   '+busiestDay+'\n\n';
+txt+='👥 Friend rank: #1 of 7\n\n';
+txt+='━━━━━━━━━━━━━━━━━━━━\n';
+txt+='Tap Share to post to your story.';
+alert(txt);
+}
+
 // ========== PRE-SWIPE ==========
 function showPreSwipe(){
 alert('⭐ Pre-Swipe Tonight (Premium)\n\nPeople going out tonight to bars near you:\n\n👩‍🦰 Olivia, 22 — heading to The Pub at 9 PM\n👩 Mia, 23 — going to Rooftop Bar at 10 PM\n💁‍♀️ Ava, 22 — Club X around 11 PM\n👩‍🦱 Bella, 21 — The Library Lounge after dinner\n\nSwipe right on people you want to meet. If you both right-swipe AND end up at the same bar, you both get notified.\n\n💎 Active Pre-Swipes: 3\n📍 Tonight\'s Match Alerts: 1 pending\n\n🎉 Olivia just checked in at The Pub! You both pre-matched. Tap to say hi.');
@@ -1312,7 +1367,7 @@ const gradients=['linear-gradient(135deg,#E8A317,#FF6B2B)','linear-gradient(135d
 el.innerHTML='<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px">'+
 top.map((s,i)=>'<div onclick="openMemory('+allSessions.indexOf(s)+')" style="flex-shrink:0;width:140px;height:180px;border-radius:var(--radius);background:'+gradients[i]+';padding:12px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:1px">MEMORY</div><div><div style="font-size:32px;font-weight:800;color:#fff">'+s.drinks+'</div><div style="font-size:11px;color:rgba(255,255,255,.9);font-weight:600">drinks</div><div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:4px">'+(s.venue||'Night Out')+'</div><div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px">'+new Date(s.time).toLocaleDateString([],{month:'short',day:'numeric'})+'</div></div></div>').join('')+
 '</div>'+
-'<div class="nav-link" onclick="alert(\'📸 Memories Archive\\n\\nYour best nights are saved forever. The algorithm picks your highest-drink sessions, moments with friends, and PR nights.\\n\\nAccess anytime to relive the stories.\\n\\n🔧 Full archive coming soon.\')"><span class="icon">📁</span><span class="title">See Full Archive</span><span class="chevron">›</span></div>';
+'<div class="nav-link" onclick="showMemoriesArchive()"><span class="icon">📁</span><span class="title">See Full Archive</span><span class="chevron">›</span></div>';
 }
 
 function openMemory(idx){
