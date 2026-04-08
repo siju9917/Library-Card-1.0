@@ -154,7 +154,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Tonight's Drink Cap</span><button onclick="setDrinkCap()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="capBtn">Not set</button></div>
 </div>
 <h2>Gift a Drink</h2>
-<div class="nav-link" onclick="alert('🎁 Buy a Friend a Drink\n\nPick a friend → choose a drink → add a message → send!\n\nThey get a push notification and the drink is loaded to their Library Card.\n\nOccasions:\n🎂 Birthday\n🎉 Celebration\n❤️ Just Because\n🙏 Apology\n⭐ Congrats\n👋 Welcome\n\nFor gifting a drink to someone you matched with at the bar, they must upload a Live Photo to verify their identity.\n\n🔧 Coming soon — requires payment integration and backend.')"><span class="icon">🎁</span><span class="title">Buy a Friend a Drink</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="giftADrinkFlow()"><span class="icon">🎁</span><span class="title">Buy a Friend a Drink</span><span class="chevron">›</span></div>
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nCovers what data we collect, how it is stored, your rights to export and delete, and our commitment to never selling your data.\n\nFull legal page available in the native app.')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nEligibility (21+), responsible use guidelines, content policy, safety feature disclaimers, and account management.\n\nFull legal page available in the native app.')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
@@ -231,11 +231,11 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 
 <h2>💬 Messages</h2>
-<div class="nav-link" onclick="alert('💬 Direct Messages\n\nMessage anyone on The Library — no phone number needed. Meet someone at the bar? Just add them on The Library instead of exchanging numbers.\n\nText, photos, and drink gifting all happen here.\n\n🔧 Coming soon — requires backend messaging service.')"><span class="icon">💬</span><span class="title">Direct Messages</span><span class="chevron">›</span></div>
+<div class="card" id="dmInbox"></div>
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">⚔️</span><span class="title">Showdown Mode</span><span class="chevron">›</span></div>
 
-<h2>🏛️ Organizations</h2>
-<div class="nav-link" onclick="alert('🏛️ Organizations\n\nCreate or join an org (fraternities, friend groups, bar crawl crews). Features:\n\n• Org-wide leaderboard — who is the top performer?\n• Org Wrapped — monthly and yearly recaps for the whole group\n• Inter-org showdowns — challenge another org\n• Admin dashboard with member stats\n\nOrg Premium unlocks custom branding and advanced analytics.\n\n🔧 Coming soon — requires backend for group management.')"><span class="icon">🏛️</span><span class="title">My Organizations</span><span class="chevron">›</span></div>
+<h2>🏛️ My Organizations</h2>
+<div class="card" id="orgsList"></div>
 
 <h2>💘 Swipe at The Pub</h2>
 <div id="swipeArea" style="position:relative;height:380px;margin-bottom:16px"></div>
@@ -243,7 +243,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <button onclick="swipeLeft()" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--red);background:none;font-size:24px;cursor:pointer;color:var(--red)">✕</button>
 <button onclick="swipeRight()" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--green);background:none;font-size:24px;cursor:pointer;color:var(--green)">♥</button>
 </div>
-<div class="nav-link" onclick="alert('⭐ Pre-Swipe (Premium)\n\nBrowse people who are planning to go to bars tonight. Swipe right before they even get there.\n\nIf you both pre-swipe right AND they show up at the same bar, you both get notified.\n\n🔧 Coming soon — Premium feature.')"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="showPreSwipe()"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
 </div>
 
 <!-- SHOWDOWN -->
@@ -1040,9 +1040,15 @@ return '<div onclick="showBarDetails(\''+b.name.replace(/\'/g,"\\\'")+'\')" styl
 function showBarDetails(name){
 const b=liveBars.find(x=>x.name===name);
 if(!b)return;
-const friendsList=b.friends.length>0?'\n\nFriends here: '+b.friends.join(', '):'';
-const raidInfo=b.raid?'\n\n👑 RAIDED by '+b.raidOrg+' — they own this bar tonight!':'';
-alert('📍 '+b.name+'\n\n'+b.heat+' '+b.users+' people drinking right now'+friendsList+raidInfo+'\n\n🔧 Tap to check in, see the full list, and join your friends.');
+const friendsList=b.friends.length>0?'\n\n👥 Friends here:\n'+b.friends.map(f=>'  • '+f).join('\n'):'';
+const raidInfo=b.raid?'\n\n👑 RAIDED by '+b.raidOrg+' — they own this bar tonight':'';
+const topDrinks='\n\n🍹 Top drinks tonight:\n  • Espresso Martini (avg 4.7⭐)\n  • Old Fashioned (avg 4.5⭐)\n  • House IPA (avg 4.3⭐)';
+const promo='\n\n🎁 Active promo: Happy hour until 10 PM ($5 cocktails)';
+const ok=confirm('📍 '+b.name+'\n\n'+b.heat+' '+b.users+' people drinking right now'+friendsList+raidInfo+topDrinks+promo+'\n\nCheck in here?');
+if(ok){
+addXP(15);
+alert('✅ Checked in at '+b.name+'\n\n+15 XP\n📱 Your Partners have been notified\n🍹 Promo unlocked: $5 cocktails until 10 PM\n\nYour Library Card will auto-detect any drink purchases here.');
+}
 }
 
 function renderBarRaids(){
@@ -1115,6 +1121,84 @@ circles[emojiMap[choice]].push({name:name,emoji:person.emoji||'👤'});
 }
 saveCircles();
 renderCircles();
+}
+
+// ========== PRE-SWIPE ==========
+function showPreSwipe(){
+alert('⭐ Pre-Swipe Tonight (Premium)\n\nPeople going out tonight to bars near you:\n\n👩‍🦰 Olivia, 22 — heading to The Pub at 9 PM\n👩 Mia, 23 — going to Rooftop Bar at 10 PM\n💁‍♀️ Ava, 22 — Club X around 11 PM\n👩‍🦱 Bella, 21 — The Library Lounge after dinner\n\nSwipe right on people you want to meet. If you both right-swipe AND end up at the same bar, you both get notified.\n\n💎 Active Pre-Swipes: 3\n📍 Tonight\'s Match Alerts: 1 pending\n\n🎉 Olivia just checked in at The Pub! You both pre-matched. Tap to say hi.');
+}
+
+// ========== GIFT A DRINK ==========
+function giftADrinkFlow(){
+const friends=['Jake M.','Sarah K.','Mike R.','Emma L.','Chris P.','Rachel T.'];
+const friend=prompt('🎁 Pick a friend to gift:\n\n1 — 😎 Jake M.\n2 — 🎉 Sarah K.\n3 — 🍻 Mike R.\n4 — 💃 Emma L.\n5 — 🤙 Chris P.\n6 — ✨ Rachel T.\n\nEnter 1-6:','');
+const num=parseInt(friend);
+if(!num||num<1||num>6)return;
+const drink=prompt('🥃 Pick a drink to send to '+friends[num-1]+':\n\n1 — 🍺 Beer\n2 — 🍷 Wine\n3 — 🍹 Cocktail\n4 — 💧 Shot\n5 — 🥃 Their usual\n\nEnter 1-5:','');
+const dnum=parseInt(drink);
+if(!dnum||dnum<1||dnum>5)return;
+const occ=prompt('🎉 Pick an occasion:\n\n1 — 🎂 Birthday\n2 — 🎉 Celebration\n3 — ❤️ Just Because\n4 — 🙏 Apology\n5 — ⭐ Congrats\n\nEnter 1-5:','3');
+const onum=parseInt(occ);
+if(!onum||onum<1||onum>5)return;
+const msg=prompt('💌 Add a message (optional):','');
+const occasions=['','Birthday','Celebration','Just Because','Apology','Congrats'];
+const drinks=['','Beer','Wine','Cocktail','Shot','Their usual'];
+addXP(20);
+alert('🎁 Drink Sent!\n\nTo: '+friends[num-1]+'\nDrink: '+drinks[dnum]+'\nOccasion: '+occasions[onum]+(msg?'\nMessage: "'+msg+'"':'')+'\n\n💳 Charged to your Library Card\n📱 '+friends[num-1]+' has been notified\n\nWhen they redeem at any partner bar, you both get a notification with a photo of the drink. +20 XP!');
+}
+
+// ========== DM INBOX ==========
+const fakeDMs=[
+{name:'Jake M.',emoji:'😎',preview:'yo where you at? we just got here',time:'2m',unread:true},
+{name:'Sarah K.',emoji:'🎉',preview:'omg that night was insane 😂',time:'1h',unread:true},
+{name:'Sophia',emoji:'👩‍🦰',preview:'thanks for the drink earlier!',time:'3h',unread:true},
+{name:'Mike R.',emoji:'🍻',preview:'tomorrow at the pub?',time:'1d',unread:false},
+{name:'Emma L.',emoji:'💃',preview:'send me that photo from last night',time:'2d',unread:false},
+];
+function renderDMInbox(){
+const el=document.getElementById('dmInbox');
+if(!el)return;
+const unread=fakeDMs.filter(d=>d.unread).length;
+el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600">Inbox</span>'+(unread>0?'<span style="background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">'+unread+' new</span>':'')+'</div>'+
+fakeDMs.map((d,i)=>'<div onclick="openDM('+i+')" style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;'+(i<fakeDMs.length-1?'border-bottom:0.5px solid #333':'')+'"><span style="font-size:24px">'+d.emoji+'</span><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span style="font-weight:'+(d.unread?'700':'500')+';font-size:14px">'+d.name+'</span><span style="font-size:11px;color:var(--text3)">'+d.time+'</span></div><div style="font-size:12px;color:'+(d.unread?'var(--text)':'var(--text3)')+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.preview+'</div></div>'+(d.unread?'<span style="width:8px;height:8px;border-radius:50%;background:var(--primary)"></span>':'')+'</div>').join('');
+}
+function openDM(idx){
+const d=fakeDMs[idx];
+if(!d)return;
+const reply=prompt('💬 Chat with '+d.emoji+' '+d.name+'\n\n'+d.name+': '+d.preview+'\n\nType your reply:','');
+if(reply&&reply.trim()){
+d.preview='You: '+reply.trim();
+d.time='now';
+d.unread=false;
+renderDMInbox();
+addXP(5);
+setTimeout(()=>alert('💬 '+d.name+' is typing...\n\nMessage sent! Reply will appear in your inbox.'),200);
+}else if(reply!==null){
+d.unread=false;
+renderDMInbox();
+}
+}
+
+// ========== ORGANIZATIONS ==========
+const myOrgs=[
+{name:'Sigma Chi',handle:'sigma_chi',rank:1,members:42,weeklyDrinks:387,emoji:'🏛️',color:'linear-gradient(135deg,#E8A317,#FF6B2B)',isPremium:true},
+{name:'CS Bar Crawl Squad',handle:'cs_crawl',rank:7,members:18,weeklyDrinks:142,emoji:'💻',color:'linear-gradient(135deg,#3B82F6,#8B5CF6)',isPremium:false},
+];
+function renderOrgs(){
+const el=document.getElementById('orgsList');
+if(!el)return;
+el.innerHTML=myOrgs.map((o,i)=>'<div onclick="openOrg('+i+')" style="padding:14px 0;cursor:pointer;'+(i<myOrgs.length-1?'border-bottom:0.5px solid #333':'')+'">'+
+'<div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:'+o.color+';display:flex;align-items:center;justify-content:center;font-size:22px">'+o.emoji+'</div>'+
+'<div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;font-size:15px">'+o.name+'</span>'+(o.isPremium?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">PREMIUM</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">@'+o.handle+' · '+o.members+' members</div></div>'+
+'<div style="text-align:right"><div style="font-size:11px;color:var(--text3)">Rank</div><div style="font-size:18px;font-weight:700;color:'+(o.rank<=3?'var(--primary)':'var(--text2)')+'">#'+o.rank+'</div></div></div>'+
+'<div style="margin-top:8px;display:flex;gap:8px;font-size:11px"><span style="background:var(--card2);padding:4px 10px;border-radius:999px">🍺 '+o.weeklyDrinks+' this week</span></div>'+
+'</div>').join('')+
+'<div style="padding-top:12px"><button onclick="alert(\'➕ Join an Organization\\n\\nSearch for an existing org by name or handle, request an invite, and start representing your crew on the leaderboards.\\n\\nOr create your own org:\\n\\n• Pick a name and handle\\n• Choose a logo and colors\\n• Invite up to 50 members (free) or unlimited (premium)\\n• Compete in inter-org showdowns\\n\\n🔧 Coming soon — requires backend.\')" class="btn btn-secondary" style="padding:12px;font-size:13px">+ Join or Create Org</button></div>';
+}
+function openOrg(idx){
+const o=myOrgs[idx];
+if(!o)return;
+alert('🏛️ '+o.name+' (@'+o.handle+')\n\n👥 '+o.members+' members\n🏆 Ranked #'+o.rank+' globally\n🍺 '+o.weeklyDrinks+' drinks this week\n\nTop members this week:\n1. 😎 Jake M. — 47 drinks\n2. 🎉 Sarah K. — 38 drinks\n3. 🍻 Mike R. — 32 drinks\n4. 🏆 You — 29 drinks\n5. 💃 Emma L. — 24 drinks\n\nUpcoming:\n⚔️ Showdown vs Kappa Kappa — Friday 9 PM\n📅 Org-wide bar crawl — Saturday 10 PM');
 }
 
 // ========== INTERACTIVE SAFETY DEMOS ==========
@@ -1247,6 +1331,8 @@ renderCircles();
 updateDMSStatus();
 updateWalkHomeStatus();
 renderBarRaids();
+renderDMInbox();
+renderOrgs();
 renderMutualStreaks();
 renderMatchedMoments();
 renderMemories();
