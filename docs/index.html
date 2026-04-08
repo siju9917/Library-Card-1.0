@@ -160,6 +160,15 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>🗺️ Live Bar Map</h2>
 <div class="card" id="barMap" style="padding:0;overflow:hidden"></div>
 
+<h2>🔥 Mutual Streaks</h2>
+<div class="card" id="mutualStreaks"></div>
+
+<h2>✨ Matched Moments</h2>
+<div class="card" id="matchedMoments"></div>
+
+<h2>📸 Memories</h2>
+<div id="memoriesSection"></div>
+
 <h2>👑 Bar Raids</h2>
 <div class="card" id="barRaids"></div>
 
@@ -979,9 +988,60 @@ return '<div style="padding:10px 0;border-bottom:0.5px solid #333">'+
 '<div style="padding-top:12px"><button onclick="alert(\'👑 Start a Raid\\n\\nRally 5+ of your friends to meet at the same bar. When you all check in, your squad owns that bar for the night.\\n\\nPerks:\\n- Your org name appears on the live map\\n- Everyone at the bar sees who owns it\\n- Inter-org rivalries get unlocked\\n- Bonus XP for everyone in the raid\\n\\n🔧 Coming soon — requires backend.\')" class="btn btn-primary" style="padding:12px;font-size:13px">Start a Raid</button></div>';
 }
 
+function renderMutualStreaks(){
+const el=document.getElementById('mutualStreaks');
+if(!el)return;
+const streaks=[
+{friend:'Jake M.',emoji:'😎',weeks:8,isActive:true,sharedFire:'🔥🔥🔥'},
+{friend:'Sarah K.',emoji:'🎉',weeks:5,isActive:true,sharedFire:'🔥🔥'},
+{friend:'Mike R.',emoji:'🍻',weeks:3,isActive:true,sharedFire:'🔥'},
+{friend:'Emma L.',emoji:'💃',weeks:1,isActive:false,sharedFire:'❄️'},
+];
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">You both went out this week to keep it alive.</div>'+
+streaks.map(s=>'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(s.isActive?'':'opacity:.5')+'"><span style="font-size:18px">'+s.emoji+'</span><span style="flex:1;font-weight:500">'+s.friend+'</span><span style="font-size:13px">'+s.sharedFire+'</span><span style="font-weight:700;font-size:14px;color:'+(s.isActive?'var(--primary)':'var(--text3)')+'">'+s.weeks+'w</span></div>').join('');
+}
+
+function renderMatchedMoments(){
+const el=document.getElementById('matchedMoments');
+if(!el)return;
+const moments=[
+{friends:'Jake M.',venue:'The Pub',date:'Oct 4',overlap:'2h 15m',drinks:'You had 6, Jake had 5'},
+{friends:'Sarah K. + Emma L.',venue:'Rooftop Bar',date:'Sep 28',overlap:'3h',drinks:'Trio night — 14 drinks total'},
+{friends:'Mike R.',venue:'Club X',date:'Sep 21',overlap:'1h 40m',drinks:'Crossed paths after 1am'},
+];
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">You and your friends were at the same bar.</div>'+
+moments.map(m=>'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:600;font-size:14px">'+m.friends+'</div><div style="font-size:12px;color:var(--text2);margin-top:2px">📍 '+m.venue+' · '+m.overlap+' overlap</div><div style="font-size:11px;color:var(--text3);margin-top:2px">'+m.drinks+'</div></div><span style="font-size:11px;color:var(--text3)">'+m.date+'</span></div></div>').join('')+
+'<div style="padding-top:8px;text-align:center;font-size:11px;color:var(--text3)">When the Library Card detects you at the same venue, it creates a moment.</div>';
+}
+
+function renderMemories(){
+const el=document.getElementById('memoriesSection');
+if(!el)return;
+// Use the top 3 sessions by drinks
+const top=[...allSessions].sort((a,b)=>b.drinks-a.drinks).slice(0,3);
+const gradients=['linear-gradient(135deg,#E8A317,#FF6B2B)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#10B981,#3B82F6)'];
+el.innerHTML='<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px">'+
+top.map((s,i)=>'<div onclick="openMemory('+allSessions.indexOf(s)+')" style="flex-shrink:0;width:140px;height:180px;border-radius:var(--radius);background:'+gradients[i]+';padding:12px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:1px">MEMORY</div><div><div style="font-size:32px;font-weight:800;color:#fff">'+s.drinks+'</div><div style="font-size:11px;color:rgba(255,255,255,.9);font-weight:600">drinks</div><div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:4px">'+(s.venue||'Night Out')+'</div><div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px">'+new Date(s.time).toLocaleDateString([],{month:'short',day:'numeric'})+'</div></div></div>').join('')+
+'</div>'+
+'<div class="nav-link" onclick="alert(\'📸 Memories Archive\\n\\nYour best nights are saved forever. The algorithm picks your highest-drink sessions, moments with friends, and PR nights.\\n\\nAccess anytime to relive the stories.\\n\\n🔧 Full archive coming soon.\')"><span class="icon">📁</span><span class="title">See Full Archive</span><span class="chevron">›</span></div>';
+}
+
+function openMemory(idx){
+const s=allSessions[idx];
+if(!s)return;
+const dph=s.duration>0?(s.drinks/(s.duration/3600000)).toFixed(1):'0.0';
+const dpm=s.duration>0?(s.drinks/(s.duration/60000)).toFixed(3):'0.000';
+const topDrink=s.drinkList&&s.drinkList.length>0?s.drinkList.reduce((acc,d)=>{acc[d.name]=(acc[d.name]||0)+1;return acc;},{}):{};
+const fav=Object.entries(topDrink).sort((a,b)=>b[1]-a[1])[0];
+alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'})+'\n\n📍 '+(s.venue||'Night Out')+'\n\n🍺 '+s.drinks+' drinks\n⏱ '+formatDur(s.duration)+'\n🏃 '+dph+'/hr · '+dpm+' DPM\n❤️ '+(s.kudos||0)+' kudos\n💬 '+((s.comments&&s.comments.length)||0)+' comments'+(fav?'\n🥃 Drink of the night: '+fav[0]+' ×'+fav[1]:''));
+}
+
 function initSocial(){
 renderBarMap();
 renderBarRaids();
+renderMutualStreaks();
+renderMatchedMoments();
+renderMemories();
 // Build leaderboard
 const lb=document.getElementById('friendLeaderboard');
 if(lb){
