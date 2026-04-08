@@ -276,6 +276,9 @@ let drinks=[];
 let allSessions=JSON.parse(localStorage.getItem('lc_sessions')||'[]');
 let allTimeDrinks=parseInt(localStorage.getItem('lc_alltime')||'0');
 let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
+let userWeight=parseFloat(localStorage.getItem('lc_weight')||'180'); // lbs
+let userHeight=parseFloat(localStorage.getItem('lc_height')||'70'); // inches
+let userSex=localStorage.getItem('lc_sex')||'male'; // male/female
 let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // {name: count}
 let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
 
@@ -408,6 +411,40 @@ updateHome();
 switchTab('session');
 }
 
+function calcBAC(numDrinks,elapsedMs){
+// Widmark formula: BAC = (alcohol_grams / (body_water_kg)) * 100 - metabolism
+// 1 US standard drink = 14g alcohol
+// r = body water constant (male: 0.68, female: 0.55)
+const weightKg=userWeight*0.453592;
+const r=userSex==='male'?0.68:0.55;
+const gramsAlcohol=numDrinks*14;
+const hours=elapsedMs/3600000;
+const bac=(gramsAlcohol/(weightKg*1000*r))*100-(0.015*hours);
+return Math.max(bac,0);
+}
+function bacColor(bac){
+if(bac<0.04)return'var(--green)';
+if(bac<0.08)return'var(--orange)';
+return'var(--red)';
+}
+function bacLabel(bac){
+if(bac<0.02)return'Sober';
+if(bac<0.04)return'Light buzz';
+if(bac<0.06)return'Feeling it';
+if(bac<0.08)return'Tipsy';
+if(bac<0.10)return'Impaired';
+return'Heavy';
+}
+function editBodyStats(){
+const w=prompt('Weight (lbs):',String(userWeight));
+if(w&&!isNaN(parseFloat(w))){userWeight=parseFloat(w);localStorage.setItem('lc_weight',String(userWeight));}
+const h=prompt('Height (inches):',String(userHeight));
+if(h&&!isNaN(parseFloat(h))){userHeight=parseFloat(h);localStorage.setItem('lc_height',String(userHeight));}
+const s=prompt('Sex (male/female):',userSex);
+if(s&&(s==='male'||s==='female')){userSex=s;localStorage.setItem('lc_sex',userSex);}
+updateSessionUI();
+}
+
 function updateSessionUI(){
 if(!sessionActive)return;
 const elapsed=Date.now()-sessionStart;
@@ -416,7 +453,7 @@ const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
-'<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
+(function(){const bac=calcBAC(drinks.length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;color:var(--text3)">Estimated BAC</div><div style="display:flex;align-items:baseline;gap:8px;margin-top:4px"><span style="font-size:28px;font-weight:700;color:'+bc+'">'+bac.toFixed(3)+'%</span><span style="font-size:13px;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:4px">'+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'" · '+userSex+'</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
@@ -596,7 +633,7 @@ const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:8px">🎉</div><h2>Session Complete!</h2></div>'+
-'<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+drinks.length+'</div><div style="color:var(--text2);margin-bottom:16px">drinks</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div></div></div>'+
+(function(){const bac=calcBAC(drinks.length,elapsed);return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+drinks.length+'</div><div style="color:var(--text2);margin-bottom:16px">drinks</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bac.toFixed(3)+'%</div><div class="lbl">BAC</div></div></div></div>';})()+
 '<div style="margin-top:16px"><button class="btn btn-primary" onclick="resetSession()">Done</button></div>';
 updateHome();
 }
