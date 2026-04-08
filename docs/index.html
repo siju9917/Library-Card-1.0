@@ -166,6 +166,25 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="screen" id="screen-social">
 <h1>Social</h1>
 
+<h2>🟠 Safety</h2>
+<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="sendSOS()">🆘 SOS — Alert My Circle</button></div>
+
+<h3 style="margin-top:4px">Circles · Trust Tiers</h3>
+<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
+
+<h3>Active Safety Features</h3>
+<div class="card" style="margin-bottom:16px">
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Dead Man's Switch</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="startWalkHomeMode()"><span class="icon">🚶</span><div style="flex:1"><div class="title" style="font-size:14px">Walk Home Mode</div><div style="font-size:11px;color:var(--text3)" id="walkHomeStatus">Share live GPS with Circle until you reach home</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showLowBatteryDemo()"><span class="icon">🔋</span><div style="flex:1"><div class="title" style="font-size:14px">Low Battery Alert</div><div style="font-size:11px;color:var(--text3)">Auto-notifies Circle when phone is dying</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showBarRoute()"><span class="icon">🗺️</span><div style="flex:1"><div class="title" style="font-size:14px">My Bar Route Tonight</div><div style="font-size:11px;color:var(--text3)">Ordered timeline of tonight\'s venues</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showDepartureFeed()"><span class="icon">🚪</span><div style="flex:1"><div class="title" style="font-size:14px">Departure Feed</div><div style="font-size:11px;color:var(--text3)">See when friends leave venues</div></div><span class="chevron">›</span></div>
+</div>
+
 <h2>🗺️ Live Bar Map</h2>
 <div class="card" id="barMap" style="padding:0;overflow:hidden"></div>
 
@@ -180,25 +199,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 
 <h2>👑 Bar Raids</h2>
 <div class="card" id="barRaids"></div>
-
-<h2>🟠 Safety</h2>
-<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="alert('🆘 SOS Alert\n\nThis sends an emergency message with your live location to your designated emergency contacts (your inner Circle).\n\nThey will receive a push notification and can see exactly where you are in real-time.\n\n🔧 Coming soon — requires backend.')">🆘 SOS — Alert My Circle</button></div>
-
-<h3 style="margin-top:4px">Circles · Trust Tiers</h3>
-<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
-
-<h3>Active Safety Features</h3>
-<div class="card" style="margin-bottom:16px">
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Dead Man's Switch</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="startWalkHomeMode()"><span class="icon">🚶</span><div style="flex:1"><div class="title" style="font-size:14px">Walk Home Mode</div><div style="font-size:11px;color:var(--text3)">Share live GPS with Circle until you reach home</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="alert('🔋 Low Battery Alert\n\nWhen your phone drops below 10%, your inner Circle automatically gets a message with your last known venue.\n\n🔧 Coming soon.')"><span class="icon">🔋</span><div style="flex:1"><div class="title" style="font-size:14px">Low Battery Alert</div><div style="font-size:11px;color:var(--text3)">Auto-notifies Circle when phone is dying</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="alert('🗺️ My Bar Route\n\n1. The Pub — arrived 8:30 PM, left 10:10 PM\n2. Tavern on Main — arrived 10:15 PM, left 11:40 PM\n3. Club X — arrived 11:45 PM — still here\n\nYour Circle can see this in real-time to find or check on you.')"><span class="icon">🗺️</span><div style="flex:1"><div class="title" style="font-size:14px">My Bar Route</div><div style="font-size:11px;color:var(--text3)">Ordered timeline of tonight\'s venues</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="alert('🚪 Departure Alerts\n\nYour Partners get notified when you leave a venue: &quot;Jake just left The Pub&quot;\n\n🔧 Coming soon.')"><span class="icon">🚪</span><div style="flex:1"><div class="title" style="font-size:14px">Departure Alerts</div><div style="font-size:11px;color:var(--text3)">Partners see when you leave venues</div></div><span class="chevron">›</span></div>
-</div>
 
 <h2>👥 Friends</h2>
 <div class="card">
@@ -1117,6 +1117,28 @@ saveCircles();
 renderCircles();
 }
 
+// ========== INTERACTIVE SAFETY DEMOS ==========
+function sendSOS(){
+const partners=circles.partners.map(p=>p.name).join(', ');
+const ok=confirm('🆘 Send SOS Alert?\n\nThis will send an emergency message with your live location to your Partners:\n\n'+partners+'\n\nThey will get a critical push notification.');
+if(!ok)return;
+setTimeout(()=>{
+alert('✅ SOS SENT\n\n📍 Location shared: The Pub, 123 Main St\n📱 Notified: '+partners+'\n\n— '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' —\n\n🟢 Jake M. acknowledged\n🟢 Sarah K. is on her way (ETA 8 min)\n\nStay where you are.');
+},400);
+}
+
+function showLowBatteryDemo(){
+alert('🔋 Low Battery Alert — Active\n\nWhen your phone hits 10%, your Partners automatically receive:\n\n———\n📱 PUSH NOTIFICATION\n\n"Hey, Jake\'s phone is at 8%.\nLast seen at The Pub (10:47 PM)."\n\n[View Location] [Acknowledge]\n———\n\nCurrent battery: 72%\nThreshold: 10%\nPartners notified: '+circles.partners.length+'\n\n🔧 Demo — real monitoring requires backend.');
+}
+
+function showBarRoute(){
+alert('🗺️ My Bar Route Tonight\n\n8:30 PM 📍 The Pub\n   ↓ 1h 40m, 4 drinks\n10:10 PM 🚶 Walked to Tavern on Main\n   ↓ 5 min walk\n10:15 PM 📍 Tavern on Main\n   ↓ 1h 25m, 2 drinks\n11:40 PM 🚶 Uber to Club X\n   ↓ 5 min\n11:45 PM 📍 Club X — STILL HERE\n\nTotal: 3 venues, 6 drinks, 3h 15m\n\nYour Partners can see this in real-time. Tap any venue to see exactly when you arrived and left.');
+}
+
+function showDepartureFeed(){
+alert('🚪 Departure Feed (Last 24h)\n\n11:42 PM — 😎 Jake M. left The Pub\n11:15 PM — 💃 Emma L. left Rooftop Bar\n10:50 PM — 🎉 Sarah K. arrived at Club X\n10:35 PM — 🍻 Mike R. left Brews & Views\n9:40 PM — 🤙 Chris P. arrived at Club X\n8:30 PM — 🏆 You arrived at The Pub\n\nTap any friend to see their full bar route tonight.');
+}
+
 // ========== DEAD MAN'S SWITCH ==========
 let dmsEnabled=localStorage.getItem('lc_dms')==='true';
 let dmsCheckTime=localStorage.getItem('lc_dms_time')||'';
@@ -1145,10 +1167,30 @@ el.textContent=dmsEnabled?('🟢 Active — check in by '+dmsCheckTime):'Off —
 }
 
 // ========== WALK HOME MODE ==========
+let walkHomeActive=localStorage.getItem('lc_walkhome')==='true';
 function startWalkHomeMode(){
-const choice=confirm('🚶 Walk Home Mode\n\nShare your live GPS location with your Partners ('+circles.partners.map(p=>p.name).join(', ')+') until you reach your saved home location.\n\n• They can see you moving in real-time\n• Auto-stops when you arrive home\n• Battery-optimized\n\nStart Walk Home Mode?');
+if(walkHomeActive){
+if(confirm('🚶 Walk Home Mode is active.\n\nETA: 12 min · 0.7 mi remaining\nPartners watching: '+circles.partners.length+'\n\nStop sharing location?')){
+walkHomeActive=false;
+localStorage.setItem('lc_walkhome','false');
+updateWalkHomeStatus();
+}
+return;
+}
+const choice=confirm('🚶 Start Walk Home Mode?\n\nLive GPS shared with: '+circles.partners.map(p=>p.name).join(', ')+'\n\n• They see you moving in real-time\n• Auto-stops at "Home"\n• Battery-optimized\n\nStart now?');
 if(!choice)return;
-alert('🚶 Walk Home Mode Active\n\nLive location sharing with your Partners.\n\nTracking: ON\nDestination: Home\nETA: calculating...\n\n🔧 Demo — real GPS requires backend and location services.');
+walkHomeActive=true;
+localStorage.setItem('lc_walkhome','true');
+updateWalkHomeStatus();
+setTimeout(()=>{
+alert('🚶 Walk Home Mode Active\n\n📍 Current: Club X (123 Main St)\n🏠 Destination: Home\n🛣 Route: 0.8 mi · ETA 14 min\n📱 Sharing with: '+circles.partners.length+' Partners\n\n🟢 Jake M. is watching\n🟢 Sarah K. is watching');
+},300);
+}
+function updateWalkHomeStatus(){
+const el=document.getElementById('walkHomeStatus');
+if(!el)return;
+el.textContent=walkHomeActive?'🟢 Active — ETA 12 min · sharing with '+circles.partners.length+' Partners':'Share live GPS with Circle until you reach home';
+el.style.color=walkHomeActive?'var(--green)':'';
 }
 
 function renderMutualStreaks(){
@@ -1203,6 +1245,7 @@ function initSocial(){
 renderBarMap();
 renderCircles();
 updateDMSStatus();
+updateWalkHomeStatus();
 renderBarRaids();
 renderMutualStreaks();
 renderMatchedMoments();
