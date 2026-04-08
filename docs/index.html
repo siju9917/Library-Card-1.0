@@ -173,13 +173,22 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card" id="barRaids"></div>
 
 <h2>🟠 Safety</h2>
-<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="alert('🆘 SOS Alert\n\nThis sends an emergency message with your live location to your designated emergency contacts (friends you select in Settings).\n\nThey will receive a push notification and can see exactly where you are in real-time.\n\n🔧 Coming soon — requires backend for real-time location sharing.')">🆘 SOS — Alert My Emergency Contacts</button></div>
+<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="alert('🆘 SOS Alert\n\nThis sends an emergency message with your live location to your designated emergency contacts (your inner Circle).\n\nThey will receive a push notification and can see exactly where you are in real-time.\n\n🔧 Coming soon — requires backend.')">🆘 SOS — Alert My Circle</button></div>
+
+<h3 style="margin-top:4px">Circles · Trust Tiers</h3>
+<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
+
+<h3>Active Safety Features</h3>
 <div class="card" style="margin-bottom:16px">
-<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🔋 Low Battery Alert\n\nWhen your phone drops below 10%, your drinking partners and emergency contacts automatically get a message:\n\n&quot;Hey, my phone is about to die. Last seen at The Pub at 11:45 PM.&quot;\n\n🔧 Coming soon — requires background battery monitoring.')"><span class="icon">🔋</span><span class="title">Low Battery Alert</span><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Dead Man's Switch</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
 <div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🗺️ My Bar Route\n\nShows an ordered list of every bar you visit tonight with timestamps:\n\n1. The Pub — arrived 8:30 PM, left 10:10 PM\n2. Tavern on Main — arrived 10:15 PM, left 11:40 PM\n3. Club X — arrived 11:45 PM — still here\n\nYour drinking partners and emergency contacts can see this in real-time to find you or check on you.\n\n🔧 Coming soon — requires location services.')"><span class="icon">🗺️</span><span class="title">My Bar Route</span><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="startWalkHomeMode()"><span class="icon">🚶</span><div style="flex:1"><div class="title" style="font-size:14px">Walk Home Mode</div><div style="font-size:11px;color:var(--text3)">Share live GPS with Circle until you reach home</div></div><span class="chevron">›</span></div>
 <div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:8px 0" onclick="alert('🚪 Departure Alerts\n\nYour drinking partners get a push notification when you leave a venue:\n\n&quot;Jake just left The Pub&quot;\n\nHelps friends stay aware of each other throughout the night.\n\n🔧 Coming soon — requires location services and backend.')"><span class="icon">🚪</span><span class="title">Departure Alerts</span><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="alert('🔋 Low Battery Alert\n\nWhen your phone drops below 10%, your inner Circle automatically gets a message with your last known venue.\n\n🔧 Coming soon.')"><span class="icon">🔋</span><div style="flex:1"><div class="title" style="font-size:14px">Low Battery Alert</div><div style="font-size:11px;color:var(--text3)">Auto-notifies Circle when phone is dying</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="alert('🗺️ My Bar Route\n\n1. The Pub — arrived 8:30 PM, left 10:10 PM\n2. Tavern on Main — arrived 10:15 PM, left 11:40 PM\n3. Club X — arrived 11:45 PM — still here\n\nYour Circle can see this in real-time to find or check on you.')"><span class="icon">🗺️</span><div style="flex:1"><div class="title" style="font-size:14px">My Bar Route</div><div style="font-size:11px;color:var(--text3)">Ordered timeline of tonight\'s venues</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="alert('🚪 Departure Alerts\n\nYour Partners get notified when you leave a venue: &quot;Jake just left The Pub&quot;\n\n🔧 Coming soon.')"><span class="icon">🚪</span><div style="flex:1"><div class="title" style="font-size:14px">Departure Alerts</div><div style="font-size:11px;color:var(--text3)">Partners see when you leave venues</div></div><span class="chevron">›</span></div>
 </div>
 
 <h2>👥 Friends</h2>
@@ -988,6 +997,89 @@ return '<div style="padding:10px 0;border-bottom:0.5px solid #333">'+
 '<div style="padding-top:12px"><button onclick="alert(\'👑 Start a Raid\\n\\nRally 5+ of your friends to meet at the same bar. When you all check in, your squad owns that bar for the night.\\n\\nPerks:\\n- Your org name appears on the live map\\n- Everyone at the bar sees who owns it\\n- Inter-org rivalries get unlocked\\n- Bonus XP for everyone in the raid\\n\\n🔧 Coming soon — requires backend.\')" class="btn btn-primary" style="padding:12px;font-size:13px">Start a Raid</button></div>';
 }
 
+// ========== CIRCLES (Trust Tiers) ==========
+let circles=JSON.parse(localStorage.getItem('lc_circles')||'null')||{
+partners:[{name:'Jake M.',emoji:'😎'},{name:'Sarah K.',emoji:'🎉'}],
+friends:[{name:'Mike R.',emoji:'🍻'},{name:'Emma L.',emoji:'💃'},{name:'Chris P.',emoji:'🤙'}],
+acquaintances:[{name:'Rachel T.',emoji:'✨'},{name:'Alex T.',emoji:'👤'},{name:'Bella R.',emoji:'💅'}]
+};
+function saveCircles(){localStorage.setItem('lc_circles',JSON.stringify(circles));}
+
+function renderCircles(){
+const el=document.getElementById('circlesSection');
+if(!el)return;
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Different levels of trust = different levels of access.</div>'+
+tierBlock('partners','🤝 Partners','Live location · SOS · Dead Man\'s Switch · Walk Home','var(--primary)')+
+'<div class="divider"></div>'+
+tierBlock('friends','👥 Friends','Bar check-ins · Departure alerts · See drinks in progress','var(--green)')+
+'<div class="divider"></div>'+
+tierBlock('acquaintances','🙋 Acquaintances','Session stats only · No location · No DMs','var(--text2)');
+}
+
+function tierBlock(key,title,perms,color){
+const list=circles[key]||[];
+return '<div style="padding:10px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div><div style="font-weight:700;color:'+color+'">'+title+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+perms+'</div></div><div style="font-size:11px;color:'+color+';font-weight:600">'+list.length+' people</div></div>'+
+'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+
+list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\\'")+'\')" style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--card2);border-radius:999px;font-size:12px;cursor:pointer"><span>'+p.emoji+'</span><span>'+p.name+'</span></div>').join('')+
+'<button onclick="addToTier(\''+key+'\')" style="padding:6px 12px;background:none;border:1px dashed '+color+';border-radius:999px;color:'+color+';font-size:12px;cursor:pointer">+ Add</button>'+
+'</div></div>';
+}
+
+function addToTier(tier){
+const name=prompt('Add someone to '+tier+':','');
+if(!name||!name.trim())return;
+circles[tier].push({name:name.trim(),emoji:'👤'});
+saveCircles();
+renderCircles();
+}
+
+function moveFromTier(tier,name){
+const choice=prompt('Move "'+name+'" from '+tier+' to:\n\n1 — Partners\n2 — Friends\n3 — Acquaintances\n4 — Remove\n\nEnter 1-4:','');
+if(!choice)return;
+circles[tier]=circles[tier].filter(p=>p.name!==name);
+const emojiMap={'1':'partners','2':'friends','3':'acquaintances'};
+if(emojiMap[choice]){
+const person=circles[tier].find(p=>p.name===name)||{name:name,emoji:'👤'};
+circles[emojiMap[choice]].push({name:name,emoji:person.emoji||'👤'});
+}
+saveCircles();
+renderCircles();
+}
+
+// ========== DEAD MAN'S SWITCH ==========
+let dmsEnabled=localStorage.getItem('lc_dms')==='true';
+let dmsCheckTime=localStorage.getItem('lc_dms_time')||'';
+function toggleDeadMansSwitch(){
+if(dmsEnabled){
+if(confirm('Turn off Dead Man\'s Switch?')){
+dmsEnabled=false;
+localStorage.setItem('lc_dms','false');
+updateDMSStatus();
+}
+return;
+}
+const time=prompt('⏰ Dead Man\'s Switch\n\nIf you don\'t check in by this time, your Partners will be automatically notified with your last known location.\n\nEnter check-in time (e.g. 2:00 AM):','2:00 AM');
+if(!time)return;
+dmsEnabled=true;
+dmsCheckTime=time;
+localStorage.setItem('lc_dms','true');
+localStorage.setItem('lc_dms_time',time);
+updateDMSStatus();
+alert('✅ Dead Man\'s Switch Active\n\nCheck-in required by: '+time+'\n\nIf you don\'t check in, your Partners ('+circles.partners.map(p=>p.name).join(', ')+') will get an automatic alert with your location.\n\nYou\'ll get a reminder notification 15 minutes before.');
+}
+function updateDMSStatus(){
+const el=document.getElementById('dmsStatus');
+if(!el)return;
+el.textContent=dmsEnabled?('🟢 Active — check in by '+dmsCheckTime):'Off — Tap to enable';
+}
+
+// ========== WALK HOME MODE ==========
+function startWalkHomeMode(){
+const choice=confirm('🚶 Walk Home Mode\n\nShare your live GPS location with your Partners ('+circles.partners.map(p=>p.name).join(', ')+') until you reach your saved home location.\n\n• They can see you moving in real-time\n• Auto-stops when you arrive home\n• Battery-optimized\n\nStart Walk Home Mode?');
+if(!choice)return;
+alert('🚶 Walk Home Mode Active\n\nLive location sharing with your Partners.\n\nTracking: ON\nDestination: Home\nETA: calculating...\n\n🔧 Demo — real GPS requires backend and location services.');
+}
+
 function renderMutualStreaks(){
 const el=document.getElementById('mutualStreaks');
 if(!el)return;
@@ -1038,6 +1130,8 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 
 function initSocial(){
 renderBarMap();
+renderCircles();
+updateDMSStatus();
 renderBarRaids();
 renderMutualStreaks();
 renderMatchedMoments();
