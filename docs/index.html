@@ -71,7 +71,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 
 <!-- HOME SCREEN -->
 <div class="screen active" id="screen-home">
-<h1>The Library</h1>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h1 style="margin:0">The Library</h1><div id="xpBadge"></div></div>
 <div id="homeBanner"></div>
 <div id="cardPromo"></div>
 <h2>This Week</h2>
@@ -279,6 +279,17 @@ let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
 let userWeight=parseFloat(localStorage.getItem('lc_weight')||'180'); // lbs
 let userHeight=parseFloat(localStorage.getItem('lc_height')||'70'); // inches
 let userSex=localStorage.getItem('lc_sex')||'male'; // male/female
+let userXP=parseInt(localStorage.getItem('lc_xp')||'0');
+let userLevel=parseInt(localStorage.getItem('lc_level')||'1');
+function xpForLevel(lvl){return lvl*500;}
+function addXP(amount,reason){
+userXP+=amount;
+localStorage.setItem('lc_xp',String(userXP));
+while(userXP>=xpForLevel(userLevel+1)){
+userLevel++;
+localStorage.setItem('lc_level',String(userLevel));
+}
+}
 let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // {name: count}
 let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
 
@@ -313,9 +324,20 @@ for(let i=0;i<s.numDrinks;i++){
 const dn=Math.random()>0.4?customDrinks[Math.floor(Math.random()*customDrinks.length)]:dTypes[Math.floor(Math.random()*dTypes.length)];
 dList.push({name:dn,type:dTypes.includes(dn)?dn:'Custom',time:startT+((i+1)/(s.numDrinks+1))*s.durHrs*hr,rating:Math.random()>0.6?Math.floor(Math.random()*3)+3:null});
 }
-fakeSessions.push({time:startT,drinks:s.numDrinks,duration:s.durHrs*hr,venue:s.venue,drinkList:dList});
+fakeSessions.push({time:startT,drinks:s.numDrinks,duration:s.durHrs*hr,venue:s.venue,drinkList:dList,kudos:Math.floor(Math.random()*12)+2,comments:[],kudosdBy:[]});
 totalD+=s.numDrinks;
 });
+// Seed comments on a few sessions
+const sampleComments=[
+[{user:'Jake M.',emoji:'😎',text:'Legendary night 🔥'},{user:'Sarah K.',emoji:'🎉',text:'Wish I was there!'}],
+[{user:'Mike R.',emoji:'🍻',text:'That DPM is insane'}],
+[{user:'Emma L.',emoji:'💃',text:'miss u queen'},{user:'Jake M.',emoji:'😎',text:'PR watch 👀'},{user:'Sarah K.',emoji:'🎉',text:'iconic'}],
+[{user:'Chris P.',emoji:'🤙',text:'pace was perfect'}],
+[],[],[],
+[{user:'Rachel T.',emoji:'✨',text:'brunch next time?'}],
+[],[],[],[]
+];
+fakeSessions.forEach((s,i)=>{s.comments=sampleComments[i]||[];s.kudosdBy=['Jake M.','Sarah K.','Mike R.','Emma L.','Chris P.','Rachel T.'].slice(0,s.kudos);});
 allSessions=fakeSessions;
 allTimeDrinks=totalD;
 // Seed drink history from all fake drinks
@@ -327,6 +349,12 @@ localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
 localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
 localStorage.setItem('lc_partners',JSON.stringify(drinkPartners));
+// Seed XP based on lifetime drinks (10 XP per drink + kudos bonus)
+userXP=totalD*10+fakeSessions.reduce((a,s)=>a+s.kudos*5,0);
+userLevel=1;
+while(userXP>=xpForLevel(userLevel+1))userLevel++;
+localStorage.setItem('lc_xp',String(userXP));
+localStorage.setItem('lc_level',String(userLevel));
 // Pre-activate Library Card for demo
 localStorage.setItem('lc_hascard','true');
 localStorage.setItem('lc_cardtype','both');
@@ -346,6 +374,14 @@ localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
 
 function updateHome(){
 renderCardPromo();
+// XP badge
+const xpEl=document.getElementById('xpBadge');
+if(xpEl){
+const nextLvl=xpForLevel(userLevel+1);
+const curLvl=xpForLevel(userLevel);
+const pct=Math.round(((userXP-curLvl)/(nextLvl-curLvl))*100);
+xpEl.innerHTML='<div onclick="showXPDetails()" style="cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--accent));padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">⚡ LVL '+userLevel+' · '+userXP+' XP</div>';
+}
 const now=Date.now();
 const weekAgo=now-7*24*3600*1000;
 const weekDrinks=allSessions.filter(s=>s.time>weekAgo).reduce((a,s)=>a+s.drinks,0);
@@ -379,13 +415,62 @@ el.innerHTML='<div class="empty-state"><div class="icon">🌙</div><div class="t
 return;
 }
 const recent=allSessions.slice(-5).reverse();
-el.innerHTML=recent.map(s=>{
+el.innerHTML=recent.map((s,idx)=>{
+const realIdx=allSessions.length-1-idx;
 const dur=formatDur(s.duration);
 const dph=s.duration>0?(s.drinks/(s.duration/3600000)).toFixed(1):'0.0';
 const dpm=s.duration>0?(s.drinks/(s.duration/60000)).toFixed(3):'0.000';
 const dt=new Date(s.time);
-return '<div class="card session-card"><div class="header"><span class="venue">'+(s.venue||'Night Out')+'</span><span class="badge badge-blue">Completed</span></div><div class="divider"></div><div class="stats"><div class="stat"><div class="num">'+s.drinks+'</div><div class="lbl">Drinks</div></div><div class="stat"><div class="num">'+dur+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div></div></div>';
+const iLiked=s.kudosdBy&&s.kudosdBy.includes('You');
+return '<div class="card session-card"><div class="header"><span class="venue">'+(s.venue||'Night Out')+'</span><span class="badge badge-blue">Completed</span></div><div class="divider"></div><div class="stats"><div class="stat"><div class="num">'+s.drinks+'</div><div class="lbl">Drinks</div></div><div class="stat"><div class="num">'+dur+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div></div>'+
+'<div class="divider"></div>'+
+'<div style="display:flex;gap:16px;align-items:center;padding-top:8px">'+
+'<button onclick="toggleKudos('+realIdx+');event.stopPropagation()" style="background:none;border:none;color:'+(iLiked?'var(--red)':'var(--text2)')+';cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;padding:0"><span style="font-size:16px">'+(iLiked?'❤️':'🤍')+'</span><span>'+(s.kudos||0)+'</span></button>'+
+'<button onclick="openComments('+realIdx+');event.stopPropagation()" style="background:none;border:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;padding:0"><span style="font-size:16px">💬</span><span>'+(s.comments?s.comments.length:0)+'</span></button>'+
+'<div style="flex:1;text-align:right;font-size:11px;color:var(--text3)">'+new Date(s.time).toLocaleDateString([],{month:'short',day:'numeric'})+'</div>'+
+'</div>'+
+(s.comments&&s.comments.length>0?'<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid #333">'+s.comments.slice(0,2).map(c=>'<div style="font-size:12px;margin-top:4px"><span style="margin-right:6px">'+c.emoji+'</span><span style="font-weight:600">'+c.user+'</span> <span style="color:var(--text2)">'+c.text+'</span></div>').join('')+(s.comments.length>2?'<div style="font-size:11px;color:var(--text3);margin-top:4px">View all '+s.comments.length+' comments</div>':'')+'</div>':'')+
+'</div>';
 }).join('');
+}
+
+function toggleKudos(idx){
+const s=allSessions[idx];
+if(!s)return;
+if(!s.kudosdBy)s.kudosdBy=[];
+if(s.kudosdBy.includes('You')){
+s.kudosdBy=s.kudosdBy.filter(x=>x!=='You');
+s.kudos=Math.max(0,(s.kudos||0)-1);
+}else{
+s.kudosdBy.push('You');
+s.kudos=(s.kudos||0)+1;
+addXP(5);
+if(navigator.vibrate)navigator.vibrate(30);
+}
+localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
+renderRecentSessions();
+updateHome();
+}
+
+function openComments(idx){
+const s=allSessions[idx];
+if(!s)return;
+const existing=(s.comments||[]).map(c=>c.emoji+' '+c.user+': '+c.text).join('\n');
+const msg='💬 Comments on '+(s.venue||'Night Out')+'\n\n'+(existing||'No comments yet')+'\n\n---\nAdd your comment:';
+const text=prompt(msg,'');
+if(text&&text.trim()){
+if(!s.comments)s.comments=[];
+s.comments.push({user:'You',emoji:'🏆',text:text.trim()});
+addXP(10);
+localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
+renderRecentSessions();
+updateHome();
+}
+}
+
+function showXPDetails(){
+const nextLvl=xpForLevel(userLevel+1);
+alert('⚡ Level '+userLevel+' · '+userXP+' XP\n\nNext level: '+nextLvl+' XP\nTo go: '+(nextLvl-userXP)+' XP\n\nEarn XP by:\n🍺 +10 per drink logged\n📸 +15 per photo posted\n❤️ +5 per kudos given\n💬 +10 per comment\n🏆 +50 per milestone\n🎉 +100 per PR broken\n\nLevel up to unlock badges, themes, and premium features.');
 }
 
 function formatDur(ms){
