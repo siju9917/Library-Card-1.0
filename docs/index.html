@@ -123,6 +123,15 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card" id="dowChart" style="height:140px;display:flex;align-items:flex-end;gap:6px;padding-bottom:24px;position:relative"></div>
 <h2>Top Venues</h2>
 <div class="card" id="topVenues"><div class="empty-state" style="padding:16px"><div class="sub">No venue data yet</div></div></div>
+
+<h2>⭐ Your Top-Rated Drinks</h2>
+<div class="card" id="yourTopDrinks"></div>
+
+<h2>🏆 Community Favorites</h2>
+<div class="card" id="communityTopDrinks"></div>
+
+<h2>🏢 Best by Bar</h2>
+<div class="card" id="drinksByBar"></div>
 </div>
 
 <!-- PROFILE SCREEN -->
@@ -802,7 +811,69 @@ const venueEntries=Object.entries(venueCount).sort((a,b)=>b[1]-a[1]);
 const tvEl=document.getElementById('topVenues');
 if(venueEntries.length===0){tvEl.innerHTML='<div style="padding:8px;color:var(--text3);font-size:13px;text-align:center">No venue data yet</div>';}
 else{tvEl.innerHTML=venueEntries.slice(0,5).map(([name,visits],i)=>'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(i<venueEntries.length-1?'border-bottom:0.5px solid #333':'')+'"><span style="font-size:14px;font-weight:700;color:var(--primary);width:20px">'+(i+1)+'</span><span style="flex:1;font-size:14px">'+name+'</span><span style="font-size:13px;color:var(--text2)">'+visits+' visits</span></div>').join('');}
+renderDrinkRatings();
 }
+
+// ========== DRINK RATINGS ==========
+// Community-wide drink ratings (fake data)
+const communityDrinks=[
+{name:'Fat Albert',bar:'The Pub',rating:4.8,reviews:347,emoji:'🍹'},
+{name:'Espresso Martini',bar:'Rooftop Bar',rating:4.7,reviews:512,emoji:'☕'},
+{name:'Old Fashioned',bar:'The Library Lounge',rating:4.6,reviews:298,emoji:'🥃'},
+{name:'Margarita',bar:'Tavern on Main',rating:4.5,reviews:189,emoji:'🍸'},
+{name:'IPA',bar:'Brews & Views',rating:4.5,reviews:234,emoji:'🍺'},
+{name:'Rum & Coke',bar:'Club X',rating:4.2,reviews:156,emoji:'🥃'},
+{name:'Gin & Tonic',bar:'The Pub',rating:4.1,reviews:142,emoji:'🍸'},
+{name:'Vodka Soda',bar:'Club X',rating:3.9,reviews:278,emoji:'💧'},
+];
+
+function renderDrinkRatings(){
+// Your top rated
+const myEl=document.getElementById('yourTopDrinks');
+if(myEl){
+const myRatings={};
+allSessions.forEach(s=>{
+if(!s.drinkList)return;
+s.drinkList.forEach(d=>{
+if(!d.rating)return;
+const key=d.name+'||'+(s.venue||'Unknown');
+if(!myRatings[key])myRatings[key]={name:d.name,venue:s.venue||'Unknown',ratings:[],count:0};
+myRatings[key].ratings.push(d.rating);
+myRatings[key].count++;
+});
+});
+const myList=Object.values(myRatings)
+.map(r=>({...r,avg:r.ratings.reduce((a,b)=>a+b,0)/r.ratings.length}))
+.sort((a,b)=>b.avg-a.avg)
+.slice(0,5);
+if(myList.length===0){
+myEl.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:12px">No ratings yet. Rate a drink in the drinks log to see your favorites here.</div>';
+}else{
+myEl.innerHTML=myList.map((d,i)=>'<div style="display:flex;align-items:center;gap:12px;padding:10px 0;'+(i<myList.length-1?'border-bottom:0.5px solid #333':'')+'"><span style="font-size:14px;font-weight:700;color:var(--primary);width:20px">'+(i+1)+'</span><div style="flex:1"><div style="font-weight:600;font-size:14px">'+d.name+'</div><div style="font-size:11px;color:var(--text3)">'+d.venue+' · '+d.count+' rating'+(d.count>1?'s':'')+'</div></div><div style="text-align:right"><div style="font-size:13px;color:var(--primary)">'+'⭐'.repeat(Math.round(d.avg))+'</div><div style="font-size:10px;color:var(--text3)">'+d.avg.toFixed(1)+'</div></div></div>').join('');
+}
+}
+
+// Community top
+const comEl=document.getElementById('communityTopDrinks');
+if(comEl){
+const top=[...communityDrinks].sort((a,b)=>b.rating-a.rating).slice(0,6);
+comEl.innerHTML='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Highest rated drinks across all Library Card users</div>'+
+top.map((d,i)=>'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(i<top.length-1?'border-bottom:0.5px solid #333':'')+'"><span style="font-size:20px">'+d.emoji+'</span><div style="flex:1"><div style="font-weight:600;font-size:14px">'+d.name+'</div><div style="font-size:11px;color:var(--text3)">'+d.bar+' · '+d.reviews+' reviews</div></div><div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--primary)">'+d.rating.toFixed(1)+'⭐</div></div></div>').join('');
+}
+
+// By bar — best drink at each bar
+const barEl=document.getElementById('drinksByBar');
+if(barEl){
+const byBar={};
+communityDrinks.forEach(d=>{
+if(!byBar[d.bar]||byBar[d.bar].rating<d.rating)byBar[d.bar]=d;
+});
+const list=Object.entries(byBar);
+barEl.innerHTML='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Must-try signature drink at each bar</div>'+
+list.map(([bar,d],i)=>'<div style="display:flex;align-items:center;gap:12px;padding:10px 0;'+(i<list.length-1?'border-bottom:0.5px solid #333':'')+'"><div style="flex:1"><div style="font-size:11px;color:var(--text3);margin-bottom:2px">'+bar+'</div><div style="font-weight:600;font-size:14px">'+d.emoji+' '+d.name+'</div></div><div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--primary)">'+d.rating.toFixed(1)+'⭐</div><div style="font-size:10px;color:var(--text3)">'+d.reviews+' reviews</div></div></div>').join('');
+}
+}
+
 function setStatsPeriod(p){statsPeriod=p;initStats();}
 
 // ========== PROFILE ==========
