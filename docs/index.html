@@ -299,9 +299,14 @@ function xpForLevel(lvl){return lvl*500;}
 function addXP(amount,reason){
 userXP+=amount;
 localStorage.setItem('lc_xp',String(userXP));
+let leveledUp=false;
 while(userXP>=xpForLevel(userLevel+1)){
 userLevel++;
 localStorage.setItem('lc_level',String(userLevel));
+leveledUp=true;
+}
+if(leveledUp&&typeof triggerLevelUp==='function'){
+setTimeout(()=>triggerLevelUp(userLevel),600);
 }
 }
 let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // {name: count}
@@ -795,13 +800,43 @@ triggerCheersCelebration();
 },600);
 }
 function triggerCheersCelebration(){
-// Simple celebration toast
+showCelebrationToast('🎉','Cheers!','+15 XP');
+spawnConfetti(20);
+}
+
+// ========== CELEBRATIONS ==========
+function showCelebrationToast(emoji,title,subtitle,color){
 const toast=document.createElement('div');
-toast.style.cssText='position:fixed;top:30%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:20px 28px;border-radius:20px;font-weight:700;z-index:2000;box-shadow:0 20px 60px rgba(232,163,23,.5);text-align:center;animation:popIn .4s ease-out';
-toast.innerHTML='<div style="font-size:40px;margin-bottom:4px">🎉</div><div style="font-size:18px">Cheers!</div><div style="font-size:12px;opacity:.9;margin-top:4px">+15 XP</div>';
+const bg=color||'linear-gradient(135deg,var(--primary),var(--accent))';
+toast.style.cssText='position:fixed;top:28%;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:22px 32px;border-radius:20px;font-weight:700;z-index:2000;box-shadow:0 20px 60px rgba(232,163,23,.5);text-align:center;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);min-width:180px';
+toast.innerHTML='<div style="font-size:44px;margin-bottom:4px">'+emoji+'</div><div style="font-size:20px">'+title+'</div>'+(subtitle?'<div style="font-size:13px;opacity:.9;margin-top:6px">'+subtitle+'</div>':'');
 document.body.appendChild(toast);
-setTimeout(()=>{toast.style.transition='all .3s';toast.style.opacity='0';toast.style.transform='translateX(-50%) scale(0.9)';},1500);
-setTimeout(()=>toast.remove(),1900);
+setTimeout(()=>{toast.style.transition='all .4s';toast.style.opacity='0';toast.style.transform='translateX(-50%) scale(0.9) translateY(-10px)';},1800);
+setTimeout(()=>toast.remove(),2300);
+}
+function spawnConfetti(count){
+const colors=['#E8A317','#FF6B2B','#22C55E','#3B82F6','#EF4444','#F0C050'];
+for(let i=0;i<count;i++){
+const el=document.createElement('div');
+const color=colors[Math.floor(Math.random()*colors.length)];
+const left=Math.random()*100;
+const size=6+Math.random()*6;
+const delay=Math.random()*.3;
+const duration=1.8+Math.random()*.8;
+el.style.cssText='position:fixed;top:-20px;left:'+left+'vw;width:'+size+'px;height:'+(size*1.6)+'px;background:'+color+';z-index:1999;pointer-events:none;animation:confetti '+duration+'s '+delay+'s linear forwards;border-radius:2px';
+document.body.appendChild(el);
+setTimeout(()=>el.remove(),(duration+delay)*1000+100);
+}
+}
+function triggerLevelUp(newLevel){
+showCelebrationToast('⚡','Level Up!','Level '+newLevel);
+spawnConfetti(40);
+if(navigator.vibrate)navigator.vibrate([50,30,50,30,80]);
+}
+function triggerPR(label){
+showCelebrationToast('🏆','Personal Record!',label,'linear-gradient(135deg,#FFD700,#FFA500)');
+spawnConfetti(60);
+if(navigator.vibrate)navigator.vibrate([80,40,80,40,120]);
 }
 function drinkEmoji(type){
 const m={'Beer':'🍺','Wine':'🍷','Cocktail':'🍹','Spirit':'🥃','Shot':'🥃','Seltzer':'🫧','Cider':'🍏','Sake':'🍶','Other':'🍸','Custom':'🍹'};
@@ -816,12 +851,22 @@ function endSession(){
 if(!sessionActive)return;
 clearInterval(sessionTimer);
 const elapsed=Date.now()-sessionStart;
+// Detect PR before adding the new session
+const prevMaxDrinks=allSessions.reduce((m,s)=>Math.max(m,s.drinks||0),0);
+const isDrinksPR=drinks.length>prevMaxDrinks&&drinks.length>=3;
+const cheersCount=drinks.filter(d=>d.hasPhoto).length;
+const prevMaxCheers=allSessions.reduce((m,s)=>{const c=(s.drinkList||[]).filter(d=>d.hasPhoto).length;return Math.max(m,c);},0);
+const isCheersPR=cheersCount>prevMaxCheers&&cheersCount>=3;
 const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:null,drinkList:drinks};
 allSessions.push(session);
 allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
 sessionActive=false;
+// Celebrate PRs after the recap renders
+if(isDrinksPR){setTimeout(()=>triggerPR('Most drinks ever: '+drinks.length),700);}
+else if(isCheersPR){setTimeout(()=>triggerPR('Most Cheers ever: '+cheersCount),700);}
+else if(drinks.length>=5){setTimeout(()=>spawnConfetti(30),500);}
 // Show recap
 const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
