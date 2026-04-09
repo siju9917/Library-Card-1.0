@@ -193,9 +193,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>📅 This Weekend</h2>
 <div class="card" id="weekendPlan"></div>
 
-<h2>🗺️ Live Bar Map</h2>
-<div class="card" id="barMap" style="padding:0;overflow:hidden"></div>
-
 <h2>🔥 Mutual Streaks</h2>
 <div class="card" id="mutualStreaks"></div>
 
@@ -204,9 +201,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 
 <h2>📸 Memories</h2>
 <div id="memoriesSection"></div>
-
-<h2>👑 Bar Raids</h2>
-<div class="card" id="barRaids"></div>
 
 <h2>👥 Friends</h2>
 <div class="card">
@@ -1539,12 +1533,10 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 
 function initSocial(){
 renderWeekendPlan();
-renderBarMap();
 renderGhostMode();
 renderCircles();
 updateDMSStatus();
 updateWalkHomeStatus();
-renderBarRaids();
 renderDMInbox();
 renderOrgs();
 renderMutualStreaks();
