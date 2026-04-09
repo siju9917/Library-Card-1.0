@@ -75,6 +75,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h1 style="margin:0">The Library</h1><div id="xpBadge"></div></div>
 <div id="homeBanner"></div>
 <div id="cardPromo"></div>
+<h2 style="margin-bottom:8px">Friends Tonight</h2>
+<div id="storyRing" style="margin-bottom:16px"></div>
 <h2>This Week</h2>
 <div class="card-row">
 <div class="card stat-card"><div class="icon">🍺</div><div class="value" id="homeWeekDrinks">0</div><div class="label">Drinks</div></div>
@@ -379,8 +381,36 @@ localStorage.setItem('lc_drink_history',JSON.stringify(drinkHistory));
 
 // init calls moved to end of script
 
+// ========== STORY RING (Friends Tonight) ==========
+const friendStories=[
+{name:'You',emoji:'🏆',gradient:'linear-gradient(135deg,#E8A317,#FF6B2B)',status:'Start',isYou:true},
+{name:'Jake M.',emoji:'😎',gradient:'linear-gradient(135deg,#ff6b6b,#ee5a24)',status:'@ The Pub',cheers:4,photo:'🍻'},
+{name:'Sarah K.',emoji:'🎉',gradient:'linear-gradient(135deg,#a29bfe,#6c5ce7)',status:'@ Rooftop',cheers:3,photo:'🍹'},
+{name:'Mike R.',emoji:'🍻',gradient:'linear-gradient(135deg,#fd79a8,#e84393)',status:'Pregaming',cheers:2,photo:'🍺'},
+{name:'Emma L.',emoji:'💃',gradient:'linear-gradient(135deg,#55efc4,#00b894)',status:'@ Club X',cheers:5,photo:'🥃'},
+{name:'Chris P.',emoji:'🤙',gradient:'linear-gradient(135deg,#74b9ff,#0984e3)',status:'Just got home',cheers:6,photo:'😴'},
+{name:'Rachel T.',emoji:'✨',gradient:'linear-gradient(135deg,#fdcb6e,#e17055)',status:'Tonight?',cheers:0,photo:'❓'},
+];
+function renderStoryRing(){
+const el=document.getElementById('storyRing');
+if(!el)return;
+el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none" onscroll="">'+
+friendStories.map((s,i)=>'<div onclick="openStory('+i+')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
+'<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">'+(s.isYou?'＋':s.photo)+'</div></div>'+(s.cheers?'<div style="position:absolute;bottom:-2px;right:-2px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:2px 6px;border:2px solid var(--bg)">'+s.cheers+'</div>':'')+'</div>'+
+'<div style="font-size:11px;font-weight:'+(s.isYou?'700':'500')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">'+s.name+'</div>'+
+'<div style="font-size:9px;color:var(--text3);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">'+s.status+'</div>'+
+'</div>').join('')+
+'</div>';
+}
+function openStory(i){
+const s=friendStories[i];
+if(s.isYou){startSession();return;}
+alert('📸 '+s.emoji+' '+s.name+'\n\n'+s.status+'\n\nLatest Cheers: '+s.cheers+'\n\n[Full-screen story view would show their most recent photo, drink, and venue here — tap to advance, swipe to next friend]');
+}
+
 function updateHome(){
 renderCardPromo();
+renderStoryRing();
 // XP badge
 const xpEl=document.getElementById('xpBadge');
 if(xpEl){
@@ -1084,7 +1114,12 @@ return '<div onclick="voteWeekend('+o.id+')" style="padding:10px 0;cursor:pointe
 (o.votes.length>0?'<div style="font-size:10px;color:var(--text3)">'+o.votes.join(', ')+'</div>':'')+
 '</div>';
 }).join('')+
-'<div style="padding-top:12px"><button onclick="suggestWeekendOption()" class="btn btn-secondary" style="padding:10px;font-size:12px">+ Suggest another spot</button></div>';
+'<div style="padding-top:12px;display:flex;gap:8px"><button onclick="suggestWeekendOption()" class="btn btn-secondary" style="padding:10px;font-size:12px;flex:1">+ Suggest spot</button><button onclick="preSwipeForPlan()" style="padding:10px;font-size:12px;flex:1;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:600;cursor:pointer">💎 Pre-Swipe</button></div>'+
+'<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">Premium: swipe on people planning to go to your picked bar</div>';
+}
+function preSwipeForPlan(){
+const winner=[...weekendOptions].sort((a,b)=>b.votes.length-a.votes.length)[0];
+alert('💎 Pre-Swipe Tonight — PREMIUM\n\nYou voted for: '+winner.name+'\n\nPeople also going to '+winner.name+' this weekend:\n\n👩‍🦰 Olivia, 22 — ⭐ matched on vibe\n👩 Mia, 23 — friend of Jake M.\n💁‍♀️ Ava, 22 — new to the area\n👩‍🦱 Bella, 21 — loves espresso martinis\n\nSwipe right on any of them. If they also swiped on you AND you both show up Friday night, you get a notification:\n\n"🎉 Your pre-match Olivia just checked in at '+winner.name+'!"\n\n💎 Premium feature — gives you first-mover advantage on the weekend matching pool.\n\n🔒 Unlocks in your city once locals are planning nights on The Library. Spread the word!');
 }
 function voteWeekend(id){
 // Remove "You" from all previous votes
