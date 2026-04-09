@@ -104,7 +104,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div id="storyRing" style="margin-bottom:16px"></div>
 <h2>This Week</h2>
 <div class="card-row">
-<div class="card stat-card"><div class="icon">🍺</div><div class="value" id="homeWeekDrinks">0</div><div class="label">Drinks</div></div>
+<div class="card stat-card"><div class="icon">📸</div><div class="value" id="homeWeekDrinks">0</div><div class="label">Cheers</div></div>
 <div class="card stat-card"><div class="icon">🏆</div><div class="value" id="homeAllTime">0</div><div class="label">All Time</div></div>
 </div>
 <div class="card-row">
@@ -130,7 +130,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div style="text-align:center;padding:60px 20px">
 <div style="font-size:64px;margin-bottom:16px">▶</div>
 <h2>Ready for a Night Out?</h2>
-<p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your drinks, DPM, and pace in real time.</p>
+<p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your Cheers, CPM, and the vibe in real time.</p>
 <button class="btn btn-primary" id="startSessionBtn" onclick="startSession()">Start Session</button>
 </div>
 </div>
@@ -140,9 +140,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="screen" id="screen-stats">
 <h1>Statistics</h1>
 <div style="display:flex;gap:6px;margin-bottom:16px" id="periodPicker"></div>
-<div class="card-row"><div class="card stat-card"><div class="icon">🍺</div><div class="value" id="statsDrinks">0</div><div class="label">Total Drinks</div></div><div class="card stat-card"><div class="icon">⚡</div><div class="value" id="statsDPM">0.000</div><div class="label">Avg DPM</div></div></div>
+<div class="card-row"><div class="card stat-card"><div class="icon">📸</div><div class="value" id="statsDrinks">0</div><div class="label">Total Cheers</div></div><div class="card stat-card"><div class="icon">⚡</div><div class="value" id="statsDPM">0.000</div><div class="label">Avg CPM</div></div></div>
 <div class="card-row"><div class="card stat-card"><div class="icon">🏃</div><div class="value" id="statsPace">0.0/hr</div><div class="label">Avg Pace</div></div><div class="card stat-card"><div class="icon">📅</div><div class="value" id="statsSessions">0</div><div class="label">Sessions</div></div></div>
-<h2 style="margin-top:8px">Drinks Over Time</h2>
+<h2 style="margin-top:8px">Cheers Over Time</h2>
 <div class="card" id="drinksChart" style="min-height:220px;position:relative"></div>
 <h2>Drink Types</h2>
 <div class="card" id="drinkTypesChart"></div>
@@ -361,7 +361,8 @@ const startT=now-s.daysAgo*day-s.durHrs*hr;
 const dList=[];
 for(let i=0;i<s.numDrinks;i++){
 const dn=Math.random()>0.4?customDrinks[Math.floor(Math.random()*customDrinks.length)]:dTypes[Math.floor(Math.random()*dTypes.length)];
-dList.push({name:dn,type:dTypes.includes(dn)?dn:'Custom',time:startT+((i+1)/(s.numDrinks+1))*s.durHrs*hr,rating:Math.random()>0.6?Math.floor(Math.random()*3)+3:null});
+const seedCaptions=['Quiet study session 🤫','Chapter 4 of the night','Checked out another classic','Section 641.87 (the good stuff)','Just returned this one','Late night library session','Research for my thesis','Library closes soon','Plot twist at the corner booth','Reading between the lines'];
+dList.push({name:dn,type:dTypes.includes(dn)?dn:'Custom',time:startT+((i+1)/(s.numDrinks+1))*s.durHrs*hr,rating:Math.random()>0.6?Math.floor(Math.random()*3)+3:null,hasPhoto:Math.random()>0.25,caption:Math.random()>0.5?seedCaptions[Math.floor(Math.random()*seedCaptions.length)]:null});
 }
 fakeSessions.push({time:startT,drinks:s.numDrinks,duration:s.durHrs*hr,venue:s.venue,drinkList:dList,kudos:Math.floor(Math.random()*12)+2,comments:[],kudosdBy:[]});
 totalD+=s.numDrinks;
@@ -369,7 +370,7 @@ totalD+=s.numDrinks;
 // Seed comments on a few sessions
 const sampleComments=[
 [{user:'Jake M.',emoji:'😎',text:'Legendary night 🔥'},{user:'Sarah K.',emoji:'🎉',text:'Wish I was there!'}],
-[{user:'Mike R.',emoji:'🍻',text:'That DPM is insane'}],
+[{user:'Mike R.',emoji:'🍻',text:'That CPM is insane'}],
 [{user:'Emma L.',emoji:'💃',text:'miss u queen'},{user:'Jake M.',emoji:'😎',text:'PR watch 👀'},{user:'Sarah K.',emoji:'🎉',text:'iconic'}],
 [{user:'Chris P.',emoji:'🤙',text:'pace was perfect'}],
 [],[],[],
@@ -451,10 +452,11 @@ xpEl.innerHTML='<div onclick="showXPDetails()" style="cursor:pointer;background:
 }
 const now=Date.now();
 const weekAgo=now-7*24*3600*1000;
-const weekDrinks=allSessions.filter(s=>s.time>weekAgo).reduce((a,s)=>a+s.drinks,0);
-const avg=allSessions.length>0?(allTimeDrinks/allSessions.length).toFixed(1):'0.0';
-document.getElementById('homeWeekDrinks').textContent=weekDrinks;
-document.getElementById('homeAllTime').textContent=formatNumber(allTimeDrinks);
+const weekCheers=allSessions.filter(s=>s.time>weekAgo).reduce((a,s)=>a+((s.drinkList||[]).filter(d=>d.hasPhoto).length),0);
+const allTimeCheers=allSessions.reduce((a,s)=>a+((s.drinkList||[]).filter(d=>d.hasPhoto).length),0);
+const avg=allSessions.length>0?(allTimeCheers/allSessions.length).toFixed(1):'0.0';
+document.getElementById('homeWeekDrinks').textContent=weekCheers;
+document.getElementById('homeAllTime').textContent=formatNumber(allTimeCheers);
 document.getElementById('homeAvg').textContent=avg;
 document.getElementById('homeStreak').textContent=calcStreak()+' days';
 renderRecentSessions();
@@ -489,7 +491,9 @@ const dph=s.duration>0?(s.drinks/(s.duration/3600000)).toFixed(1):'0.0';
 const dpm=s.duration>0?(s.drinks/(s.duration/60000)).toFixed(3):'0.000';
 const dt=new Date(s.time);
 const iLiked=s.kudosdBy&&s.kudosdBy.includes('You');
-return '<div class="card session-card"><div class="header"><span class="venue">'+(s.venue||'Night Out')+'</span><span class="badge badge-blue">Completed</span></div><div class="divider"></div><div class="stats"><div class="stat"><div class="num">'+s.drinks+'</div><div class="lbl">Drinks</div></div><div class="stat"><div class="num">'+dur+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div></div>'+
+const cheersC=(s.drinkList||[]).filter(d=>d.hasPhoto).length;
+const cpm=s.duration>0&&cheersC>0?(cheersC/(s.duration/60000)).toFixed(3):'0.000';
+return '<div class="card session-card"><div class="header"><span class="venue">'+(s.venue||'Night Out')+'</span><span class="badge badge-blue">Completed</span></div><div class="divider"></div><div class="stats"><div class="stat"><div class="num">'+cheersC+'</div><div class="lbl">Cheers</div></div><div class="stat"><div class="num">'+dur+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+cpm+'</div><div class="lbl">CPM</div></div></div>'+
 '<div class="divider"></div>'+
 '<div style="display:flex;gap:16px;align-items:center;padding-top:8px">'+
 '<button onclick="toggleKudos('+realIdx+');event.stopPropagation()" style="background:none;border:none;color:'+(iLiked?'var(--red)':'var(--text2)')+';cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;padding:0"><span style="font-size:16px">'+(iLiked?'❤️':'🤍')+'</span><span>'+(s.kudos||0)+'</span></button>'+
@@ -609,11 +613,11 @@ const dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
 const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
-'<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+(drinks.filter(d=>d.hasPhoto).length)+'</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div></div>'+
+(function(){const cheersCount=drinks.filter(d=>d.hasPhoto).length;const cpm=elapsed>0&&cheersCount>0?(cheersCount/(elapsed/60000)).toFixed(3):'0.000';return '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+cheersCount+'</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+cpm+'</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div></div>';})()+
 (function(){const bac=calcBAC(drinks.length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Safety Check-In</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bc+'"></div><span style="font-size:20px;font-weight:700;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. If in doubt, get a ride.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
-'<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
+'<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
 // Favorites row
 const favEl=document.getElementById('favDrinks');
@@ -962,14 +966,14 @@ const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:8px">🎉</div><h2>Session Complete!</h2></div>'+
-(function(){const bac=calcBAC(drinks.length,elapsed);const bl=bacLabel(bac);const cheers=drinks.filter(d=>d.hasPhoto).length;const venues='The Pub';return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+cheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers moments</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+venues+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+drinks.length+'</div><div class="lbl">Drinks</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bl+'</div><div class="lbl">Safety</div></div></div></div>';})()+
+(function(){const bac=calcBAC(drinks.length,elapsed);const bl=bacLabel(bac);const cheers=drinks.filter(d=>d.hasPhoto).length;const cpmR=elapsed>0&&cheers>0?(cheers/(elapsed/60000)).toFixed(3):'0.000';const venues='The Pub';return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+cheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+venues+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+cpmR+'</div><div class="lbl">CPM</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bl+'</div><div class="lbl">Vibe</div></div></div></div>';})()+
 '<div style="margin-top:16px"><button class="btn btn-primary" onclick="resetSession()">Done</button></div>';
 updateHome();
 }
 
 function resetSession(){
 document.getElementById('sessionContent').innerHTML=
-'<div style="text-align:center;padding:60px 20px"><div style="font-size:64px;margin-bottom:16px">▶</div><h2>Ready for a Night Out?</h2><p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your drinks, DPM, and pace in real time.</p><button class="btn btn-primary" onclick="startSession()">Start Session</button></div>';
+'<div style="text-align:center;padding:60px 20px"><div style="font-size:64px;margin-bottom:16px">▶</div><h2>Ready for a Night Out?</h2><p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your Cheers, CPM, and the vibe in real time.</p><button class="btn btn-primary" onclick="startSession()">Start Session</button></div>';
 }
 
 // ========== STATS ==========
@@ -1344,7 +1348,7 @@ el.innerHTML=
 '<div style="display:flex;gap:12px;margin-bottom:12px">'+
 '<div style="flex:1;background:rgba(255,255,255,.05);padding:10px;border-radius:12px;text-align:center"><div style="font-size:20px;font-weight:800">'+cheers+'</div><div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">📸 Cheers</div></div>'+
 '<div style="flex:1;background:rgba(255,255,255,.05);padding:10px;border-radius:12px;text-align:center"><div style="font-size:20px;font-weight:800">'+allSessions.length+'</div><div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">Sessions</div></div>'+
-'<div style="flex:1;background:rgba(255,255,255,.05);padding:10px;border-radius:12px;text-align:center"><div style="font-size:20px;font-weight:800">'+allTimeDrinks+'</div><div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">Drinks</div></div>'+
+'<div style="flex:1;background:rgba(255,255,255,.05);padding:10px;border-radius:12px;text-align:center"><div style="font-size:20px;font-weight:800">'+userLevel+'</div><div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">Level</div></div>'+
 '</div>'+
 // Level progress
 '<div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:4px;display:flex;justify-content:space-between"><span>Level '+userLevel+'</span><span>'+(nextLvl-userXP)+' XP to Level '+(userLevel+1)+'</span></div>'+
@@ -1357,11 +1361,12 @@ updateCapBtn();
 renderProfileHero();
 renderLibraryCardSection();
 renderFutureFeatures();
+const allCheers=allSessions.reduce((a,s)=>a+((s.drinkList||[]).filter(d=>d.hasPhoto).length),0);
 document.getElementById('profileStats').innerHTML=
 '<div style="display:flex;justify-content:space-around;text-align:center;padding:8px 0">'+
 '<div><div style="font-size:20px;font-weight:700">'+allSessions.length+'</div><div style="font-size:11px;color:var(--text2)">Sessions</div></div>'+
-'<div><div style="font-size:20px;font-weight:700">'+allTimeDrinks+'</div><div style="font-size:11px;color:var(--text2)">Drinks</div></div>'+
-'<div><div style="font-size:20px;font-weight:700">'+(allSessions.length>0?(allTimeDrinks/allSessions.length).toFixed(1):'0')+'</div><div style="font-size:11px;color:var(--text2)">Avg/Session</div></div></div>';
+'<div><div style="font-size:20px;font-weight:700">'+allCheers+'</div><div style="font-size:11px;color:var(--text2)">Cheers</div></div>'+
+'<div><div style="font-size:20px;font-weight:700">'+(allSessions.length>0?(allCheers/allSessions.length).toFixed(1):'0')+'</div><div style="font-size:11px;color:var(--text2)">Avg/Session</div></div></div>';
 }
 
 // ========== SHOWDOWN DEMO ==========
@@ -1378,8 +1383,8 @@ const leading=team1>team2?1:team2>team1?2:0;
 el.innerHTML=
 '<div class="card" style="text-align:center;margin-bottom:12px"><div style="font-size:13px;color:var(--text2);margin-bottom:4px">LIVE</div><div style="font-size:28px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--green)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px">'+
-'<div class="card" style="text-align:center;border:'+(leading===1?'2px solid var(--green)':'2px solid transparent')+'"><div style="font-size:13px;font-weight:600;color:var(--orange);margin-bottom:8px">🔥 Team Alpha</div><div style="font-size:36px;font-weight:700">'+team1+'</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">DPM: '+t1dpm+'</div><button class="btn btn-primary" style="padding:12px;font-size:14px" onclick="sdAdd(1)">+ Drink</button></div>'+
-'<div class="card" style="text-align:center;border:'+(leading===2?'2px solid var(--green)':'2px solid transparent')+'"><div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px">💎 Team Beta</div><div style="font-size:36px;font-weight:700">'+team2+'</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">DPM: '+t2dpm+'</div><button class="btn btn-primary" style="padding:12px;font-size:14px" onclick="sdAdd(2)">+ Drink</button></div>'+
+'<div class="card" style="text-align:center;border:'+(leading===1?'2px solid var(--green)':'2px solid transparent')+'"><div style="font-size:13px;font-weight:600;color:var(--orange);margin-bottom:8px">🔥 Team Alpha</div><div style="font-size:36px;font-weight:700">'+team1+'</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">CPM:'+t1dpm+'</div><button class="btn btn-primary" style="padding:12px;font-size:14px" onclick="sdAdd(1)">+ Cheers</button></div>'+
+'<div class="card" style="text-align:center;border:'+(leading===2?'2px solid var(--green)':'2px solid transparent')+'"><div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px">💎 Team Beta</div><div style="font-size:36px;font-weight:700">'+team2+'</div><div style="font-size:11px;color:var(--text2);margin-bottom:12px">CPM:'+t2dpm+'</div><button class="btn btn-primary" style="padding:12px;font-size:14px" onclick="sdAdd(2)">+ Cheers</button></div>'+
 '</div>'+
 '<button class="btn btn-danger" onclick="endShowdownDemo()">End Showdown</button>';
 }
@@ -1894,9 +1899,8 @@ const lb=document.getElementById('friendLeaderboard');
 if(!lb||!picker)return;
 const modes=[
 {key:'cheers',label:'📸 Cheers',suffix:'cheers'},
-{key:'photos',label:'📷 Photos',suffix:'photos'},
 {key:'venues',label:'📍 Venues',suffix:'venues'},
-{key:'drinks',label:'🍺 Drinks',suffix:'drinks'},
+{key:'photos',label:'⭐ Captions',suffix:'captions'},
 ];
 picker.innerHTML=modes.map(m=>'<button onclick="setLeaderboardMode(\''+m.key+'\')" style="flex-shrink:0;padding:6px 12px;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:'+(leaderboardMode===m.key?'var(--primary)':'var(--card2)')+';color:'+(leaderboardMode===m.key?'#fff':'var(--text2)')+'">'+m.label+'</button>').join('');
 const field=leaderboardMode==='drinks'?'weekly':leaderboardMode;
