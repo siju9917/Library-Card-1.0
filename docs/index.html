@@ -151,7 +151,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>Top Venues</h2>
 <div class="card" id="topVenues"><div class="empty-state" style="padding:16px"><div class="sub">No venue data yet</div></div></div>
 
-<h2>⭐ Your Top-Rated Drinks</h2>
+<h2>⭐ Your Top-Rated Cheers</h2>
 <div class="card" id="yourTopDrinks"></div>
 </div>
 
@@ -170,10 +170,10 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--primary);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 <div class="divider"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Tonight's Drink Cap</span><button onclick="setDrinkCap()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="capBtn">Not set</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Tonight's Cheers Cap</span><button onclick="setDrinkCap()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="capBtn">Not set</button></div>
 </div>
-<h2>Gift a Drink</h2>
-<div class="nav-link" onclick="giftADrinkFlow()"><span class="icon">🎁</span><span class="title">Buy a Friend a Drink</span><span class="chevron">›</span></div>
+<h2>Gift a Cheers</h2>
+<div class="nav-link" onclick="giftADrinkFlow()"><span class="icon">🎁</span><span class="title">Send a Friend a Cheers</span><span class="chevron">›</span></div>
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nCovers what data we collect, how it is stored, your rights to export and delete, and our commitment to never selling your data.\n\nFull legal page available in the native app.')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nEligibility (21+), responsible use guidelines, content policy, safety feature disclaimers, and account management.\n\nFull legal page available in the native app.')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
@@ -226,9 +226,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div id="friendLeaderboard"></div>
 </div>
 
-<h2>🤝 Drinking Partners</h2>
+<h2>🤝 Night Partners</h2>
 <div class="card">
-<p style="font-size:13px;color:var(--text2);margin-bottom:12px">Set a drinking partner for the night. You'll both get live location tracking, AR friend-finding, and departure alerts — automatically.</p>
+<p style="font-size:13px;color:var(--text2);margin-bottom:12px">Set a partner for the night. You'll both get live location tracking, AR friend-finding, and departure alerts — automatically.</p>
 <div id="partnersList"></div>
 <button class="btn btn-secondary" style="margin-top:8px;padding:12px;font-size:14px" onclick="addPartner()">+ Add Partner for Tonight</button>
 </div>
@@ -252,7 +252,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div style="text-align:center;padding:40px 20px">
 <div style="font-size:64px;margin-bottom:16px">⚔️</div>
 <h2>Team vs Team</h2>
-<p style="color:var(--text2);font-size:14px;margin-bottom:24px">Challenge another team to a session-long drinking showdown. Track drinks in real-time and see who comes out on top.</p>
+<p style="color:var(--text2);font-size:14px;margin-bottom:24px">Challenge another team to a session-long Cheers showdown. Track Cheers in real-time and see who comes out on top.</p>
 <button class="btn btn-primary" onclick="startShowdownDemo()">Start Demo Showdown</button>
 </div>
 </div>
@@ -633,7 +633,7 @@ grid.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\')" style="disp
 renderBarDist(elapsed);
 renderRewards(drinks.length);
 const log=document.getElementById('drinksLog');
-if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a drink above to add one.</p>';}
+if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a category above to log your first Cheers.</p>';}
 else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
@@ -759,7 +759,7 @@ if(drinkCap>0&&drinks.length>=drinkCap){
 alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. You can change it in Profile > Settings.');
 return;
 }
-const custom=prompt('Name this drink (or leave blank for "'+type+'"):','');
+const custom=prompt('Name this Cheers (or leave blank for "'+type+'"):','');
 if(custom===null)return;
 const name=custom&&custom.trim()?custom.trim():type;
 const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false};
