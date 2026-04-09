@@ -187,6 +187,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showDepartureFeed()"><span class="icon">🚪</span><div style="flex:1"><div class="title" style="font-size:14px">Departure Feed</div><div style="font-size:11px;color:var(--text3)">See when friends leave venues</div></div><span class="chevron">›</span></div>
 </div>
 
+<h2>📅 This Weekend</h2>
+<div class="card" id="weekendPlan"></div>
+
 <h2>🗺️ Live Bar Map</h2>
 <div class="card" id="barMap" style="padding:0;overflow:hidden"></div>
 
@@ -1078,6 +1081,58 @@ const liveBars=[
 {name:'The Library Lounge',x:50,y:50,users:15,heat:'🔥',friends:['Sarah K.'],raid:false},
 ];
 
+// ========== WEEKEND PLANNING ==========
+let weekendOptions=[
+{id:1,name:'Rooftop Bar',desc:'Happy hour + DJ set Friday',votes:['Jake M.','Sarah K.','Emma L.','You'],emoji:'🌅'},
+{id:2,name:'Club X',desc:'Saturday night, bottle service',votes:['Mike R.','Chris P.'],emoji:'🪩'},
+{id:3,name:'The Pub Crawl',desc:'4 bars, 4 hours, Saturday',votes:['Rachel T.'],emoji:'🚶'},
+{id:4,name:'House Party @ Jake\'s',desc:'BYOB, Saturday 9pm',votes:[],emoji:'🏠'},
+];
+let myVote=1;
+function renderWeekendPlan(){
+const el=document.getElementById('weekendPlan');
+if(!el)return;
+const totalVotes=weekendOptions.reduce((a,o)=>a+o.votes.length,0);
+const fri=getFridayDate();
+el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">Vote by Friday 5pm · '+totalVotes+' votes in</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri+'</div></div>'+
+weekendOptions.map(o=>{
+const isMyPick=myVote===o.id;
+const pct=totalVotes>0?Math.round(o.votes.length/totalVotes*100):0;
+return '<div onclick="voteWeekend('+o.id+')" style="padding:10px 0;cursor:pointer;'+(o.id<weekendOptions.length?'border-bottom:0.5px solid #333':'')+'">'+
+'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+o.emoji+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+o.name+'</span>'+(isMyPick?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">'+o.desc+'</div></div><span style="font-size:13px;font-weight:700">'+o.votes.length+'</span></div>'+
+'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:'+pct+'%;background:'+(isMyPick?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
+(o.votes.length>0?'<div style="font-size:10px;color:var(--text3)">'+o.votes.join(', ')+'</div>':'')+
+'</div>';
+}).join('')+
+'<div style="padding-top:12px"><button onclick="suggestWeekendOption()" class="btn btn-secondary" style="padding:10px;font-size:12px">+ Suggest another spot</button></div>';
+}
+function voteWeekend(id){
+// Remove "You" from all previous votes
+weekendOptions.forEach(o=>{o.votes=o.votes.filter(v=>v!=='You');});
+// Add to new
+const opt=weekendOptions.find(o=>o.id===id);
+if(opt){opt.votes.push('You');myVote=id;addXP(5);}
+renderWeekendPlan();
+if(navigator.vibrate)navigator.vibrate(30);
+}
+function suggestWeekendOption(){
+const name=prompt('Suggest a spot for this weekend:','');
+if(!name||!name.trim())return;
+const desc=prompt('What\'s happening there?','');
+if(desc===null)return;
+weekendOptions.push({id:Date.now(),name:name.trim(),desc:desc.trim()||'Suggested by you',votes:['You'],emoji:'✨'});
+myVote=weekendOptions[weekendOptions.length-1].id;
+addXP(10);
+renderWeekendPlan();
+}
+function getFridayDate(){
+const d=new Date();
+const day=d.getDay();
+const daysUntilFri=(5-day+7)%7||7;
+const fri=new Date(d.getTime()+daysUntilFri*86400000);
+return fri.toLocaleDateString([],{month:'short',day:'numeric'});
+}
+
 function renderBarMap(){
 const el=document.getElementById('barMap');
 if(!el)return;
@@ -1439,6 +1494,7 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 }
 
 function initSocial(){
+renderWeekendPlan();
 renderBarMap();
 renderCircles();
 updateDMSStatus();
