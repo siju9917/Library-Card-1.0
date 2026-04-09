@@ -171,12 +171,15 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>🟠 Safety</h2>
 <div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="sendSOS()">🆘 SOS — Alert My Circle</button></div>
 
-<h3 style="margin-top:4px">Circles · Trust Tiers</h3>
+<h3 style="margin-top:4px">Privacy & Visibility</h3>
+<div class="card" id="ghostModeSection" style="margin-bottom:16px"></div>
+
+<h3>Circles · Trust Tiers</h3>
 <div class="card" id="circlesSection" style="margin-bottom:16px"></div>
 
 <h3>Active Safety Features</h3>
 <div class="card" style="margin-bottom:16px">
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Dead Man's Switch</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Check-In Reminder</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
 <div class="divider"></div>
 <div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="startWalkHomeMode()"><span class="icon">🚶</span><div style="flex:1"><div class="title" style="font-size:14px">Walk Home Mode</div><div style="font-size:11px;color:var(--text3)" id="walkHomeStatus">Share live GPS with Circle until you reach home</div></div><span class="chevron">›</span></div>
 <div class="divider"></div>
@@ -1187,6 +1190,34 @@ return '<div style="padding:10px 0;border-bottom:0.5px solid #333">'+
 '<div style="padding-top:12px"><button onclick="alert(\'👑 Start a Raid\\n\\nRally 5+ of your friends to meet at the same bar. When you all check in, your squad owns that bar for the night.\\n\\nPerks:\\n- Your org name appears on the live map\\n- Everyone at the bar sees who owns it\\n- Inter-org rivalries get unlocked\\n- Bonus XP for everyone in the raid\\n\\n🔧 Coming soon — requires backend.\')" class="btn btn-primary" style="padding:12px;font-size:13px">Start a Raid</button></div>';
 }
 
+// ========== GHOST MODE & VISIBILITY ==========
+let visibility=JSON.parse(localStorage.getItem('lc_visibility')||'null')||{
+ghostMode:true, // Default to private for new users (gender-safe default)
+showOnBarMap:'partners', // everyone | friends | partners | off
+allowStrangerDMs:false,
+allowDrinkGifts:'friends', // everyone | friends | partners | off
+shareBarRoute:'partners'
+};
+function saveVisibility(){localStorage.setItem('lc_visibility',JSON.stringify(visibility));}
+
+function renderGhostMode(){
+const el=document.getElementById('ghostModeSection');
+if(!el)return;
+const opts=(val,field)=>{
+const choices=['everyone','friends','partners','off'];
+return '<div style="display:flex;gap:4px;margin-top:6px">'+choices.map(c=>'<button onclick="setVisibility(\''+field+'\',\''+c+'\')" style="flex:1;padding:6px 4px;border:none;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;background:'+(val===c?'var(--primary)':'var(--card2)')+';color:'+(val===c?'#fff':'var(--text2)')+'">'+c+'</button>').join('')+'</div>';
+};
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">Control who sees you. Ghost Mode is on by default for your safety — you\'re only visible to people you\'ve explicitly approved.</div>'+
+'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:14px">👻 Ghost Mode</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Hide from strangers entirely</div></div><label style="position:relative;width:44px;height:24px;display:inline-block"><input type="checkbox" '+(visibility.ghostMode?'checked':'')+' onchange="toggleGhostMode()" style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:'+(visibility.ghostMode?'var(--primary)':'var(--card2)')+';border-radius:24px;transition:.3s"><span style="position:absolute;content:\'\';height:20px;width:20px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s;transform:'+(visibility.ghostMode?'translateX(20px)':'translateX(0)')+'"></span></span></label></div></div>'+
+'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div style="font-weight:600;font-size:13px">📍 Show me on the Live Bar Map</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Who can see which bar you\'re at</div>'+opts(visibility.showOnBarMap,'showOnBarMap')+'</div>'+
+'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div style="font-weight:600;font-size:13px">🗺️ Share my bar route</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Ordered list of venues with times</div>'+opts(visibility.shareBarRoute,'shareBarRoute')+'</div>'+
+'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div style="font-weight:600;font-size:13px">🎁 Accept drink gifts from</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Who can buy you a drink via your Library Card</div>'+opts(visibility.allowDrinkGifts,'allowDrinkGifts')+'</div>'+
+'<div style="padding:10px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:13px">💬 DMs from strangers</div><div style="font-size:10px;color:var(--text3);margin-top:2px">People you haven\'t added</div></div><label style="position:relative;width:44px;height:24px;display:inline-block"><input type="checkbox" '+(visibility.allowStrangerDMs?'checked':'')+' onchange="toggleStrangerDMs()" style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:'+(visibility.allowStrangerDMs?'var(--primary)':'var(--card2)')+';border-radius:24px;transition:.3s"><span style="position:absolute;content:\'\';height:20px;width:20px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s;transform:'+(visibility.allowStrangerDMs?'translateX(20px)':'translateX(0)')+'"></span></span></label></div></div>';
+}
+function setVisibility(field,val){visibility[field]=val;saveVisibility();renderGhostMode();}
+function toggleGhostMode(){visibility.ghostMode=!visibility.ghostMode;saveVisibility();renderGhostMode();}
+function toggleStrangerDMs(){visibility.allowStrangerDMs=!visibility.allowStrangerDMs;saveVisibility();renderGhostMode();}
+
 // ========== CIRCLES (Trust Tiers) ==========
 let circles=JSON.parse(localStorage.getItem('lc_circles')||'null')||{
 partners:[{name:'Jake M.',emoji:'😎'},{name:'Sarah K.',emoji:'🎉'}],
@@ -1396,21 +1427,21 @@ let dmsEnabled=localStorage.getItem('lc_dms')==='true';
 let dmsCheckTime=localStorage.getItem('lc_dms_time')||'';
 function toggleDeadMansSwitch(){
 if(dmsEnabled){
-if(confirm('Turn off Dead Man\'s Switch?')){
+if(confirm('Turn off Check-In Reminder?')){
 dmsEnabled=false;
 localStorage.setItem('lc_dms','false');
 updateDMSStatus();
 }
 return;
 }
-const time=prompt('⏰ Dead Man\'s Switch\n\nIf you don\'t check in by this time, your Partners will be automatically notified with your last known location.\n\nEnter check-in time (e.g. 2:00 AM):','2:00 AM');
+const time=prompt('⏰ Check-In Reminder\n\nSet a check-in time. We\'ll remind you 15 minutes before, and if you don\'t confirm you\'re safe, your Partners get a gentle nudge to check on you.\n\nThis is a friendly reminder system — not a safety guarantee. In a real emergency, call 911.\n\nEnter check-in time (e.g. 2:00 AM):','2:00 AM');
 if(!time)return;
 dmsEnabled=true;
 dmsCheckTime=time;
 localStorage.setItem('lc_dms','true');
 localStorage.setItem('lc_dms_time',time);
 updateDMSStatus();
-alert('✅ Dead Man\'s Switch Active\n\nCheck-in required by: '+time+'\n\nIf you don\'t check in, your Partners ('+circles.partners.map(p=>p.name).join(', ')+') will get an automatic alert with your location.\n\nYou\'ll get a reminder notification 15 minutes before.');
+alert('✅ Check-In Reminder Set\n\nCheck-in at: '+time+'\n\n• 15 min before: you get a reminder\n• If you miss it: your Partners ('+circles.partners.map(p=>p.name).join(', ')+') get a friendly nudge\n• Reply "I\'m ok" to clear the alert\n\n⚠️ This is a friend check-in system, not a safety guarantee. In a real emergency, always call 911.');
 }
 function updateDMSStatus(){
 const el=document.getElementById('dmsStatus');
@@ -1496,6 +1527,7 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 function initSocial(){
 renderWeekendPlan();
 renderBarMap();
+renderGhostMode();
 renderCircles();
 updateDMSStatus();
 updateWalkHomeStatus();
