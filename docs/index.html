@@ -209,28 +209,11 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div id="friendLeaderboard"></div>
 </div>
 
-<h3 style="margin-top:4px">Friends of Friends Nearby</h3>
-<div class="card" style="opacity:.85">
-<div style="font-size:11px;color:var(--text3);margin-bottom:8px">People your friends know at nearby bars right now</div>
-<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Alex T. <span style="color:var(--text3);font-size:11px">· via Jake M.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
-<div class="divider"></div>
-<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Bella R. <span style="color:var(--text3);font-size:11px">· via Sarah K.</span></span><span style="font-size:12px;color:var(--primary)">@ Club X</span></div>
-<div class="divider"></div>
-<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Marcus W. <span style="color:var(--text3);font-size:11px">· via Mike R.</span></span><span style="font-size:12px;color:var(--primary)">@ Rooftop Bar</span></div>
-<div class="divider"></div>
-<div style="display:flex;align-items:center;gap:12px;padding:6px 0"><span>👤</span><span style="flex:1;font-size:14px">Nina C. <span style="color:var(--text3);font-size:11px">· via Emma L.</span></span><span style="font-size:12px;color:var(--primary)">@ The Pub</span></div>
-</div>
-
 <h2>🤝 Drinking Partners</h2>
 <div class="card">
 <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Set a drinking partner for the night. You'll both get live location tracking, AR friend-finding, and departure alerts — automatically.</p>
 <div id="partnersList"></div>
 <button class="btn btn-secondary" style="margin-top:8px;padding:12px;font-size:14px" onclick="addPartner()">+ Add Partner for Tonight</button>
-</div>
-
-<h3 style="margin-top:16px">Find Friends</h3>
-<div class="card" onclick="alert('📡 AR Friend Locator\n\nAt a crowded bar or concert, hold your phone up and an arrow points you toward your drinking partner with estimated distance (like a compass).\n\nOnly works with people you have set as drinking partners for the night — they must opt in.\n\n🔧 Coming soon — requires AR framework and real-time location.')">
-<div style="display:flex;align-items:center;gap:12px"><span style="font-size:28px">📡</span><div><div style="font-weight:600">AR Friend Locator</div><div style="font-size:12px;color:var(--text2)">Point your phone to find friends in crowds</div></div></div>
 </div>
 
 <h2>💬 Messages</h2>
@@ -240,13 +223,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>🏛️ My Organizations</h2>
 <div class="card" id="orgsList"></div>
 
-<h2>💘 Swipe at The Pub</h2>
-<div id="swipeArea" style="position:relative;height:380px;margin-bottom:16px"></div>
-<div style="display:flex;justify-content:center;gap:24px;margin-bottom:16px">
-<button onclick="swipeLeft()" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--red);background:none;font-size:24px;cursor:pointer;color:var(--red)">✕</button>
-<button onclick="swipeRight()" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--green);background:none;font-size:24px;cursor:pointer;color:var(--green)">♥</button>
-</div>
-<div class="nav-link" onclick="showPreSwipe()"><span class="icon">⭐</span><span class="title">Pre-Swipe (Premium)</span><span class="chevron">›</span></div>
 </div>
 
 <!-- SHOWDOWN -->
@@ -1545,7 +1521,6 @@ renderMemories();
 // Build leaderboard
 renderLeaderboard();
 renderPartners();
-renderSwipeCard();
 }
 function renderLeaderboard(){
 const picker=document.getElementById('lbPicker');
