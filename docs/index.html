@@ -145,6 +145,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card" id="profileStats"></div>
 <h2>My Library Card</h2>
 <div class="card" id="libraryCardSection"></div>
+<h2>🔮 Future Features</h2>
+<div class="card" id="futureFeaturesSection"></div>
 <h2>Settings</h2>
 <div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Dark Mode</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" id="darkToggle" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--card2);border-radius:31px;transition:.3s" class="slider"></span></label></div>
@@ -963,9 +965,48 @@ function showAutoTrackInfo(){
 alert("How Auto-Tracking Works\n\nWhen you pay with your Library Card at a bar or restaurant, we detect the purchase via the card network.\n\nWe automatically:\n- Log the drink to your session\n- Start a session if one is not active\n- Identify the venue\n- Track timestamps for your bar route\n\nNo manual input needed, just tap and drink!");
 }
 
+// ========== FUTURE FEATURES ARCHIVE ==========
+const futureFeatures=[
+{icon:'🎵',title:'Live Bar Playlist',desc:'Add songs to the bar\'s playlist via Spotify Connect. DJ style.',unlock:'Requires bar partnerships'},
+{icon:'🍳',title:'Morning Brunch Plans',desc:'Auto-suggests brunch spots and a group chat for next-day recovery.',unlock:'Needs 10+ friends on platform'},
+{icon:'🎤',title:'Karaoke Mode',desc:'Vote on karaoke songs at participating bars. Leaderboard for best performer.',unlock:'Requires bar partnerships'},
+{icon:'🧭',title:'AR Friend Finder',desc:'Hold your phone up in a crowded bar — arrow points to your friends with distance.',unlock:'Needs real-time location backend'},
+{icon:'🎟️',title:'Concert & Event Mode',desc:'Special session type for concerts with setlist tracking and group check-in.',unlock:'Needs Bandsintown integration'},
+{icon:'🏆',title:'Inter-School Rivalries',desc:'Your school vs rival school total cheers this week. National leaderboard.',unlock:'Needs 1000+ users per campus'},
+{icon:'🎓',title:'Game Day Mode',desc:'Football Saturday auto-mode with tailgate tracking, team colors, rival drama.',unlock:'Requires school verification'},
+{icon:'🍳',title:'Hangover Insights',desc:'Correlates drinks with Apple Health sleep + next-day energy scores.',unlock:'Needs HealthKit permissions'},
+{icon:'🗳️',title:'Bar Ratings Contribution',desc:'Rate bar quality (lighting, safety, music, prices). Crowd-sourced intel.',unlock:'Needs 100+ users per bar'},
+{icon:'📻',title:'Bar-Wide Voice Rooms',desc:'Drop into an open voice channel with everyone at your bar right now.',unlock:'Needs real-time audio backend'},
+{icon:'🎁',title:'Birthday Drink Fund',desc:'Friends pool money for your birthday drinks, auto-applied to your Library Card.',unlock:'Needs payment processing'},
+{icon:'🛒',title:'Drink Delivery',desc:'Order your next round from your phone at participating bars.',unlock:'Requires POS integration'},
+{icon:'🎯',title:'Bar Bucket List',desc:'Curated lists of must-try bars by city. Travel mode unlocks guides.',unlock:'Needs editorial team'},
+{icon:'💼',title:'Work Events Mode',desc:'Separate tracking for work happy hours with privacy from personal stats.',unlock:'Needs business tier'},
+{icon:'🏅',title:'Badges & Achievements',desc:'50+ unlockable badges: First Shot, Century Club, Bar Hopper, Streak Master.',unlock:'Launching with v2'},
+{icon:'🌍',title:'Travel Passport',desc:'Visit bars in new cities for stamps. International leaderboards.',unlock:'Needs 10k+ users globally'},
+];
+function renderFutureFeatures(){
+const el=document.getElementById('futureFeaturesSection');
+if(!el)return;
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">Features planned for future releases. Many need more users on the platform before they work well.</div>'+
+futureFeatures.slice(0,6).map(f=>'<div onclick="showFutureFeature(\''+f.title.replace(/\'/g,"\\\'")+'\')" style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:0.5px solid #333;cursor:pointer"><span style="font-size:20px;flex-shrink:0">'+f.icon+'</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">'+f.title+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4">'+f.desc+'</div><div style="font-size:10px;color:var(--primary);margin-top:4px">🔒 '+f.unlock+'</div></div></div>').join('')+
+'<div style="padding-top:12px;text-align:center"><button onclick="showAllFutureFeatures()" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:8px 16px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer">See all '+futureFeatures.length+' planned features →</button></div>';
+}
+function showFutureFeature(title){
+const f=futureFeatures.find(x=>x.title===title);
+if(!f)return;
+alert(f.icon+' '+f.title+'\n\n'+f.desc+'\n\n🔒 '+f.unlock+'\n\nThis feature is on the roadmap but will be more valuable once the Library network grows. Want to help us get there? Invite your friends!');
+}
+function showAllFutureFeatures(){
+let txt='🔮 The Full Roadmap\n\n';
+futureFeatures.forEach(f=>{txt+=f.icon+' '+f.title+'\n';});
+txt+='\nThese features are planned for future releases. Many unlock once the Library network grows.';
+alert(txt);
+}
+
 function initProfile(){
 updateCapBtn();
 renderLibraryCardSection();
+renderFutureFeatures();
 document.getElementById('profileStats').innerHTML=
 '<div style="display:flex;justify-content:space-around;text-align:center;padding:8px 0">'+
 '<div><div style="font-size:20px;font-weight:700">'+allSessions.length+'</div><div style="font-size:11px;color:var(--text2)">Sessions</div></div>'+
