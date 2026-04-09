@@ -990,77 +990,122 @@ list.map(([bar,d],i)=>'<div style="display:flex;align-items:center;gap:12px;padd
 function renderDrinksComparisonChart(){
 const chart=document.getElementById('drinksChart');
 if(!chart||!chart.clientWidth)return;
-// Generate 30-day cumulative series for 3 periods
-// This month: build from real sessions in last 30 days
-// Last month: synthetic (slightly lower pace)
-// Year ago: synthetic (much lower pace, just starting out)
 const days=30;
 const today=Date.now();
-function cumulativeForOffset(daysAgo,paceMultiplier,randomSeed){
+// Generate per-day drink counts (not cumulative)
+function dailyForOffset(daysAgo,paceMultiplier,randomSeed){
 const startDate=today-(daysAgo+days)*86400000;
 const series=[];
-let cum=0;
 let seed=randomSeed;
 for(let i=0;i<=days;i++){
 const date=startDate+i*86400000;
-// Use real sessions for this month, synthetic for others
 if(daysAgo===0){
-// Real sessions
 const dayStart=new Date(date);dayStart.setHours(0,0,0,0);
 const dayEnd=dayStart.getTime()+86400000;
 const daySessions=allSessions.filter(s=>s.time>=dayStart.getTime()&&s.time<dayEnd);
-cum+=daySessions.reduce((a,s)=>a+s.drinks,0);
+series.push(daySessions.reduce((a,s)=>a+s.drinks,0));
 }else{
-// Synthetic: pseudo-random drinks per day
 seed=(seed*9301+49297)%233280;
 const rand=seed/233280;
-const isDrinkDay=rand<0.35; // ~35% chance of a drinking day
+const isDrinkDay=rand<0.45;
 if(isDrinkDay){
 seed=(seed*9301+49297)%233280;
-const drinks=Math.floor((seed/233280)*8*paceMultiplier)+1;
-cum+=drinks;
+// Per-day drink count (2-7 on drink days, scaled by pace)
+series.push(Math.round((2+(seed/233280)*5)*paceMultiplier));
+}else{
+series.push(0);
 }
 }
-series.push({day:i,value:cum});
 }
 return series;
 }
-const thisMonth=cumulativeForOffset(0,1.0,0);
-const lastMonth=cumulativeForOffset(30,0.85,4567);
-const yearAgo=cumulativeForOffset(365,0.55,9876);
-const maxVal=Math.max(thisMonth[days].value,lastMonth[days].value,yearAgo[days].value,10);
-const padding={top:28,right:12,bottom:24,left:12};
+// 5-day centered moving average for smoothing
+function smooth(arr,window){
+const w=Math.floor(window/2);
+return arr.map((_,i)=>{
+let sum=0,count=0;
+for(let j=Math.max(0,i-w);j<=Math.min(arr.length-1,i+w);j++){sum+=arr[j];count++;}
+return count>0?sum/count:0;
+});
+}
+const thisDaily=smooth(dailyForOffset(0,1.0,0),5);
+const lastDaily=smooth(dailyForOffset(30,0.9,4567),5);
+const yearDaily=smooth(dailyForOffset(365,0.6,9876),5);
+// Sum totals for the header
+const thisTotal=Math.round(thisDaily.reduce((a,b)=>a+b,0));
+const lastTotal=Math.round(lastDaily.reduce((a,b)=>a+b,0));
+const yearTotal=Math.round(yearDaily.reduce((a,b)=>a+b,0));
+const thisAvg=(thisTotal/days).toFixed(1);
+const maxVal=Math.max(...thisDaily,...lastDaily,...yearDaily,1)*1.15;
+const padding={top:36,right:12,bottom:26,left:12};
 const w=chart.clientWidth-padding.left-padding.right;
-const h=150;
+const h=160;
 const toX=(d)=>padding.left+(d/days)*w;
 const toY=(v)=>padding.top+h-(v/maxVal)*h;
-const mkPath=(series)=>'M'+series.map(p=>toX(p.day)+','+toY(p.value)).join(' L');
+const baseY=padding.top+h;
+// Smooth path using catmull-rom curves
+function smoothPath(series){
+if(series.length<2)return'';
+let path='M'+toX(0)+','+toY(series[0]);
+for(let i=0;i<series.length-1;i++){
+const x0=i>0?toX(i-1):toX(i);
+const y0=i>0?toY(series[i-1]):toY(series[i]);
+const x1=toX(i);
+const y1=toY(series[i]);
+const x2=toX(i+1);
+const y2=toY(series[i+1]);
+const x3=i<series.length-2?toX(i+2):toX(i+1);
+const y3=i<series.length-2?toY(series[i+2]):toY(series[i+1]);
+const cp1x=x1+(x2-x0)/6;
+const cp1y=y1+(y2-y0)/6;
+const cp2x=x2-(x3-x1)/6;
+const cp2y=y2-(y3-y1)/6;
+path+=' C'+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+x2+','+y2;
+}
+return path;
+}
+function areaPath(series){
+return smoothPath(series)+' L'+toX(series.length-1)+','+baseY+' L'+toX(0)+','+baseY+' Z';
+}
 const primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-const thisEnd=thisMonth[days].value;
-const lastEnd=lastMonth[days].value;
-const yearEnd=yearAgo[days].value;
-const vsLast=lastEnd>0?Math.round(((thisEnd-lastEnd)/lastEnd)*100):0;
-const vsYear=yearEnd>0?Math.round(((thisEnd-yearEnd)/yearEnd)*100):0;
+const vsLast=lastTotal>0?Math.round(((thisTotal-lastTotal)/lastTotal)*100):0;
+const vsYear=yearTotal>0?Math.round(((thisTotal-yearTotal)/yearTotal)*100):0;
 chart.innerHTML=
-'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">This Month</div><div style="font-size:22px;font-weight:700;color:'+primary+'">'+thisEnd+' drinks</div></div><div style="text-align:right;display:flex;flex-direction:column;gap:2px"><div style="font-size:10px"><span style="color:var(--text3)">vs last month</span> <span style="color:'+(vsLast>=0?'var(--green)':'var(--red)')+';font-weight:600">'+(vsLast>=0?'+':'')+vsLast+'%</span></div><div style="font-size:10px"><span style="color:var(--text3)">vs year ago</span> <span style="color:'+(vsYear>=0?'var(--green)':'var(--red)')+';font-weight:600">'+(vsYear>=0?'+':'')+vsYear+'%</span></div></div></div>'+
+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'+
+'<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Drinks / Day</div><div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span style="font-size:26px;font-weight:800;color:'+primary+'">'+thisAvg+'</span><span style="font-size:11px;color:var(--text3)">avg · '+thisTotal+' total</span></div></div>'+
+'<div style="text-align:right;display:flex;flex-direction:column;gap:3px"><div style="font-size:10px"><span style="color:var(--text3)">vs last month</span> <span style="color:'+(vsLast>=0?'var(--green)':'var(--red)')+';font-weight:700">'+(vsLast>=0?'+':'')+vsLast+'%</span></div><div style="font-size:10px"><span style="color:var(--text3)">vs year ago</span> <span style="color:'+(vsYear>=0?'var(--green)':'var(--red)')+';font-weight:700">'+(vsYear>=0?'+':'')+vsYear+'%</span></div></div>'+
+'</div>'+
 '<svg width="100%" height="'+(h+padding.top+padding.bottom)+'" viewBox="0 0 '+(w+padding.left+padding.right)+' '+(h+padding.top+padding.bottom)+'" preserveAspectRatio="none" style="display:block">'+
-// Year ago line
-'<path d="'+mkPath(yearAgo)+'" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="2,4" opacity="0.6"/>'+
-// Last month line
-'<path d="'+mkPath(lastMonth)+'" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.8"/>'+
-// This month line (solid gold)
-'<path d="'+mkPath(thisMonth)+'" fill="none" stroke="'+primary+'" stroke-width="2.8"/>'+
-'<circle cx="'+toX(days)+'" cy="'+toY(thisEnd)+'" r="5" fill="'+primary+'"/>'+
+'<defs>'+
+'<linearGradient id="gradThis" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="'+primary+'" stop-opacity="0.45"/><stop offset="100%" stop-color="'+primary+'" stop-opacity="0"/></linearGradient>'+
+'<linearGradient id="gradLast" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#888" stop-opacity="0.22"/><stop offset="100%" stop-color="#888" stop-opacity="0"/></linearGradient>'+
+'<linearGradient id="gradYear" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#555" stop-opacity="0.15"/><stop offset="100%" stop-color="#555" stop-opacity="0"/></linearGradient>'+
+'</defs>'+
+// Horizontal grid lines
+'<line x1="'+padding.left+'" y1="'+(padding.top+h*0.5)+'" x2="'+(w+padding.left)+'" y2="'+(padding.top+h*0.5)+'" stroke="#222" stroke-width="0.5"/>'+
+'<line x1="'+padding.left+'" y1="'+(padding.top+h*0.25)+'" x2="'+(w+padding.left)+'" y2="'+(padding.top+h*0.25)+'" stroke="#222" stroke-width="0.5"/>'+
+'<line x1="'+padding.left+'" y1="'+(padding.top+h*0.75)+'" x2="'+(w+padding.left)+'" y2="'+(padding.top+h*0.75)+'" stroke="#222" stroke-width="0.5"/>'+
+// Year ago — back layer
+'<path d="'+areaPath(yearDaily)+'" fill="url(#gradYear)"/>'+
+'<path d="'+smoothPath(yearDaily)+'" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="2,4" opacity="0.7"/>'+
+// Last month — middle layer
+'<path d="'+areaPath(lastDaily)+'" fill="url(#gradLast)"/>'+
+'<path d="'+smoothPath(lastDaily)+'" fill="none" stroke="#888" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>'+
+// This month — top layer (most prominent)
+'<path d="'+areaPath(thisDaily)+'" fill="url(#gradThis)"/>'+
+'<path d="'+smoothPath(thisDaily)+'" fill="none" stroke="'+primary+'" stroke-width="2.8" stroke-linecap="round"/>'+
+'<circle cx="'+toX(days)+'" cy="'+toY(thisDaily[days])+'" r="5" fill="'+primary+'" stroke="#0a0a0a" stroke-width="2"/>'+
 // Baseline
-'<line x1="'+padding.left+'" y1="'+(padding.top+h)+'" x2="'+(w+padding.left)+'" y2="'+(padding.top+h)+'" stroke="#333" stroke-width="0.5"/>'+
+'<line x1="'+padding.left+'" y1="'+baseY+'" x2="'+(w+padding.left)+'" y2="'+baseY+'" stroke="#333" stroke-width="0.5"/>'+
 // Day labels
-'<text x="'+padding.left+'" y="'+(padding.top+h+14)+'" fill="#666" font-size="9">30d ago</text>'+
-'<text x="'+(w+padding.left)+'" y="'+(padding.top+h+14)+'" fill="#666" font-size="9" text-anchor="end">Today</text>'+
+'<text x="'+padding.left+'" y="'+(baseY+14)+'" fill="#666" font-size="9">30d ago</text>'+
+'<text x="'+((w+padding.left)/2+padding.left/2)+'" y="'+(baseY+14)+'" fill="#666" font-size="9" text-anchor="middle">15d</text>'+
+'<text x="'+(w+padding.left)+'" y="'+(baseY+14)+'" fill="#666" font-size="9" text-anchor="end">Today</text>'+
 '</svg>'+
-'<div style="display:flex;gap:14px;justify-content:center;margin-top:6px;font-size:10px;flex-wrap:wrap">'+
-'<span><span style="color:'+primary+'">━━</span> This Month ('+thisEnd+')</span>'+
-'<span><span style="color:#888">╌╌</span> Last Month ('+lastEnd+')</span>'+
-'<span><span style="color:#555">┈┈</span> Year Ago ('+yearEnd+')</span>'+
+'<div style="display:flex;gap:14px;justify-content:center;margin-top:4px;font-size:10px;flex-wrap:wrap">'+
+'<span><span style="color:'+primary+';font-weight:700">━━</span> This Month</span>'+
+'<span><span style="color:#888">╌╌</span> Last Month ('+(lastTotal/days).toFixed(1)+'/d)</span>'+
+'<span><span style="color:#555">┈┈</span> Year Ago ('+(yearTotal/days).toFixed(1)+'/d)</span>'+
 '</div>';
 }
 
