@@ -916,37 +916,35 @@ el.innerHTML='<div class="card" style="background:linear-gradient(135deg,#1a1a2e
 '<div style="display:flex;justify-content:space-between;align-items:flex-end">'+
 '<div><div style="font-size:10px;color:var(--text3)">MEMBER</div><div style="font-size:13px">You</div></div>'+
 '<div style="text-align:right"><div style="font-size:10px;color:var(--text3)">TYPE</div><div style="font-size:13px">'+(cardType==='physical'?'Physical + Digital':cardType==='wallet'?'Digital Only':'Physical + Digital')+'</div></div></div>'+
-'<div style="margin-top:12px;font-size:11px;color:var(--primary)">✓ '+(cardFunding==='connected'?'Connected to card':'Funds loaded')+' · Auto-tracking enabled</div></div>';
+'<div style="margin-top:12px;font-size:11px;color:var(--primary)">✓ Pass-through active · Auto-tracking enabled</div></div>';
 }else{
 el.innerHTML='<div class="card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #333;cursor:pointer" onclick="showCardSetup()">'+
 '<div style="display:flex;align-items:center;gap:16px">'+
 '<div style="font-size:36px">💳</div>'+
-'<div style="flex:1"><div style="font-weight:700;font-size:16px;margin-bottom:4px">Get Your Library Card</div>'+
-'<div style="font-size:12px;color:var(--text2)">Auto-track drinks, skip manual logging, unlock gifting</div></div>'+
+'<div style="flex:1"><div style="font-weight:700;font-size:16px;margin-bottom:4px">Link Your Library Card</div>'+
+'<div style="font-size:12px;color:var(--text2)">Pass-through to your real card — we just auto-log drinks</div></div>'+
 '<span style="color:var(--primary);font-size:20px">›</span></div></div>';
 }
 }
 function showCardSetup(){
-const choice=prompt('Set up your Library Card!\n\n1 — Order a physical card (shipped to you)\n2 — Add to Apple Wallet (instant)\n3 — Both physical + Apple Wallet\n\nEnter 1, 2, or 3:','');
+const intro=confirm('💳 Link Your Library Card\n\nThe Library Card is a thin pass-through. When you pay at a bar with it, the money comes from your real debit/credit card — we just detect the purchase so we can auto-log drinks and start sessions for you.\n\nNo prepaid balance. No financial product. Just a smart layer over your existing card.\n\nContinue?');
+if(!intro)return;
+const choice=prompt('How do you want your card?\n\n1 — Physical card (shipped to you, ~5 days)\n2 — Virtual card only (Apple Wallet, instant)\n3 — Both\n\nEnter 1, 2, or 3:','2');
 if(!choice)return;
 const c=choice.trim();
 if(c==='1')cardType='physical';
 else if(c==='2')cardType='wallet';
 else if(c==='3')cardType='both';
 else{alert('Please enter 1, 2, or 3.');return;}
-const fund=prompt('How do you want to fund your Library Card?\n\n1 — Load funds (prepaid balance)\n2 — Connect to an existing debit/credit card\n\nEnter 1 or 2:','');
-if(!fund)return;
-const f=fund.trim();
-if(f==='1')cardFunding='loaded';
-else if(f==='2')cardFunding='connected';
-else{alert('Please enter 1 or 2.');return;}
+alert('🔗 Link your real card\n\nOn the next screen (in the real app), you\'d enter the debit/credit card you already use. All charges pass through to that card — Library just sits in the middle to auto-log your drinks.\n\nDemo: pretend we linked your Chase Sapphire ending in 4829.');
+cardFunding='connected';
 hasCard=true;
 localStorage.setItem('lc_hascard','true');
 localStorage.setItem('lc_cardtype',cardType);
 localStorage.setItem('lc_cardfunding',cardFunding);
 renderCardPromo();
 renderLibraryCardSection();
-alert('🎉 Library Card activated!\n\n'+(cardType==='physical'||cardType==='both'?'Your physical card will be shipped in 3-5 business days.\n':'')+(cardType==='wallet'||cardType==='both'?'Digital card added to Apple Wallet.\n':'')+'\nFunding: '+(cardFunding==='connected'?'Connected to your card.':'Prepaid balance loaded.')+'\n\nNow when you pay with your Library Card at any bar, drinks are automatically logged — no manual input needed!');
+alert('🎉 Library Card Linked!\n\n'+(cardType==='physical'||cardType==='both'?'Your physical card ships in 3-5 days.\n':'')+(cardType==='wallet'||cardType==='both'?'Virtual card added to Apple Wallet.\n':'')+'\nLinked to: Chase Sapphire •••• 4829\nCharges pass through to your real card.\n\nNow when you pay at any bar with your Library Card:\n📸 Sessions auto-start\n🍺 Drinks auto-log\n📍 Venue auto-detected\n\nNo manual input needed!');
 }
 function renderLibraryCardSection(){
 const el=document.getElementById('libraryCardSection');
@@ -957,7 +955,9 @@ el.innerHTML='<div style="text-align:center;padding:12px"><button class="btn btn
 el.innerHTML=
 '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Card Type</span><span style="color:var(--text2)">'+(cardType==='physical'?'Physical':cardType==='wallet'?'Apple Wallet':'Physical + Wallet')+'</span></div>'+
 '<div class="divider"></div>'+
-'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Funding</span><span style="color:var(--text2)">'+(cardFunding==='connected'?'Connected card':'Prepaid balance')+'</span></div>'+
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Linked Card</span><span style="color:var(--text2)">Chase Sapphire ••• 4829</span></div>'+
+'<div class="divider"></div>'+
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Mode</span><span style="color:var(--text2)">Pass-through</span></div>'+
 '<div class="divider"></div>'+
 '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><span>Card Number</span><span style="color:var(--text2)">•••• 4829</span></div>'+
 '<div class="divider"></div>'+
@@ -968,7 +968,7 @@ el.innerHTML=
 }
 
 function showAutoTrackInfo(){
-alert("How Auto-Tracking Works\n\nWhen you pay with your Library Card at a bar or restaurant, we detect the purchase via the card network.\n\nWe automatically:\n- Log the drink to your session\n- Start a session if one is not active\n- Identify the venue\n- Track timestamps for your bar route\n\nNo manual input needed, just tap and drink!");
+alert("How Auto-Tracking Works\n\nThe Library Card is a thin pass-through. When you pay, charges hit your real linked card — we just sit in the middle to detect the transaction.\n\nThe moment we see a purchase at a bar or restaurant:\n• Session auto-starts if not already active\n• Drink auto-logs to your session\n• Venue is auto-identified from the merchant\n• Timestamps track your bar route\n\nYou still take a photo for the Cheers (social metric), but the tracking happens automatically. No manual input needed, no new bank account, no prepaid balance.\n\nJust tap and drink!");
 }
 
 // ========== FUTURE FEATURES ARCHIVE ==========
