@@ -111,6 +111,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card stat-card"><div class="icon">📊</div><div class="value" id="homeAvg">0.0</div><div class="label">Avg/Session</div></div>
 <div class="card stat-card"><div class="icon">🔥</div><div class="value" id="homeStreak">0 days</div><div class="label">Dry Streak</div></div>
 </div>
+<div id="homeNormal">
 <h2 style="margin-top:8px">Quick Start</h2>
 <div id="homeStartBtn"><button onclick="startSession()" style="width:100%;padding:22px;border:none;border-radius:20px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(232,163,23,.4);animation:glowPulse 2.5s ease-in-out infinite"><div style="display:flex;align-items:center;justify-content:center;gap:14px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:26px">▶</div><div style="text-align:left"><div style="font-size:20px;font-weight:800;letter-spacing:.5px">START SESSION</div><div style="font-size:12px;opacity:.9;margin-top:2px">Tap to go live with your crew</div></div></div></button></div>
 <h2 style="margin-top:16px">Recent Sessions</h2>
@@ -122,18 +123,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">👥</span><span class="title">Showdown</span><span class="chevron">›</span></div>
 </div>
 </div>
-
-<!-- SESSION SCREEN (placeholder - built in commit 2) -->
-<div class="screen" id="screen-session">
-<h1>Session</h1>
-<div id="sessionContent">
-<div style="text-align:center;padding:60px 20px">
-<div style="font-size:64px;margin-bottom:16px">▶</div>
-<h2>Ready for a Night Out?</h2>
-<p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your Cheers, CPM, and the vibe in real time.</p>
-<button class="btn btn-primary" id="startSessionBtn" onclick="startSession()">Start Session</button>
-</div>
-</div>
+<div id="sessionContent" style="display:none"></div>
 </div>
 
 <!-- STATS SCREEN -->
@@ -185,28 +175,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="screen" id="screen-social">
 <h1>Social</h1>
 
-<h2>🟠 Safety</h2>
-<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="sendSOS()">🆘 SOS — Alert My Circle</button></div>
-
-<h3 style="margin-top:4px">Privacy & Visibility</h3>
-<div class="card" id="ghostModeSection" style="margin-bottom:16px"></div>
-
-<h3>Circles · Trust Tiers</h3>
-<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
-
-<h3>Active Safety Features</h3>
-<div class="card" style="margin-bottom:16px">
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Check-In Reminder</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="startWalkHomeMode()"><span class="icon">🚶</span><div style="flex:1"><div class="title" style="font-size:14px">Walk Home Mode</div><div style="font-size:11px;color:var(--text3)" id="walkHomeStatus">Share live GPS with Circle until you reach home</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showLowBatteryDemo()"><span class="icon">🔋</span><div style="flex:1"><div class="title" style="font-size:14px">Low Battery Alert</div><div style="font-size:11px;color:var(--text3)">Auto-notifies Circle when phone is dying</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showBarRoute()"><span class="icon">🗺️</span><div style="flex:1"><div class="title" style="font-size:14px">My Bar Route Tonight</div><div style="font-size:11px;color:var(--text3)">Ordered timeline of tonight\'s venues</div></div><span class="chevron">›</span></div>
-<div class="divider"></div>
-<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showDepartureFeed()"><span class="icon">🚪</span><div style="flex:1"><div class="title" style="font-size:14px">Departure Feed</div><div style="font-size:11px;color:var(--text3)">See when friends leave venues</div></div><span class="chevron">›</span></div>
-</div>
-
 <h2>📅 This Weekend</h2>
 <div class="card" id="weekendPlan"></div>
 
@@ -242,6 +210,31 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 
 </div>
 
+<!-- SAFETY SCREEN -->
+<div class="screen" id="screen-safety">
+<h1>Safety</h1>
+<div style="margin-bottom:12px"><button class="btn" style="background:var(--orange);color:#fff" onclick="sendSOS()">🆘 SOS — Alert My Circle</button></div>
+
+<h3 style="margin-top:4px">Privacy & Visibility</h3>
+<div class="card" id="ghostModeSection" style="margin-bottom:16px"></div>
+
+<h3>Circles · Trust Tiers</h3>
+<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
+
+<h3>Active Safety Features</h3>
+<div class="card" style="margin-bottom:16px">
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="toggleDeadMansSwitch()"><span class="icon">⏰</span><div style="flex:1"><div class="title" style="font-size:14px">Check-In Reminder</div><div style="font-size:11px;color:var(--text3)" id="dmsStatus">Off — Tap to enable</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="startWalkHomeMode()"><span class="icon">🚶</span><div style="flex:1"><div class="title" style="font-size:14px">Walk Home Mode</div><div style="font-size:11px;color:var(--text3)" id="walkHomeStatus">Share live GPS with Circle until you reach home</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showLowBatteryDemo()"><span class="icon">🔋</span><div style="flex:1"><div class="title" style="font-size:14px">Low Battery Alert</div><div style="font-size:11px;color:var(--text3)">Auto-notifies Circle when phone is dying</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showBarRoute()"><span class="icon">🗺️</span><div style="flex:1"><div class="title" style="font-size:14px">My Bar Route Tonight</div><div style="font-size:11px;color:var(--text3)">Ordered timeline of tonight\'s venues</div></div><span class="chevron">›</span></div>
+<div class="divider"></div>
+<div class="nav-link" style="margin:0;background:none;padding:10px 0" onclick="showDepartureFeed()"><span class="icon">🚪</span><div style="flex:1"><div class="title" style="font-size:14px">Departure Feed</div><div style="font-size:11px;color:var(--text3)">See when friends leave venues</div></div><span class="chevron">›</span></div>
+</div>
+</div>
+
 <!-- SHOWDOWN -->
 <div class="screen" id="screen-showdown">
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
@@ -268,13 +261,13 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
 Home
 </button>
-<button class="tab" data-tab="session" onclick="switchTab('session')">
-<svg viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-Session
-</button>
 <button class="tab" data-tab="social" onclick="switchTab('social')">
 <svg viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
 Social
+</button>
+<button class="tab" data-tab="safety" onclick="switchTab('safety')">
+<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+Safety
 </button>
 <button class="tab" data-tab="stats" onclick="switchTab('stats')">
 <svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -565,11 +558,17 @@ function startSession(){
 sessionActive=true;
 sessionStart=Date.now();
 drinks=[];
-barInhabitants=null; // fresh bar population each session
+barInhabitants=null;
+// Swap Home from normal view to live session view
+const nrm=document.getElementById('homeNormal');
+const sc=document.getElementById('sessionContent');
+if(nrm)nrm.style.display='none';
+if(sc)sc.style.display='block';
 updateSessionUI();
 sessionTimer=setInterval(()=>{updateSessionUI()},1000);
 updateHome();
-switchTab('session');
+switchTab('home');
+document.getElementById('screenContainer').scrollTop=0;
 }
 
 function calcBAC(numDrinks,elapsedMs){
@@ -972,8 +971,11 @@ updateHome();
 }
 
 function resetSession(){
-document.getElementById('sessionContent').innerHTML=
-'<div style="text-align:center;padding:60px 20px"><div style="font-size:64px;margin-bottom:16px">▶</div><h2>Ready for a Night Out?</h2><p style="color:var(--text2);margin-bottom:24px;font-size:14px">Start a session to track your Cheers, CPM, and the vibe in real time.</p><button class="btn btn-primary" onclick="startSession()">Start Session</button></div>';
+const sc=document.getElementById('sessionContent');
+const nrm=document.getElementById('homeNormal');
+if(sc){sc.innerHTML='';sc.style.display='none';}
+if(nrm)nrm.style.display='block';
+updateHome();
 }
 
 // ========== STATS ==========
@@ -1880,18 +1882,19 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 
 function initSocial(){
 renderWeekendPlan();
-renderGhostMode();
-renderCircles();
-updateDMSStatus();
-updateWalkHomeStatus();
 renderDMInbox();
 renderOrgs();
 renderMutualStreaks();
 renderMatchedMoments();
 renderMemories();
-// Build leaderboard
 renderLeaderboard();
 renderPartners();
+}
+function initSafety(){
+renderGhostMode();
+renderCircles();
+updateDMSStatus();
+updateWalkHomeStatus();
 }
 function renderLeaderboard(){
 const picker=document.getElementById('lbPicker');
@@ -2004,6 +2007,7 @@ switchTab=function(tab){
 origSwitchTab(tab);
 if(tab==='stats')initStats();
 if(tab==='social')initSocial();
+if(tab==='safety')initSafety();
 if(tab==='profile')initProfile();
 };
 
@@ -2016,6 +2020,7 @@ renderCardPromo();
 initStats();
 initProfile();
 initSocial();
+initSafety();
 </script>
 </body>
 </html>
