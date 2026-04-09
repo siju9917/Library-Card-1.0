@@ -10,8 +10,17 @@ final class FunNotificationService {
 
     // MARK: - Morning After Notifications
 
-    /// Schedule a funny morning-after notification based on how many drinks were logged.
-    func scheduleMorningAfter(totalDrinks: Int, sessionEndTime: Date) {
+    /// Schedule a funny morning-after notification — but only on nights that
+    /// earned it (10+ drinks or a personal record). Keeps the feature rare
+    /// and fun so users don't mute all notifications.
+    func scheduleMorningAfter(
+        totalDrinks: Int,
+        sessionEndTime: Date,
+        isPersonalRecord: Bool = false
+    ) {
+        // Only fire on notable nights — avoid being preachy or repetitive
+        guard totalDrinks >= 10 || isPersonalRecord else { return }
+
         let calendar = Calendar.current
         guard let nextMorning = calendar.date(bySettingHour: 9, minute: 0, second: 0, of:
             calendar.date(byAdding: .day, value: 1, to: sessionEndTime) ?? sessionEndTime
