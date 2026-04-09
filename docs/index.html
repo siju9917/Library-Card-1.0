@@ -63,6 +63,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 .active-banner .time{font-size:14px;font-variant-numeric:tabular-nums}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes ping{0%{transform:scale(1);opacity:1}100%{transform:scale(3);opacity:0}}
+@keyframes popIn{0%{opacity:0;transform:translateX(-50%) scale(0.5)}60%{opacity:1;transform:translateX(-50%) scale(1.1)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+@keyframes confetti{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
 </style>
 </head>
 <body>
@@ -237,6 +239,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 </div>
 </div>
+
+<!-- CAMERA MODAL (fake) -->
+<div id="cameraModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#000;flex-direction:column"></div>
 
 <!-- TAB BAR -->
 <div class="tab-bar">
@@ -740,15 +745,67 @@ if(navigator.vibrate)navigator.vibrate(50);
 promptForCheersPhoto(drinks.length-1);
 }
 function promptForCheersPhoto(idx){
+setTimeout(()=>openCheersCamera(idx),100);
+}
+function openCheersCamera(idx){
+const drink=drinks[idx];
+if(!drink)return;
+const modal=document.getElementById('cameraModal');
+const gradients=['linear-gradient(135deg,#ff6b6b,#ee5a24,#f39c12)','linear-gradient(135deg,#a29bfe,#6c5ce7,#fd79a8)','linear-gradient(135deg,#55efc4,#00b894,#0984e3)','linear-gradient(135deg,#fdcb6e,#e17055,#d63031)','linear-gradient(135deg,#74b9ff,#0984e3,#6c5ce7)'];
+const bg=gradients[Math.floor(Math.random()*gradients.length)];
+modal.style.display='flex';
+modal.innerHTML=
+'<div style="height:var(--safe-top);background:#000;flex-shrink:0"></div>'+
+// Top bar
+'<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;color:#fff"><button onclick="closeCheersCamera()" style="background:rgba(0,0,0,.4);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">✕</button><div style="background:rgba(0,0,0,.4);padding:8px 14px;border-radius:999px;font-size:12px;font-weight:600">📸 CHEERS · '+drink.name+'</div><button onclick="toggleCameraFlash()" style="background:rgba(0,0,0,.4);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">⚡</button></div>'+
+// Fake viewfinder
+'<div style="flex:1;background:'+bg+';margin:0 16px;border-radius:20px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">'+
+'<div style="position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;color:rgba(255,255,255,.9);font-size:11px;font-weight:600"><span>📍 The Pub</span><span>'+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span></div>'+
+'<div style="text-align:center"><div style="font-size:120px;opacity:.95;filter:drop-shadow(0 4px 20px rgba(0,0,0,.3))">'+drinkEmoji(drink.type)+'</div><div style="color:#fff;font-size:14px;font-weight:600;margin-top:12px;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:999px;display:inline-block">Point at your drink</div></div>'+
+// Dual camera mini (BeReal style)
+'<div style="position:absolute;bottom:16px;left:16px;width:80px;height:110px;border-radius:12px;background:linear-gradient(135deg,#444,#222);border:2px solid rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-size:36px">🤳</div>'+
+'</div>'+
+// Controls
+'<div style="padding:20px 16px;padding-bottom:calc(20px + var(--safe-bottom));background:#000;display:flex;justify-content:space-around;align-items:center">'+
+'<button onclick="closeCheersCamera()" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;width:70px">Skip</button>'+
+'<button onclick="captureCheersPhoto('+idx+')" style="width:74px;height:74px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.3);cursor:pointer;font-size:28px;box-shadow:0 0 0 3px #fff,0 0 20px rgba(232,163,23,.6)">📸</button>'+
+'<button onclick="flipCheersCamera()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;width:70px">🔄</button>'+
+'</div>'+
+// Hint
+'<div style="text-align:center;color:#666;font-size:10px;padding-bottom:12px">Photos auto-expire at end of night · BeReal style</div>';
+if(navigator.vibrate)navigator.vibrate(20);
+}
+function toggleCameraFlash(){if(navigator.vibrate)navigator.vibrate(15);}
+function flipCheersCamera(){if(navigator.vibrate)navigator.vibrate(15);}
+function closeCheersCamera(){document.getElementById('cameraModal').style.display='none';}
+function captureCheersPhoto(idx){
+// Flash effect
+const modal=document.getElementById('cameraModal');
+const flash=document.createElement('div');
+flash.style.cssText='position:absolute;inset:0;background:#fff;opacity:1;transition:opacity .4s;pointer-events:none;z-index:10';
+modal.appendChild(flash);
+if(navigator.vibrate)navigator.vibrate([30,20,30]);
+setTimeout(()=>{flash.style.opacity='0';},50);
 setTimeout(()=>{
-const take=confirm('📸 Cheers!\n\nSnap a photo to turn this drink into a Cheers. Photos expire at the end of the night (BeReal-style).\n\nCheers earn XP, count toward streaks, and show up in your memories.\n\nTake photo now?');
-if(take){
 drinks[idx].hasPhoto=true;
 addXP(15);
+closeCheersCamera();
 updateSessionUI();
-alert('📸 Photo saved!\n\n✨ +15 XP for a Cheers\n🔥 Keeping your photo streak alive\n👥 Shared with your Circle');
+triggerCheersCelebration();
+},600);
 }
-},200);
+function triggerCheersCelebration(){
+// Simple celebration toast
+const toast=document.createElement('div');
+toast.style.cssText='position:fixed;top:30%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:20px 28px;border-radius:20px;font-weight:700;z-index:2000;box-shadow:0 20px 60px rgba(232,163,23,.5);text-align:center;animation:popIn .4s ease-out';
+toast.innerHTML='<div style="font-size:40px;margin-bottom:4px">🎉</div><div style="font-size:18px">Cheers!</div><div style="font-size:12px;opacity:.9;margin-top:4px">+15 XP</div>';
+document.body.appendChild(toast);
+setTimeout(()=>{toast.style.transition='all .3s';toast.style.opacity='0';toast.style.transform='translateX(-50%) scale(0.9)';},1500);
+setTimeout(()=>toast.remove(),1900);
+}
+function drinkEmoji(type){
+const m={'Beer':'🍺','Wine':'🍷','Cocktail':'🍹','Spirit':'🥃','Shot':'🥃','Seltzer':'🫧','Cider':'🍏','Sake':'🍶','Other':'🍸','Custom':'🍹'};
+return m[type]||'🍹';
 }
 function rateDrink(index){
 const r=prompt('Rate this drink 1-5 stars:','');
