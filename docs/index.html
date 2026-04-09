@@ -203,6 +203,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>👥 Friends</h2>
 <div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Leaderboard</span><span style="font-size:12px;color:var(--text2)">This Week</span></div>
+<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto" id="lbPicker"></div>
 <div id="friendLeaderboard"></div>
 </div>
 
@@ -571,8 +572,8 @@ const dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
 const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
-'<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dpm+'</div><div class="label">DPM</div></div></div>'+
-(function(){const bac=calcBAC(drinks.length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;color:var(--text3)">Estimated BAC</div><div style="display:flex;align-items:baseline;gap:8px;margin-top:4px"><span style="font-size:28px;font-weight:700;color:'+bc+'">'+bac.toFixed(3)+'%</span><span style="font-size:13px;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:4px">'+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'" · '+userSex+'</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
+'<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+drinks.length+'</div><div class="label">Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+(drinks.filter(d=>d.hasPhoto).length)+'</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div></div>'+
+(function(){const bac=calcBAC(drinks.length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Safety Check-In</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bc+'"></div><span style="font-size:20px;font-weight:700;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. If in doubt, get a ride.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Drinks Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
@@ -718,19 +719,34 @@ alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this lim
 return;
 }
 const custom=prompt('Name this drink (or leave blank for "'+type+'"):','');
-if(custom===null)return; // cancelled
+if(custom===null)return;
 const name=custom&&custom.trim()?custom.trim():type;
-drinks.push({name:name,type:type,time:Date.now(),rating:null});
+const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false};
+drinks.push(drink);
 recordDrinkHistory(name);
 updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
+promptForCheersPhoto(drinks.length-1);
 }
 function addDrinkDirect(name){
 if(drinkCap>0&&drinks.length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
-drinks.push({name:name,type:'Custom',time:Date.now(),rating:null});
+const drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false};
+drinks.push(drink);
 recordDrinkHistory(name);
 updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
+promptForCheersPhoto(drinks.length-1);
+}
+function promptForCheersPhoto(idx){
+setTimeout(()=>{
+const take=confirm('📸 Cheers!\n\nSnap a photo to turn this drink into a Cheers. Photos expire at the end of the night (BeReal-style).\n\nCheers earn XP, count toward streaks, and show up in your memories.\n\nTake photo now?');
+if(take){
+drinks[idx].hasPhoto=true;
+addXP(15);
+updateSessionUI();
+alert('📸 Photo saved!\n\n✨ +15 XP for a Cheers\n🔥 Keeping your photo streak alive\n👥 Shared with your Circle');
+}
+},200);
 }
 function rateDrink(index){
 const r=prompt('Rate this drink 1-5 stars:','');
@@ -752,7 +768,7 @@ const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:8px">🎉</div><h2>Session Complete!</h2></div>'+
-(function(){const bac=calcBAC(drinks.length,elapsed);return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+drinks.length+'</div><div style="color:var(--text2);margin-bottom:16px">drinks</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+dpm+'</div><div class="lbl">DPM</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bac.toFixed(3)+'%</div><div class="lbl">BAC</div></div></div></div>';})()+
+(function(){const bac=calcBAC(drinks.length,elapsed);const bl=bacLabel(bac);const cheers=drinks.filter(d=>d.hasPhoto).length;const venues='The Pub';return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+cheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers moments</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+venues+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+drinks.length+'</div><div class="lbl">Drinks</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bl+'</div><div class="lbl">Safety</div></div></div></div>';})()+
 '<div style="margin-top:16px"><button class="btn btn-primary" onclick="resetSession()">Done</button></div>';
 updateHome();
 }
@@ -1003,13 +1019,14 @@ if(btn)btn.textContent=drinkCap>0?drinkCap+' drinks':'Not set';
 
 // ========== SOCIAL ==========
 const fakeFriends=[
-{name:'Jake M.',emoji:'😎',weekly:14,allTime:203},
-{name:'Sarah K.',emoji:'🎉',weekly:11,allTime:178},
-{name:'Mike R.',emoji:'🍻',weekly:8,allTime:156},
-{name:'Emma L.',emoji:'💃',weekly:6,allTime:134},
-{name:'Chris P.',emoji:'🤙',weekly:5,allTime:98},
-{name:'Rachel T.',emoji:'✨',weekly:3,allTime:67},
+{name:'Jake M.',emoji:'😎',weekly:14,cheers:22,venues:7,photos:31,allTime:203},
+{name:'Sarah K.',emoji:'🎉',weekly:11,cheers:18,venues:5,photos:28,allTime:178},
+{name:'Mike R.',emoji:'🍻',weekly:8,cheers:9,venues:4,photos:14,allTime:156},
+{name:'Emma L.',emoji:'💃',weekly:6,cheers:15,venues:6,photos:25,allTime:134},
+{name:'Chris P.',emoji:'🤙',weekly:5,cheers:11,venues:3,photos:12,allTime:98},
+{name:'Rachel T.',emoji:'✨',weekly:3,cheers:12,venues:8,photos:19,allTime:67},
 ];
+let leaderboardMode='cheers'; // cheers | venues | photos | drinks
 // Live bar data for the map
 const liveBars=[
 {name:'The Pub',x:30,y:35,users:12,heat:'🔥',friends:['Jake M.','Sarah K.','Mike R.'],raid:false},
@@ -1392,18 +1409,32 @@ renderMutualStreaks();
 renderMatchedMoments();
 renderMemories();
 // Build leaderboard
-const lb=document.getElementById('friendLeaderboard');
-if(lb){
-const you={name:'You',emoji:'🏆',weekly:allSessions.filter(s=>s.time>Date.now()-7*86400000).reduce((a,s)=>a+s.drinks,0),allTime:allTimeDrinks};
-const all=[you,...fakeFriends].sort((a,b)=>b.weekly-a.weekly);
-lb.innerHTML=all.map((f,i)=>{
-const isYou=f.name==='You';
-return'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(isYou?'':'opacity:.8')+'"><span style="font-size:16px;font-weight:700;width:24px;color:'+(i===0?'var(--primary)':'var(--text3)')+';">'+(i+1)+'</span><span>'+f.emoji+'</span><span style="flex:1;font-weight:'+(isYou?'600':'400')+'">'+f.name+'</span><span style="font-weight:700">'+f.weekly+'</span><span style="font-size:11px;color:var(--text3)">this week</span></div>';
-}).join('');
-}
+renderLeaderboard();
 renderPartners();
 renderSwipeCard();
 }
+function renderLeaderboard(){
+const picker=document.getElementById('lbPicker');
+const lb=document.getElementById('friendLeaderboard');
+if(!lb||!picker)return;
+const modes=[
+{key:'cheers',label:'📸 Cheers',suffix:'cheers'},
+{key:'photos',label:'📷 Photos',suffix:'photos'},
+{key:'venues',label:'📍 Venues',suffix:'venues'},
+{key:'drinks',label:'🍺 Drinks',suffix:'drinks'},
+];
+picker.innerHTML=modes.map(m=>'<button onclick="setLeaderboardMode(\''+m.key+'\')" style="flex-shrink:0;padding:6px 12px;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:'+(leaderboardMode===m.key?'var(--primary)':'var(--card2)')+';color:'+(leaderboardMode===m.key?'#fff':'var(--text2)')+'">'+m.label+'</button>').join('');
+const field=leaderboardMode==='drinks'?'weekly':leaderboardMode;
+const suffix=modes.find(m=>m.key===leaderboardMode).suffix;
+const myWeeklyDrinks=allSessions.filter(s=>s.time>Date.now()-7*86400000).reduce((a,s)=>a+s.drinks,0);
+const you={name:'You',emoji:'🏆',weekly:myWeeklyDrinks,cheers:Math.floor(myWeeklyDrinks*0.8),venues:3,photos:Math.floor(myWeeklyDrinks*1.2)};
+const all=[you,...fakeFriends].sort((a,b)=>b[field]-a[field]);
+lb.innerHTML=all.map((f,i)=>{
+const isYou=f.name==='You';
+return'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'+(isYou?'':'opacity:.8')+'"><span style="font-size:16px;font-weight:700;width:24px;color:'+(i===0?'var(--primary)':'var(--text3)')+';">'+(i+1)+'</span><span>'+f.emoji+'</span><span style="flex:1;font-weight:'+(isYou?'600':'400')+'">'+f.name+'</span><span style="font-weight:700">'+f[field]+'</span><span style="font-size:11px;color:var(--text3)">'+suffix+'</span></div>';
+}).join('');
+}
+function setLeaderboardMode(m){leaderboardMode=m;renderLeaderboard();}
 function addPartner(){
 const name=prompt('Enter your drinking partner\'s name:','');
 if(!name||!name.trim())return;
