@@ -108,60 +108,35 @@ struct OnboardingView: View {
     }
 
     private var profileSetupPage: some View {
-        ScrollView {
-            VStack(spacing: AppSpacing.xl) {
-                VStack(spacing: AppSpacing.sm) {
-                    Text("Set Up Your Profile")
-                        .font(AppFont.title)
+        VStack(spacing: AppSpacing.xxl) {
+            Spacer()
 
-                    Text("This helps us personalize your experience. All fields are optional.")
-                        .font(AppFont.caption)
-                        .foregroundStyle(AppColor.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.top, AppSpacing.xxl)
+            VStack(spacing: AppSpacing.md) {
+                Text("What should we call you?")
+                    .font(AppFont.title)
+                    .multilineTextAlignment(.center)
 
-                VStack(spacing: AppSpacing.lg) {
-                    OnboardingTextField(
-                        title: "Display Name",
-                        placeholder: "What should we call you?",
-                        text: $displayName
-                    )
-
-                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                        Text("Biological Sex")
-                            .font(AppFont.caption)
-                            .foregroundStyle(AppColor.textSecondary)
-                        Picker("Biological Sex", selection: $selectedSex) {
-                            ForEach(BiologicalSex.allCases) { sex in
-                                Text(sex.rawValue).tag(sex)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    OnboardingTextField(
-                        title: "Weight (kg)",
-                        placeholder: "For BAC estimation",
-                        text: $weightKg,
-                        keyboardType: .decimalPad
-                    )
-
-                    OnboardingTextField(
-                        title: "Weekly Drink Goal",
-                        placeholder: "Target max drinks per week",
-                        text: $weeklyGoal,
-                        keyboardType: .numberPad
-                    )
-                }
-                .padding(.horizontal, AppSpacing.xxl)
-
-                Text("Weight and sex are used for BAC estimation only. This is not medical advice.")
-                    .font(AppFont.caption2)
-                    .foregroundStyle(AppColor.textTertiary)
+                Text("Just your name — you can set up everything else later.")
+                    .font(AppFont.caption)
+                    .foregroundStyle(AppColor.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.xxl)
             }
+
+            OnboardingTextField(
+                title: "Display Name",
+                placeholder: "Your name",
+                text: $displayName
+            )
+            .padding(.horizontal, AppSpacing.xxl)
+
+            Text("Optional details (weight, sex, weekly goal) can be added in Settings. They're only used if you want BAC estimation.")
+                .font(AppFont.caption2)
+                .foregroundStyle(AppColor.textTertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppSpacing.xxl)
+
+            Spacer()
         }
     }
 
