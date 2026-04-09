@@ -589,12 +589,12 @@ if(bac<0.08)return'var(--orange)';
 return'var(--red)';
 }
 function bacLabel(bac){
-if(bac<0.02)return'Sober';
-if(bac<0.04)return'Light buzz';
-if(bac<0.06)return'Feeling it';
-if(bac<0.08)return'Tipsy';
-if(bac<0.10)return'Impaired';
-return'Heavy';
+if(bac<0.02)return'Just cracked the spine 📖';
+if(bac<0.04)return'Starting off slow';
+if(bac<0.06)return'Finding the vibe';
+if(bac<0.08)return'Story\'s getting good';
+if(bac<0.10)return'Plot twist incoming';
+return'Wildn\' in the stacks 🔥';
 }
 function editBodyStats(){
 const w=prompt('Weight (lbs):',String(userWeight));
@@ -614,7 +614,7 @@ const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 (function(){const cheersCount=drinks.filter(d=>d.hasPhoto).length;const cpm=elapsed>0&&cheersCount>0?(cheersCount/(elapsed/60000)).toFixed(3):'0.000';return '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+cheersCount+'</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+cpm+'</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div></div>';})()+
-(function(){const bac=calcBAC(drinks.length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Safety Check-In</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bc+'"></div><span style="font-size:20px;font-weight:700;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. If in doubt, get a ride.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
+(function(){const bac=calcBAC(drinks.length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📖 Vibe Check</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bc+'"></div><span style="font-size:20px;font-weight:700;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. Get a ride if in doubt.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
