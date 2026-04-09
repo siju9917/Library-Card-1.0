@@ -973,40 +973,21 @@ alert("How Auto-Tracking Works\n\nThe Library Card is a thin pass-through. When 
 
 // ========== FUTURE FEATURES ARCHIVE ==========
 const futureFeatures=[
-{icon:'🎵',title:'Live Bar Playlist',desc:'Add songs to the bar\'s playlist via Spotify Connect. DJ style.',unlock:'Requires bar partnerships'},
-{icon:'🍳',title:'Morning Brunch Plans',desc:'Auto-suggests brunch spots and a group chat for next-day recovery.',unlock:'Needs 10+ friends on platform'},
-{icon:'🎤',title:'Karaoke Mode',desc:'Vote on karaoke songs at participating bars. Leaderboard for best performer.',unlock:'Requires bar partnerships'},
-{icon:'🧭',title:'AR Friend Finder',desc:'Hold your phone up in a crowded bar — arrow points to your friends with distance.',unlock:'Needs real-time location backend'},
-{icon:'🎟️',title:'Concert & Event Mode',desc:'Special session type for concerts with setlist tracking and group check-in.',unlock:'Needs Bandsintown integration'},
-{icon:'🏆',title:'Inter-School Rivalries',desc:'Your school vs rival school total cheers this week. National leaderboard.',unlock:'Needs 1000+ users per campus'},
-{icon:'🎓',title:'Game Day Mode',desc:'Football Saturday auto-mode with tailgate tracking, team colors, rival drama.',unlock:'Requires school verification'},
-{icon:'🍳',title:'Hangover Insights',desc:'Correlates drinks with Apple Health sleep + next-day energy scores.',unlock:'Needs HealthKit permissions'},
-{icon:'🗳️',title:'Bar Ratings Contribution',desc:'Rate bar quality (lighting, safety, music, prices). Crowd-sourced intel.',unlock:'Needs 100+ users per bar'},
-{icon:'📻',title:'Bar-Wide Voice Rooms',desc:'Drop into an open voice channel with everyone at your bar right now.',unlock:'Needs real-time audio backend'},
-{icon:'🎁',title:'Birthday Drink Fund',desc:'Friends pool money for your birthday drinks, auto-applied to your Library Card.',unlock:'Needs payment processing'},
-{icon:'🛒',title:'Drink Delivery',desc:'Order your next round from your phone at participating bars.',unlock:'Requires POS integration'},
-{icon:'🎯',title:'Bar Bucket List',desc:'Curated lists of must-try bars by city. Travel mode unlocks guides.',unlock:'Needs editorial team'},
-{icon:'💼',title:'Work Events Mode',desc:'Separate tracking for work happy hours with privacy from personal stats.',unlock:'Needs business tier'},
-{icon:'🏅',title:'Badges & Achievements',desc:'50+ unlockable badges: First Shot, Century Club, Bar Hopper, Streak Master.',unlock:'Launching with v2'},
-{icon:'🌍',title:'Travel Passport',desc:'Visit bars in new cities for stamps. International leaderboards.',unlock:'Needs 10k+ users globally'},
+{icon:'🗺️',title:'Live Bar Map',desc:'See which bars are bumping right now with friend and crowd counts.',unlock:'Needs many users checking in at bars',action:'tryLiveBarMap'},
+{icon:'👑',title:'Bar Raids',desc:'Get 5+ friends at the same bar to claim it. Orgs compete for bar ownership.',unlock:'Needs many active users + orgs',action:'tryBarRaids'},
+{icon:'💘',title:'Swipe at the Bar',desc:'See other Library users at the same bar. Mutual swipes = match.',unlock:'Needs users at the same bar',action:'trySwipeAtBar'},
+{icon:'⭐',title:'Pre-Swipe (Premium)',desc:'Swipe on people planning to go out tonight. Match before you arrive.',unlock:'Needs active user base planning nights',action:'tryPreSwipe'},
+{icon:'🧭',title:'AR Friend Finder',desc:'At a crowded bar, hold your phone up — arrow points to your friends with distance.',unlock:'Needs real-time friend location data',action:'tryARFinder'},
+{icon:'👥',title:'Friends of Friends Nearby',desc:'Discover people your friends know at bars near you. LinkedIn-style 2nd connections.',unlock:'Needs a real friend network',action:'tryFriendsOfFriends'},
+{icon:'🏆',title:'Community Drink Ratings',desc:'Top rated drinks across all Library users. "Fat Albert at The Pub — 4.8★ (347 reviews)".',unlock:'Needs 100+ reviews per drink',action:'tryCommunityRatings'},
+{icon:'🏢',title:'Best Drink by Bar',desc:'Must-try signature drink at every bar, ranked by community reviews.',unlock:'Needs bar + drink coverage',action:'tryBestByBar'},
+{icon:'🎵',title:'Jukebox Mode',desc:'Queue songs at the bar from your phone. Premium members skip the queue and get priority.',unlock:'Needs bar partnerships + Spotify integration',action:'tryJukebox'},
 ];
 function renderFutureFeatures(){
 const el=document.getElementById('futureFeaturesSection');
 if(!el)return;
-el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">Features planned for future releases. Many need more users on the platform before they work well.</div>'+
-futureFeatures.slice(0,6).map(f=>'<div onclick="showFutureFeature(\''+f.title.replace(/\'/g,"\\\'")+'\')" style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:0.5px solid #333;cursor:pointer"><span style="font-size:20px;flex-shrink:0">'+f.icon+'</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">'+f.title+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4">'+f.desc+'</div><div style="font-size:10px;color:var(--primary);margin-top:4px">🔒 '+f.unlock+'</div></div></div>').join('')+
-'<div style="padding-top:12px;text-align:center"><button onclick="showAllFutureFeatures()" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:8px 16px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer">See all '+futureFeatures.length+' planned features →</button></div>';
-}
-function showFutureFeature(title){
-const f=futureFeatures.find(x=>x.title===title);
-if(!f)return;
-alert(f.icon+' '+f.title+'\n\n'+f.desc+'\n\n🔒 '+f.unlock+'\n\nThis feature is on the roadmap but will be more valuable once the Library network grows. Want to help us get there? Invite your friends!');
-}
-function showAllFutureFeatures(){
-let txt='🔮 The Full Roadmap\n\n';
-futureFeatures.forEach(f=>{txt+=f.icon+' '+f.title+'\n';});
-txt+='\nThese features are planned for future releases. Many unlock once the Library network grows.';
-alert(txt);
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">These features need a larger user base to shine. We\'re starting small — you and your close friends — then unlocking these as The Library grows. Tap any to try a demo.</div>'+
+futureFeatures.map((f,i)=>'<div onclick="'+f.action+'()" style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;'+(i<futureFeatures.length-1?'border-bottom:0.5px solid #333':'')+';cursor:pointer"><span style="font-size:22px;flex-shrink:0">'+f.icon+'</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+f.title+'</span><span style="font-size:9px;background:var(--card2);color:var(--text3);padding:2px 6px;border-radius:4px;font-weight:600">PREVIEW</span></div><div style="font-size:11px;color:var(--text3);margin-top:3px;line-height:1.4">'+f.desc+'</div><div style="font-size:10px;color:var(--primary);margin-top:4px">🔒 '+f.unlock+'</div></div><span style="color:var(--text3);font-size:14px;align-self:center">›</span></div>').join('');
 }
 
 function initProfile(){
