@@ -630,7 +630,7 @@ renderBarDist(elapsed);
 renderRewards(drinks.length);
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a drink above to add one.</p>';}
-else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';return'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #333"><div><span style="font-weight:500">'+d.name+'</span><div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
+else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
@@ -777,6 +777,67 @@ promptForCheersPhoto(drinks.length-1);
 function promptForCheersPhoto(idx){
 setTimeout(()=>openCheersCamera(idx),100);
 }
+// ========== LIBRARY-THEMED CAPTIONS ==========
+const libraryCaptions=[
+"Ah yes, just a peaceful book and a quiet afternoon 📚",
+"Deep in my research tonight",
+"Just returned this one to the shelf",
+"Quiet study session 🤫",
+"Chapter 4 of the night",
+"Checked out another classic",
+"The Library is officially open",
+"Bookmark this one",
+"Plot twist at the corner table",
+"Reading between the lines",
+"Finishing my homework",
+"Late night library session",
+"Crammed for this one all semester",
+"Research for my thesis",
+"Overdue fine, paid in full",
+"Renewal granted",
+"This one's a real page turner",
+"Getting my liberal arts education",
+"Extra credit assignment",
+"Just a quiet one tonight I promise",
+"Library card working overtime",
+"Due date extended",
+"Hitting the reference section",
+"Reading the fine print",
+"New chapter, same book",
+"Silent reading hour",
+"First edition, very rare",
+"Library closes in 3 hours",
+"Midterm prep",
+"Syllabus for the night",
+"Volume 2",
+"Required reading",
+"Section 641.87 (that's the good stuff)",
+"Checked out with the girls",
+"Fiction section tonight",
+"Non-fiction is for weekdays",
+"Honestly just here for the WiFi",
+"Open book exam",
+"Flipping the pages slowly",
+"Group project meeting 🤓",
+"Independent study",
+"Thesis defense went well",
+"Study group got out of hand",
+"Extended office hours",
+"Just picking up a hold",
+"Browsing the stacks",
+"Librarian said we were too loud",
+"Dewey decimal classification: fun",
+"Nerd alert 🤓",
+"Book club meets tonight"
+];
+function randomCaption(){
+return libraryCaptions[Math.floor(Math.random()*libraryCaptions.length)];
+}
+function regenerateCaption(){
+const input=document.getElementById('captionInput');
+if(input){input.value=randomCaption();if(navigator.vibrate)navigator.vibrate(15);}
+}
+
 function openCheersCamera(idx){
 const drink=drinks[idx];
 if(!drink)return;
@@ -795,8 +856,10 @@ modal.innerHTML=
 // Dual camera mini (BeReal style)
 '<div style="position:absolute;bottom:16px;left:16px;width:80px;height:110px;border-radius:12px;background:linear-gradient(135deg,#444,#222);border:2px solid rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-size:36px">🤳</div>'+
 '</div>'+
+// Caption input with shuffle
+'<div style="padding:14px 16px 6px;background:#000"><div style="display:flex;align-items:center;gap:8px;background:#141414;border:1px solid #222;border-radius:14px;padding:4px 6px 4px 14px"><input type="text" id="captionInput" placeholder="Add a caption..." value="'+randomCaption().replace(/"/g,'&quot;')+'" style="flex:1;background:none;border:none;color:#fff;font-size:14px;outline:none;padding:10px 0;font-family:inherit"><button onclick="regenerateCaption()" style="background:linear-gradient(135deg,var(--primary),var(--accent));border:none;color:#fff;width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0" title="Generate new caption">🎲</button></div><div style="text-align:center;color:#555;font-size:9px;margin-top:6px">🎲 for a new library joke · tap to edit</div></div>'+
 // Controls
-'<div style="padding:20px 16px;padding-bottom:calc(20px + var(--safe-bottom));background:#000;display:flex;justify-content:space-around;align-items:center">'+
+'<div style="padding:14px 16px;padding-bottom:calc(14px + var(--safe-bottom));background:#000;display:flex;justify-content:space-around;align-items:center">'+
 '<button onclick="closeCheersCamera()" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;width:70px">Skip</button>'+
 '<button onclick="captureCheersPhoto('+idx+')" style="width:74px;height:74px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.3);cursor:pointer;font-size:28px;box-shadow:0 0 0 3px #fff,0 0 20px rgba(232,163,23,.6)">📸</button>'+
 '<button onclick="flipCheersCamera()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;width:70px">🔄</button>'+
@@ -809,7 +872,8 @@ function toggleCameraFlash(){if(navigator.vibrate)navigator.vibrate(15);}
 function flipCheersCamera(){if(navigator.vibrate)navigator.vibrate(15);}
 function closeCheersCamera(){document.getElementById('cameraModal').style.display='none';}
 function captureCheersPhoto(idx){
-// Flash effect
+const captionInput=document.getElementById('captionInput');
+const caption=(captionInput&&captionInput.value.trim())||randomCaption();
 const modal=document.getElementById('cameraModal');
 const flash=document.createElement('div');
 flash.style.cssText='position:absolute;inset:0;background:#fff;opacity:1;transition:opacity .4s;pointer-events:none;z-index:10';
@@ -818,6 +882,7 @@ if(navigator.vibrate)navigator.vibrate([30,20,30]);
 setTimeout(()=>{flash.style.opacity='0';},50);
 setTimeout(()=>{
 drinks[idx].hasPhoto=true;
+drinks[idx].caption=caption;
 addXP(15);
 closeCheersCamera();
 updateSessionUI();
