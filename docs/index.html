@@ -983,6 +983,38 @@ const futureFeatures=[
 {icon:'🏢',title:'Best Drink by Bar',desc:'Must-try signature drink at every bar, ranked by community reviews.',unlock:'Needs bar + drink coverage',action:'tryBestByBar'},
 {icon:'🎵',title:'Jukebox Mode',desc:'Queue songs at the bar from your phone. Premium members skip the queue and get priority.',unlock:'Needs bar partnerships + Spotify integration',action:'tryJukebox'},
 ];
+// ========== ARCHIVE DEMO LAUNCHERS ==========
+function tryLiveBarMap(){
+alert('🗺️ Live Bar Map — PREVIEW\n\nSee every bar in your area in real time:\n\n🔥🔥🔥 Club X — 24 people (Chris P., Rachel T. here)\n🔥🔥 Rooftop Bar — 18 people (Emma L., RAIDED by Sigma Chi)\n🔥 The Pub — 12 people (Jake M., Sarah K., Mike R.)\n🔥 The Library Lounge — 15 people (Sarah K.)\n✨ Tavern on Main — 7 people\n✨ Brews & Views — 9 people (Jake M.)\n\nTap any bar to see friends there, the vibe, and check in.\n\n🔒 Unlocks once many users are checking in at bars in your area.');
+}
+function tryBarRaids(){
+alert('👑 Bar Raids — PREVIEW\n\nGet 5+ friends at the same bar to claim it for your crew. The org with the most drinks owns the bar for the night.\n\nLIVE NOW:\n👑 Rooftop Bar — OWNED by Sigma Chi (14 members)\n⚡ Club X — RAID BUILDING (Kappa Kappa 4/5)\n🎯 The Pub — AVAILABLE (Your Squad 3/5, need 2 more!)\n\nRally your friends → all check in at the same bar → claim the bar → your org name shows on the map for everyone to see.\n\n🔒 Unlocks once your friends are all on The Library and orgs exist.');
+}
+function trySwipeAtBar(){
+alert('💘 Swipe at The Pub — PREVIEW\n\nSee other Library Card users at the same bar. Swipe right if interested. Mutual right-swipe = match.\n\nProfiles show: name, age, bio, Live Photo verified badge, current vibe, drinks in.\n\nOnce matched you can:\n• Send a DM (no phone number needed)\n• Buy them a drink (loaded to their Library Card)\n• See each other on the bar map\n\n🔒 Unlocks once enough users are at the same bar as you.');
+}
+function tryPreSwipe(){
+alert('⭐ Pre-Swipe (Premium) — PREVIEW\n\nPeople going out tonight near you:\n\n👩‍🦰 Olivia, 22 — The Pub at 9 PM\n👩 Mia, 23 — Rooftop Bar at 10 PM\n💁‍♀️ Ava, 22 — Club X at 11 PM\n\nSwipe right before they arrive. If you both right-swiped AND end up at the same bar, you get a notification:\n\n"🎉 Your pre-match Olivia just checked in at The Pub!"\n\n💎 Premium feature — gives you first-mover advantage on the matching pool.\n\n🔒 Unlocks once enough users are planning their nights on the app.');
+}
+function tryARFinder(){
+alert('🧭 AR Friend Finder — PREVIEW\n\nAt a crowded bar, concert, or festival, hold your phone up. An arrow points toward your drinking partner with estimated distance.\n\nLike a compass, but for finding friends in a crowd.\n\nPrivacy-first: only works between people set as drinking partners for the night (both must opt in).\n\n🔒 Unlocks with real-time friend location data from backend.');
+}
+function tryFriendsOfFriends(){
+alert('👥 Friends of Friends Nearby — PREVIEW\n\nPeople your friends know, currently at nearby bars:\n\n👤 Alex T. · via Jake M. · @ The Pub\n👤 Bella R. · via Sarah K. · @ Club X\n👤 Marcus W. · via Mike R. · @ Rooftop Bar\n👤 Nina C. · via Emma L. · @ The Pub\n\nUse cases:\n• Meet new people via mutual connections\n• Safety — if you\'re stuck, a friend\'s trusted friend nearby can help\n• Expand your network organically\n\n🔒 Unlocks once you have a real friend network on the app.');
+}
+function tryCommunityRatings(){
+alert('🏆 Community Favorites — PREVIEW\n\nTop rated drinks across all Library Card users:\n\n🍹 Fat Albert · The Pub · 4.8⭐ (347 reviews)\n☕ Espresso Martini · Rooftop Bar · 4.7⭐ (512 reviews)\n🥃 Old Fashioned · The Library Lounge · 4.6⭐ (298 reviews)\n🍸 Margarita · Tavern on Main · 4.5⭐ (189 reviews)\n🍺 House IPA · Brews & Views · 4.5⭐ (234 reviews)\n🥃 Rum & Coke · Club X · 4.2⭐ (156 reviews)\n\n🔒 Unlocks when drinks have 100+ community reviews.');
+}
+function tryBestByBar(){
+alert('🏢 Best Drink by Bar — PREVIEW\n\nMust-try signature drink at every bar:\n\n📍 The Pub → Fat Albert (4.8⭐)\n📍 Rooftop Bar → Espresso Martini (4.7⭐)\n📍 The Library Lounge → Old Fashioned (4.6⭐)\n📍 Tavern on Main → Margarita (4.5⭐)\n📍 Brews & Views → House IPA (4.5⭐)\n📍 Club X → Rum & Coke (4.2⭐)\n\nNever order a bad drink again. Arrive at a bar and see exactly what to order.\n\n🔒 Unlocks with bar coverage and enough reviews.');
+}
+function tryJukebox(){
+const song=prompt('🎵 Jukebox Mode — PREVIEW\n\nCurrently playing at The Pub:\n🎵 "Dancing Queen" — ABBA\n\nNext in queue:\n1. "Don\'t Stop Believin\'" — Journey (queued by Jake M.)\n2. "Mr. Brightside" — The Killers (queued by Sarah K.)\n3. "Sweet Caroline" — Neil Diamond (queued by Mike R.)\n\nYour queue position: #8 (regular · 35 min wait)\n💎 Premium would bump you to #4 (12 min wait)\n\nWhat do you want to play? (just a name):','Valerie');
+if(song&&song.trim()){
+alert('🎵 Queued!\n\n"'+song.trim()+'" added to the jukebox at The Pub.\n\nYour position: #8 (regular)\n💎 Upgrade to Premium to skip to #4\n\nEveryone at the bar will hear it play in ~35 min.\n\n🔒 Jukebox Mode unlocks with bar partnerships and Spotify Connect integration.');
+}
+}
+
 function renderFutureFeatures(){
 const el=document.getElementById('futureFeaturesSection');
 if(!el)return;
