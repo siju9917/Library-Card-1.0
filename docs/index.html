@@ -13,8 +13,8 @@
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <title>The Library</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=4"></script>
-<script src="supabase/db.js?v=4"></script>
+<script src="supabase/config.js?v=5"></script>
+<script src="supabase/db.js?v=5"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -102,6 +102,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" style="width:100%;max-width:340px;padding:16px 18px;background:#1A1A1C;border:1px solid #2A2A2E;border-radius:14px;color:#fff;font-size:16px;outline:none;margin-bottom:12px"/>
 <button id="authBtn" onclick="authSendLink()" style="width:100%;max-width:340px;padding:16px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer">Send Magic Link</button>
 <div id="authStatus" style="color:#A1A1AA;font-size:13px;margin-top:16px;min-height:20px"></div>
+<div style="width:100%;max-width:340px;display:flex;align-items:center;gap:10px;margin:24px 0 16px 0"><div style="flex:1;height:1px;background:#2A2A2E"></div><div style="color:#52525B;font-size:11px;font-weight:600;letter-spacing:1px">OR</div><div style="flex:1;height:1px;background:#2A2A2E"></div></div>
+<button onclick="enterDemoMode()" style="width:100%;max-width:340px;padding:14px;background:transparent;color:#A1A1AA;border:1px solid #2A2A2E;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">🎮 Try the Demo</button>
+<div style="color:#52525B;font-size:11px;margin-top:8px;max-width:300px;line-height:1.4">Experience the prototype with fake sessions, friends, and activity — no sign-in required.</div>
 <div style="position:absolute;bottom:24px;left:0;right:0;color:#52525B;font-size:11px">For you and your friends only · v1</div>
 </div>
 
@@ -307,8 +310,27 @@ Profile
 </div>
 
 <script>
-// Always fresh demo on every load
-localStorage.clear();
+// ========== DEMO vs REAL MODE ==========
+// Demo mode shows fake sessions, friends, and activity — it's the prototype experience.
+// Real mode (cloud enabled + signed in) starts completely blank and fills in as the
+// user logs Cheers and adds real friends.
+//
+// LC_DEMO is true when:
+//   - Cloud mode isn't configured (no Supabase creds), OR
+//   - User is in cloud mode but explicitly tapped "Try Demo" on the sign-in screen
+const LC_DEMO = !window.LC_CLOUD_ENABLED || localStorage.getItem('lc_demo_mode')==='true';
+
+// In demo mode, always start fresh: wipe any previous demo state so the experience
+// is predictable on every load. In cloud mode, NEVER touch localStorage — that would
+// wipe the Supabase session and force re-authentication on every app open.
+if (LC_DEMO) {
+  const demoKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('lc_') && k !== 'lc_demo_mode') demoKeys.push(k);
+  }
+  demoKeys.forEach(k => localStorage.removeItem(k));
+}
 
 // Tab switching
 function switchTab(tab){
@@ -355,8 +377,9 @@ let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // 
 let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
 
 // ========== SEED DEMO DATA ==========
-// Seed demo data on every load
-{
+// Only seeds if we're in demo mode. Real users start completely blank and
+// build their history organically as they log sessions and add friends.
+if (LC_DEMO) {
 const now=Date.now();const day=86400000;const hr=3600000;const min=60000;
 const venues=['The Pub','Tavern on Main','Club X','Brews & Views','The Library Lounge','Rooftop Bar'];
 const dTypes=['Beer','Wine','Cocktail','Spirit','Shot','Seltzer'];
@@ -447,6 +470,19 @@ const friendStories=[
 function renderStoryRing(){
 const el=document.getElementById('storyRing');
 if(!el)return;
+if(!LC_DEMO){
+// Real mode: show only "You" + any friends from Circles (empty until they add some)
+const realStories=[{name:'You',emoji:'🏆',gradient:'linear-gradient(135deg,#E8A317,#FF6B2B)',status:'Start',isYou:true}];
+el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">'+
+realStories.map((s,i)=>'<div onclick="startSession()" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
+'<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">＋</div></div></div>'+
+'<div style="font-size:11px;font-weight:700;text-align:center">You</div>'+
+'<div style="font-size:9px;color:var(--text3);text-align:center">Start</div>'+
+'</div>').join('')+
+'<div style="display:flex;align-items:center;padding:0 12px;color:var(--text3);font-size:11px;text-align:center;max-width:160px">Invite friends to see them here when they go out</div>'+
+'</div>';
+return;
+}
 el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none" onscroll="">'+
 friendStories.map((s,i)=>'<div onclick="openStory('+i+')" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
 '<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">'+(s.isYou?'＋':s.photo)+'</div></div>'+(s.cheers?'<div style="position:absolute;bottom:-2px;right:-2px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:2px 6px;border:2px solid var(--bg)">'+s.cheers+'</div>':'')+(s.live?'<div style="position:absolute;top:-1px;right:-1px;width:14px;height:14px;background:var(--green);border-radius:50%;border:2.5px solid var(--bg);animation:livePulse 2s ease-in-out infinite"></div>':'')+'</div>'+
@@ -1726,6 +1762,10 @@ let myVote=1;
 function renderWeekendPlan(){
 const el=document.getElementById('weekendPlan');
 if(!el)return;
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No plans yet.<br><span style="font-size:11px">Add friends and suggest a spot to get started.</span></div>';
+return;
+}
 const totalVotes=weekendOptions.reduce((a,o)=>a+o.votes.length,0);
 const fri=getFridayDate();
 el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">Vote by Friday 5pm · '+totalVotes+' votes in</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri+'</div></div>'+
@@ -1859,11 +1899,13 @@ function toggleGhostMode(){visibility.ghostMode=!visibility.ghostMode;saveVisibi
 function toggleStrangerDMs(){visibility.allowStrangerDMs=!visibility.allowStrangerDMs;saveVisibility();renderGhostMode();}
 
 // ========== CIRCLES (Trust Tiers) ==========
-let circles=JSON.parse(localStorage.getItem('lc_circles')||'null')||{
+let circles=JSON.parse(localStorage.getItem('lc_circles')||'null')||(LC_DEMO?{
 diehards:[{name:'Jake M.',emoji:'😎'},{name:'Sarah K.',emoji:'🎉'}],
 besties:[{name:'Mike R.',emoji:'🍻'},{name:'Emma L.',emoji:'💃'},{name:'Chris P.',emoji:'🤙'}],
 friends:[{name:'Rachel T.',emoji:'✨'},{name:'Alex T.',emoji:'👤'},{name:'Bella R.',emoji:'💅'}]
-};
+}:{
+diehards:[],besties:[],friends:[]
+});
 // Migrate old tier keys if present
 if(circles.partners||circles.acquaintances){
 circles={
@@ -2040,6 +2082,10 @@ const fakeDMs=[
 function renderDMInbox(){
 const el=document.getElementById('dmInbox');
 if(!el)return;
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No messages yet.<br><span style="font-size:11px">DMs with friends will appear here.</span></div>';
+return;
+}
 const unread=fakeDMs.filter(d=>d.unread).length;
 el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600">Inbox</span>'+(unread>0?'<span style="background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">'+unread+' new</span>':'')+'</div>'+
 fakeDMs.map((d,i)=>'<div onclick="openDM('+i+')" style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;'+(i<fakeDMs.length-1?'border-bottom:0.5px solid #333':'')+'"><span style="font-size:24px">'+d.emoji+'</span><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span style="font-weight:'+(d.unread?'700':'500')+';font-size:14px">'+d.name+'</span><span style="font-size:11px;color:var(--text3)">'+d.time+'</span></div><div style="font-size:12px;color:'+(d.unread?'var(--text)':'var(--text3)')+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.preview+'</div></div>'+(d.unread?'<span style="width:8px;height:8px;border-radius:50%;background:var(--primary)"></span>':'')+'</div>').join('');
@@ -2069,6 +2115,10 @@ const myOrgs=[
 function renderOrgs(){
 const el=document.getElementById('orgsList');
 if(!el)return;
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">Not in any orgs yet.<br><span style="font-size:11px">Join or create one to compete with other groups.</span><div style="padding-top:12px"><button onclick="alert(\'🔧 Coming soon — requires backend.\')" class="btn btn-secondary" style="padding:10px 16px;font-size:12px">+ Join or Create Org</button></div></div>';
+return;
+}
 el.innerHTML=myOrgs.map((o,i)=>'<div onclick="openOrg('+i+')" style="padding:14px 0;cursor:pointer;'+(i<myOrgs.length-1?'border-bottom:0.5px solid #333':'')+'">'+
 '<div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:10px;background:'+o.color+';display:flex;align-items:center;justify-content:center;font-size:22px">'+o.emoji+'</div>'+
 '<div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;font-size:15px">'+o.name+'</span>'+(o.isPremium?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">PREMIUM</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">@'+o.handle+' · '+o.members+' members</div></div>'+
@@ -2169,6 +2219,10 @@ el.style.color=walkHomeActive?'var(--green)':'';
 function renderMutualStreaks(){
 const el=document.getElementById('mutualStreaks');
 if(!el)return;
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No streaks yet.<br><span style="font-size:11px">Go out the same week as a friend to start one.</span></div>';
+return;
+}
 const streaks=[
 {friend:'Jake M.',emoji:'😎',weeks:8,isActive:true,sharedFire:'🔥🔥🔥'},
 {friend:'Sarah K.',emoji:'🎉',weeks:5,isActive:true,sharedFire:'🔥🔥'},
@@ -2182,6 +2236,10 @@ streaks.map(s=>'<div style="display:flex;align-items:center;gap:12px;padding:8px
 function renderMatchedMoments(){
 const el=document.getElementById('matchedMoments');
 if(!el)return;
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No matched moments yet.<br><span style="font-size:11px">When you and a friend are at the same bar, a moment is created.</span></div>';
+return;
+}
 const moments=[
 {friends:'Jake M.',venue:'The Pub',date:'Oct 4',overlap:'2h 15m',drinks:'You had 6, Jake had 5'},
 {friends:'Sarah K. + Emma L.',venue:'Rooftop Bar',date:'Sep 28',overlap:'3h',drinks:'Trio night — 14 drinks total'},
@@ -2226,6 +2284,10 @@ return '<div style="padding:12px 0;border-bottom:0.5px solid #333">'+
 '</div>';
 }).join('');
 }).catch(e=>{el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">Couldn\'t load.</div>';console.warn('liveBarMap',e);});
+return;
+}
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No friends out right now.<br><span style="font-size:11px">When a friend starts a session you\'ll see them here.</span></div>';
 return;
 }
 // Demo mode: hardcoded friends
@@ -2273,6 +2335,10 @@ alert(txt);
 function renderARFinder(){
 const el=document.getElementById('arFinderCard');
 if(!el)return;
+if(!LC_DEMO){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No friends at your venue right now.<br><span style="font-size:11px">AR compass activates when friends are at the same bar.</span></div>';
+return;
+}
 // Simulated bearings/distances for friends at "your" venue
 const here=[
 {name:'Jake M.',emoji:'😎',bearing:32,dist:14},
@@ -2295,6 +2361,10 @@ alert('🧭 AR Compass — '+name+'\n\nDistance: ~'+dist+' ft\nDirection: '+arro
 function renderMemories(){
 const el=document.getElementById('memoriesSection');
 if(!el)return;
+if(allSessions.length===0){
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No memories yet.<br><span style="font-size:11px">Log your first session to start saving memories.</span></div>';
+return;
+}
 // Use the top 3 sessions by drinks
 const top=[...allSessions].sort((a,b)=>b.drinks-a.drinks).slice(0,3);
 const gradients=['linear-gradient(135deg,#E8A317,#FF6B2B)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#10B981,#3B82F6)'];
@@ -2342,6 +2412,15 @@ const modes=[
 {key:'photos',label:'⭐ Captions',suffix:'captions'},
 ];
 picker.innerHTML=modes.map(m=>'<button onclick="setLeaderboardMode(\''+m.key+'\')" style="flex-shrink:0;padding:6px 12px;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:'+(leaderboardMode===m.key?'var(--primary)':'var(--card2)')+';color:'+(leaderboardMode===m.key?'#fff':'var(--text2)')+'">'+m.label+'</button>').join('');
+if(!LC_DEMO){
+const totalCircleFriends=(circles.diehards||[]).length+(circles.besties||[]).length+(circles.friends||[]).length;
+if(totalCircleFriends===0){
+lb.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No friends added yet.<br><span style="font-size:11px">Add friends in Safety → Circles to see the leaderboard.</span></div>';
+return;
+}
+lb.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">Leaderboard needs a few real sessions.<br><span style="font-size:11px">As you and your friends log Cheers, rankings will fill in.</span></div>';
+return;
+}
 const field=leaderboardMode==='drinks'?'weekly':leaderboardMode;
 const suffix=modes.find(m=>m.key===leaderboardMode).suffix;
 const myWeeklyDrinks=allSessions.filter(s=>s.time>Date.now()-7*86400000).reduce((a,s)=>a+s.drinks,0);
@@ -2474,6 +2553,21 @@ LC.signOut().then(()=>location.reload());
 }
 
 // ========== AUTH GATE (cloud mode) ==========
+function enterDemoMode(){
+localStorage.setItem('lc_demo_mode','true');
+location.reload();
+}
+function exitDemoMode(){
+// Called when a real user signs in from a previously-demo session.
+// Wipe all lc_* keys (including lc_demo_mode) so real mode starts clean.
+localStorage.removeItem('lc_demo_mode');
+const toDel=[];
+for(let i=0;i<localStorage.length;i++){
+const k=localStorage.key(i);
+if(k&&k.startsWith('lc_'))toDel.push(k);
+}
+toDel.forEach(k=>localStorage.removeItem(k));
+}
 async function authSendLink(){
 const email=(document.getElementById('authEmail').value||'').trim();
 const status=document.getElementById('authStatus');
@@ -2561,6 +2655,20 @@ document.getElementById('authGate').style.display='flex';
 }
 
 async function afterSignedIn(){
+// If the user was in demo mode (via lc_demo_mode flag) but just signed in
+// for real, wipe all demo data and reload so LC_DEMO re-evaluates to false
+// on the next page load. This guarantees a clean blank-slate start.
+if(localStorage.getItem('lc_demo_mode')==='true'){
+localStorage.removeItem('lc_demo_mode');
+const toDel=[];
+for(let i=0;i<localStorage.length;i++){
+const k=localStorage.key(i);
+if(k&&k.startsWith('lc_'))toDel.push(k);
+}
+toDel.forEach(k=>localStorage.removeItem(k));
+location.reload();
+return;
+}
 document.getElementById('authGate').style.display='none';
 await LC.loadMe();
 // Subscribe to friend activity for live updates
