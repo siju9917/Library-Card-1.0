@@ -5,10 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#000000">
-<meta http-equiv="cache-control" content="no-cache,no-store,must-revalidate">
-<meta http-equiv="pragma" content="no-cache">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="apple-mobile-web-app-title" content="Library">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <title>The Library</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase/config.js"></script>
+<script src="supabase/db.js"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -87,6 +93,18 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </style>
 </head>
 <body>
+
+<!-- AUTH GATE (only shown when cloud is enabled and user is signed out) -->
+<div id="authGate" style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#0A0A0A 0%,#1A1A1C 100%);flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+<div style="width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,#E8A317,#FF6B2B);display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:800;color:#0A0A0A;margin-bottom:24px;box-shadow:0 20px 60px rgba(232,163,23,.4)">L</div>
+<h1 style="font-size:30px;font-weight:800;margin:0 0 8px 0">The Library</h1>
+<div style="color:#A1A1AA;font-size:14px;margin-bottom:32px;max-width:300px;line-height:1.5">Sign in with your email. We'll send a one-tap magic link — no password.</div>
+<input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" style="width:100%;max-width:340px;padding:16px 18px;background:#1A1A1C;border:1px solid #2A2A2E;border-radius:14px;color:#fff;font-size:16px;outline:none;margin-bottom:12px"/>
+<button id="authBtn" onclick="authSendLink()" style="width:100%;max-width:340px;padding:16px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer">Send Magic Link</button>
+<div id="authStatus" style="color:#A1A1AA;font-size:13px;margin-top:16px;min-height:20px"></div>
+<div style="position:absolute;bottom:24px;left:0;right:0;color:#52525B;font-size:11px">For you and your friends only · v1</div>
+</div>
+
 <div class="app">
 <div class="status-bar"></div>
 <div class="screen-container" id="screenContainer">
@@ -152,11 +170,15 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card" id="futureFeaturesSection"></div>
 <h2>Settings</h2>
 <div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Display Name</span><button onclick="editDisplayName()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="displayNameBtn">Set</button></div>
+<div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Dark Mode</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" id="darkToggle" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--card2);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 <div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Notifications</span><label style="position:relative;width:51px;height:31px;display:inline-block"><input type="checkbox" checked style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;inset:0;background:var(--primary);border-radius:31px;transition:.3s" class="slider"></span></label></div>
 <div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>Tonight's Drink Cap</span><button onclick="setDrinkCap()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer" id="capBtn">Not set</button></div>
+<div class="divider"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0" id="signOutRow"><span>Account</span><button onclick="signOutFromCloud()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer">Sign Out</button></div>
 </div>
 <h2>Gift a Cheers</h2>
 <div class="nav-link" onclick="giftADrinkFlow()"><span class="icon">🎁</span><span class="title">Buy a Friend a Cheers</span><span class="chevron">›</span></div>
@@ -518,6 +540,10 @@ s.kudos=(s.kudos||0)+1;
 addXP(5);
 if(navigator.vibrate)navigator.vibrate(30);
 }
+// Cloud: persist the like
+if(s.cloudId&&window.LC&&LC.cloud&&LC.me){
+LC.toggleLike(s.cloudId).catch(e=>console.warn('toggleLike',e));
+}
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 renderRecentSessions();
 updateHome();
@@ -561,13 +587,21 @@ return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).p
 }
 
 // Session functions (stub - expanded in commit 2)
-function startSession(){
+let cloudSessionId=null;
+let pendingVenueName=null;
+function startSession(venueName){
 sessionActive=true;
 sessionStart=Date.now();
 drinks=[];
 friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
+pendingVenueName=venueName||null;
+// Cloud: create a real session row
+cloudSessionId=null;
+if(window.LC&&LC.cloud&&LC.me){
+LC.startSession(venueName||null,null).then(s=>{cloudSessionId=s.id;}).catch(e=>console.warn('cloud startSession',e));
+}
 // Swap Home from normal view to live session view
 const nrm=document.getElementById('homeNormal');
 const sc=document.getElementById('sessionContent');
@@ -629,7 +663,6 @@ container.innerHTML=
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCPM">0.000</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
 '<div class="card" id="sessVibeCard" style="margin-bottom:16px;border-left:3px solid var(--green)"></div>'+
 '<h3>You vs. Friends</h3><div class="card" id="barDistChart" style="position:relative;padding:14px;margin-bottom:28px"></div>'+
-'<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
@@ -671,52 +704,27 @@ const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a category above to log your first Cheers.</p>';}
 else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 }
-// Bar distribution chart + rewards update every tick
+// Bar distribution chart updates every tick
 renderBarDist(elapsed);
-renderRewards(drinks.length);
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
 }
 
-// ========== REWARDS & PROMOS ==========
+// Rewards & Promos archived to future features — requires bar partnerships
 const rewardTiers=[
-{drinks:2,reward:'🎫 10% off your next visit to Rooftop Bar',unlocked:false,venue:'Rooftop Bar'},
-{drinks:4,reward:'🍺 Free appetizer at Tavern on Main',unlocked:false,venue:'Tavern on Main'},
-{drinks:6,reward:'🎉 Buy 1 Get 1 free at Brews & Views',unlocked:false,venue:'Brews & Views'},
-{drinks:8,reward:'⭐ VIP skip-the-line at Club X this weekend',unlocked:false,venue:'Club X'},
-{drinks:10,reward:'🏆 Free drink at The Library Lounge',unlocked:false,venue:'The Library Lounge'},
-{drinks:15,reward:'💎 Premium status unlocked for 24 hours',unlocked:false,venue:'All venues'},
+{drinks:2,reward:'🎫 10% off your next visit to Rooftop Bar',venue:'Rooftop Bar'},
+{drinks:4,reward:'🍺 Free appetizer at Tavern on Main',venue:'Tavern on Main'},
+{drinks:6,reward:'🎉 Buy 1 Get 1 free at Brews & Views',venue:'Brews & Views'},
+{drinks:8,reward:'⭐ VIP skip-the-line at Club X this weekend',venue:'Club X'},
+{drinks:10,reward:'🏆 Free drink at The Library Lounge',venue:'The Library Lounge'},
+{drinks:15,reward:'💎 Premium status unlocked for 24 hours',venue:'All venues'},
 ];
 const promos=[
 {text:'Happy Hour at Rooftop Bar — $5 margaritas until 9 PM',emoji:'🌅',color:'#F97316'},
 {text:'DJ Night at Club X — 2-for-1 shots before midnight',emoji:'🎵',color:'#8B5CF6'},
 {text:'Trivia Tuesday at The Pub — free round for winners',emoji:'🧠',color:'#22C55E'},
 ];
-function renderRewards(drinkCount){
-const el=document.getElementById('rewardsSection');
-if(!el)return;
-// Find next unlockable reward
-const nextReward=rewardTiers.find(r=>drinkCount<r.drinks);
-const unlockedRewards=rewardTiers.filter(r=>drinkCount>=r.drinks);
-const latestUnlock=unlockedRewards.length>0?unlockedRewards[unlockedRewards.length-1]:null;
-// Rotating promo
-const promoIdx=Math.floor(Date.now()/10000)%promos.length;
-const promo=promos[promoIdx];
-let html='<h3>🎁 Rewards & Promos</h3>';
-// Active promo banner
-html+='<div class="card" style="background:linear-gradient(135deg,'+promo.color+'22,'+promo.color+'11);border:1px solid '+promo.color+'44;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">'+promo.emoji+'</span><div style="flex:1;font-size:13px">'+promo.text+'</div></div></div>';
-// Latest unlocked reward
-if(latestUnlock){
-html+='<div class="card" style="border:1px solid var(--primary);padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🎉</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--primary)">UNLOCKED!</div><div style="font-size:13px">'+latestUnlock.reward+'</div></div></div></div>';
-}
-// Progress to next reward
-if(nextReward){
-const progress=Math.round((drinkCount/nextReward.drinks)*100);
-html+='<div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text2)">Next reward at '+nextReward.drinks+' drinks</span><span style="font-size:12px;font-weight:600">'+drinkCount+'/'+nextReward.drinks+'</span></div><div style="height:6px;background:var(--card2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+progress+'%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:3px;transition:width .3s"></div></div><div style="font-size:11px;color:var(--text3);margin-top:6px">'+nextReward.reward+'</div></div>';
-}
-el.innerHTML=html;
-}
 
 // Kahoot-style anonymous bar names (kept for archived "You vs The Bar" demo)
 const kahootNames=['Thirsty Penguin','Wobbly Giraffe','Sloppy Flamingo','Tipsy Moose','Rowdy Panda','Dizzy Koala','Funky Llama','Boozy Parrot','Silly Otter','Clumsy Fox','Wild Walrus','Jolly Yak','Groovy Sloth','Snappy Turtle','Fizzy Badger','Loud Toucan','Brave Capybara','Sneaky Raccoon','Happy Hippo','Chill Narwhal','Spicy Iguana','Zesty Falcon'];
@@ -814,6 +822,10 @@ if(custom===null)return;
 const name=custom&&custom.trim()?custom.trim():type;
 const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA};
 drinks.push(drink);
+// Cloud: log to drinks table
+if(cloudSessionId&&window.LC&&LC.cloud){
+LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA}).then(d=>{drink.cloudId=d.id;}).catch(e=>console.warn('cloud logDrink',e));
+}
 recordDrinkHistory(name);
 updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
@@ -823,6 +835,9 @@ function addDrinkDirect(name){
 if(drinkCap>0&&drinks.length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
 const drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false};
 drinks.push(drink);
+if(cloudSessionId&&window.LC&&LC.cloud){
+LC.logDrink(cloudSessionId,{name:name,type:'Custom'}).then(d=>{drink.cloudId=d.id;}).catch(e=>console.warn('cloud logDrink',e));
+}
 recordDrinkHistory(name);
 updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
@@ -1035,6 +1050,11 @@ allSessions.push(session);
 allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
+// Cloud: close out the session row
+if(cloudSessionId&&window.LC&&LC.cloud){
+LC.endSession(cloudSessionId,{totalDrinks:drinks.length,totalCheers:cheersCount}).catch(e=>console.warn('cloud endSession',e));
+}
+cloudSessionId=null;
 sessionActive=false;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
@@ -1371,6 +1391,7 @@ alert("How Auto-Tracking Works\n\nThe Library Card is a thin pass-through. When 
 
 // ========== FUTURE FEATURES ARCHIVE ==========
 const futureFeatures=[
+{icon:'🎁',title:'Rewards & Promos',desc:'Unlock real perks at partner bars — happy hours, free apps, VIP skip-the-line, drink credits.',unlock:'Needs bar partnerships in your city',action:'tryRewards'},
 {icon:'🏟️',title:'You vs The Bar',desc:'Your Cheers vs the average user at the same bar — see if you\'re paced ahead or chilling behind.',unlock:'Needs many active users at the same bar',action:'tryYouVsBar'},
 {icon:'👑',title:'Bar Raids',desc:'Get 5+ friends at the same bar to claim it. Orgs compete for bar ownership.',unlock:'Needs many active users + orgs',action:'tryBarRaids'},
 {icon:'💘',title:'Swipe at the Bar',desc:'See other Library users at the same bar. Mutual swipes = match.',unlock:'Needs users at the same bar',action:'trySwipeAtBar'},
@@ -1397,6 +1418,25 @@ modal.innerHTML=
 function closeDemo(){document.getElementById('demoModal').style.display='none';}
 
 // ========== ARCHIVE DEMO LAUNCHERS ==========
+function tryRewards(){
+const drinkCount=4;
+const promo=promos[0];
+const unlocked=rewardTiers.filter(r=>drinkCount>=r.drinks);
+const next=rewardTiers.find(r=>drinkCount<r.drinks);
+const latest=unlocked[unlocked.length-1];
+const progress=next?Math.round((drinkCount/next.drinks)*100):100;
+let body='<div class="card" style="background:linear-gradient(135deg,'+promo.color+'22,'+promo.color+'11);border:1px solid '+promo.color+'44;padding:14px;margin-bottom:10px"><div style="font-size:10px;color:'+promo.color+';font-weight:700;margin-bottom:4px">🔥 LIVE NOW</div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">'+promo.emoji+'</span><div style="flex:1;font-size:13px">'+promo.text+'</div></div></div>';
+if(latest){
+body+='<div class="card" style="border:1px solid var(--primary);padding:14px;margin-bottom:10px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">🎉</span><div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--primary)">UNLOCKED TONIGHT</div><div style="font-size:13px;margin-top:2px">'+latest.reward+'</div></div></div></div>';
+}
+if(next){
+body+='<div class="card" style="padding:14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text2)">Next reward at '+next.drinks+' drinks</span><span style="font-size:12px;font-weight:700">'+drinkCount+'/'+next.drinks+'</span></div><div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+progress+'%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:4px"></div></div><div style="font-size:11px;color:var(--text3);margin-top:8px">'+next.reward+'</div></div>';
+}
+body+='<div style="font-size:11px;color:var(--text3);font-weight:700;margin:14px 0 8px 0">ALL REWARD TIERS</div>';
+body+=rewardTiers.map(r=>'<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--card);border-radius:8px;margin-bottom:6px;'+(drinkCount>=r.drinks?'border:1px solid var(--primary)':'opacity:.6')+'"><div style="width:32px;height:32px;background:var(--card2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--primary);flex-shrink:0">'+r.drinks+'</div><div style="flex:1;font-size:12px">'+r.reward+'</div>'+(drinkCount>=r.drinks?'<span style="font-size:14px">✅</span>':'')+'</div>').join('');
+showDemo('🎁 Rewards & Promos','Bars in your city sign up as Library partners',body);
+}
+
 function tryYouVsBar(){
 const shuffled=[...kahootNames].sort(()=>Math.random()-.5);
 const ppl=[];
@@ -1830,6 +1870,22 @@ list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\
 }
 
 function addToTier(tier){
+// Cloud mode: ask for friend's email and look them up in the users table
+if(window.LC&&LC.cloud&&LC.me){
+const email=prompt('Add a friend by email\n\nThey need to have signed in once already.','');
+if(!email||!email.trim())return;
+LC.findUserByEmail(email.trim()).then(u=>{
+if(!u){alert('Couldn\'t find anyone with that email.\n\nMake sure they\'ve signed in at least once first.');return;}
+if(u.id===LC.me.id){alert('That\'s you!');return;}
+LC.addFriend(u.id,tier).then(()=>{
+circles[tier].push({name:u.display_name,emoji:u.emoji||'👤',cloudId:u.id});
+saveCircles();
+renderCircles();
+}).catch(e=>alert('Error: '+e.message));
+});
+return;
+}
+// Demo mode: just take a name
 const name=prompt('Add someone to '+tier+':','');
 if(!name||!name.trim())return;
 circles[tier].push({name:name.trim(),emoji:'👤'});
@@ -1849,9 +1905,13 @@ showPicker('Move '+name,'Current: '+(tierNames[tier]||tier),opts,(idx)=>{
 const person=circles[tier].find(p=>p.name===name)||{name:name,emoji:'👤'};
 circles[tier]=circles[tier].filter(p=>p.name!==name);
 const tiers=['diehards','besties','friends'];
-if(idx<3){circles[tiers[idx]].push({name:name,emoji:person.emoji||'👤'});}
+if(idx<3){circles[tiers[idx]].push({name:name,emoji:person.emoji||'👤',cloudId:person.cloudId});}
 saveCircles();
 renderCircles();
+// Cloud mode: persist the move
+if(window.LC&&LC.cloud&&LC.me&&person.cloudId){
+LC.moveFriendTier(person.cloudId,idx<3?tiers[idx]:null).catch(e=>console.warn('move tier',e));
+}
 });
 }
 
@@ -2110,22 +2170,51 @@ moments.map(m=>'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div 
 function renderLiveBarMap(){
 const el=document.getElementById('liveBarMap');
 if(!el)return;
-// Each friend's current venue (deterministic-ish based on hour for variety)
-const h=new Date().getHours();
+// Cloud mode: pull real friend active sessions
+if(window.LC&&LC.cloud&&LC.me){
+el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">Loading…</div>';
+LC.listFriendsActiveSessions().then(rows=>{
+if(!rows||rows.length===0){
+el.innerHTML='<div style="font-size:12px;color:var(--text2);text-align:center;padding:18px">No friends out right now.<br><span style="color:var(--text3);font-size:11px">When a friend starts a session you\'ll see them here.</span></div>';
+return;
+}
+const byVenue={};
+rows.forEach(r=>{
+const v=r.venue_name||'Unknown';
+if(!byVenue[v])byVenue[v]={friends:[]};
+byVenue[v].friends.push({
+name:r.users?.display_name||'Friend',
+emoji:r.users?.emoji||'🍻',
+since:new Date(r.start_time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+cheers:r.total_cheers||0,
+});
+});
+const venueList=Object.entries(byVenue).sort((a,b)=>b[1].friends.length-a[1].friends.length);
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Friends out tonight, by venue.</div>'+
+venueList.map(([venue,data])=>{
+const heatEmoji=data.friends.length>=3?'🔥🔥🔥':data.friends.length>=2?'🔥🔥':'🔥';
+const peopleStr=data.friends.length+' '+(data.friends.length===1?'friend':'friends');
+return '<div style="padding:12px 0;border-bottom:0.5px solid #333">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">'+heatEmoji+' '+venue+'</div><div style="font-size:11px;color:var(--primary);font-weight:600">'+peopleStr+'</div></div>'+
+'<div style="display:flex;flex-wrap:wrap;gap:6px">'+data.friends.map(f=>'<span style="font-size:11px;background:var(--card2);padding:4px 8px;border-radius:999px"><span>'+f.emoji+'</span> '+f.name+' · '+f.cheers+' 🔥</span>').join('')+'</div>'+
+'</div>';
+}).join('');
+}).catch(e=>{el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">Couldn\'t load.</div>';console.warn('liveBarMap',e);});
+return;
+}
+// Demo mode: hardcoded friends
 const friendVenues=[
-{name:'Jake M.',emoji:'😎',venue:'The Pub',since:'8:42 PM',cheers:3,vibe:'🍺 Posted'},
-{name:'Sarah K.',emoji:'🎉',venue:'Rooftop Bar',since:'9:15 PM',cheers:2,vibe:'📸 Just posted'},
-{name:'Mike R.',emoji:'🍻',venue:'The Pub',since:'8:55 PM',cheers:4,vibe:'🔥 On fire'},
-{name:'Emma L.',emoji:'💃',venue:'Club X',since:'10:02 PM',cheers:1,vibe:'Just got here'},
-{name:'Chris P.',emoji:'🤙',venue:'Tavern on Main',since:'9:30 PM',cheers:2,vibe:'☕ Espresso martini'},
-{name:'Rachel T.',emoji:'✨',venue:'Rooftop Bar',since:'9:20 PM',cheers:3,vibe:'With Sarah'},
+{name:'Jake M.',emoji:'😎',venue:'The Pub',since:'8:42 PM',cheers:3},
+{name:'Sarah K.',emoji:'🎉',venue:'Rooftop Bar',since:'9:15 PM',cheers:2},
+{name:'Mike R.',emoji:'🍻',venue:'The Pub',since:'8:55 PM',cheers:4},
+{name:'Emma L.',emoji:'💃',venue:'Club X',since:'10:02 PM',cheers:1},
+{name:'Chris P.',emoji:'🤙',venue:'Tavern on Main',since:'9:30 PM',cheers:2},
+{name:'Rachel T.',emoji:'✨',venue:'Rooftop Bar',since:'9:20 PM',cheers:3},
 ];
-// Group by venue
 const byVenue={};
 friendVenues.forEach(f=>{
-if(!byVenue[f.venue])byVenue[f.venue]={friends:[],heat:0};
+if(!byVenue[f.venue])byVenue[f.venue]={friends:[]};
 byVenue[f.venue].friends.push(f);
-byVenue[f.venue].heat+=f.cheers;
 });
 const venueList=Object.entries(byVenue).sort((a,b)=>b[1].friends.length-a[1].friends.length);
 el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Friends out tonight, by venue. Updates when they start a session.</div>'+
@@ -2335,13 +2424,145 @@ if(tab==='profile')initProfile();
 // Toggle slider CSS
 document.head.insertAdjacentHTML('beforeend','<style>.slider::before{position:absolute;content:"";height:27px;width:27px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.3s}input:checked+.slider{background:var(--primary)}input:checked+.slider::before{transform:translateX(20px)}</style>');
 
-// ========== INIT (must be last) ==========
+// ========== PROFILE EDITS (cloud mode) ==========
+function editDisplayName(){
+const cur=(window.LC&&LC.me&&LC.me.display_name)||'';
+const next=prompt('What name should friends see?',cur);
+if(!next||!next.trim())return;
+if(window.LC&&LC.cloud&&LC.me){
+LC.updateProfile({display_name:next.trim()}).then(()=>{
+const p=document.getElementById('profileName');
+if(p)p.textContent=next.trim();
+const b=document.getElementById('displayNameBtn');
+if(b)b.textContent=next.trim();
+}).catch(e=>alert('Error: '+e.message));
+}else{
+const b=document.getElementById('displayNameBtn');
+if(b)b.textContent=next.trim();
+}
+}
+function signOutFromCloud(){
+if(!window.LC||!LC.cloud){alert('Sign-out only available in cloud mode (config.js not set).');return;}
+if(!confirm('Sign out?'))return;
+LC.signOut().then(()=>location.reload());
+}
+
+// ========== AUTH GATE (cloud mode) ==========
+async function authSendLink(){
+const email=(document.getElementById('authEmail').value||'').trim();
+const status=document.getElementById('authStatus');
+const btn=document.getElementById('authBtn');
+if(!email||!email.includes('@')){status.textContent='Enter a valid email.';return;}
+btn.disabled=true;btn.textContent='Sending...';
+try{
+await LC.signInWithEmail(email);
+status.innerHTML='✅ Check your inbox!<br>Tap the link from any device — it\'ll bring you back here signed in.';
+btn.textContent='Link Sent';
+}catch(e){
+status.textContent='Error: '+(e.message||e);
+btn.disabled=false;btn.textContent='Send Magic Link';
+}
+}
+
+async function bootApp(){
+// Service Worker (PWA) — silent failure if unsupported
+if('serviceWorker' in navigator){
+try{await navigator.serviceWorker.register('sw.js');}catch(e){console.warn('sw',e);}
+}
+// If cloud isn't configured, just run as a local demo
+if(!window.LC||!LC.cloud){
+document.getElementById('authGate').style.display='none';
+runDemoInit();
+return;
+}
+// Cloud mode: check session
+const session=await LC.getSession();
+if(!session){
+document.getElementById('authGate').style.display='flex';
+return;
+}
+await afterSignedIn();
+}
+
+async function afterSignedIn(){
+document.getElementById('authGate').style.display='none';
+await LC.loadMe();
+// Subscribe to friend activity for live updates
+try{
+LC.subscribeFriendActivity(()=>{
+// Refresh whichever tab is currently visible
+const active=document.querySelector('.screen.active');
+if(!active)return;
+const id=active.id;
+if(id==='screen-home')updateHome();
+if(id==='screen-social')initSocial();
+});
+}catch(e){console.warn('realtime',e);}
+// Hydrate localStorage from cloud (non-blocking)
+hydrateFromCloud();
+runDemoInit();
+}
+
+async function hydrateFromCloud(){
+if(!LC.me)return;
+// Sessions
+try{
+const sessions=await LC.listMySessions(50);
+const local=sessions.map(s=>({
+time:new Date(s.start_time).getTime(),
+drinks:s.total_drinks||0,
+duration:s.end_time?new Date(s.end_time).getTime()-new Date(s.start_time).getTime():0,
+venue:s.venue_name,
+drinkList:[],
+kudos:0,
+comments:[],
+kudosdBy:[],
+cloudId:s.id,
+}));
+allSessions=local;
+allTimeDrinks=local.reduce((a,s)=>a+s.drinks,0);
+localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
+localStorage.setItem('lc_alltime',String(allTimeDrinks));
+}catch(e){console.warn('hydrate sessions',e);}
+// Friends → Circles
+try{
+const fr=await LC.listMyFriends();
+const fresh={diehards:[],besties:[],friends:[]};
+fr.forEach(row=>{
+if(!fresh[row.tier])return;
+fresh[row.tier].push({
+name:row.friend?.display_name||'Friend',
+emoji:row.friend?.emoji||'👤',
+cloudId:row.friend_id,
+});
+});
+circles=fresh;
+saveCircles();
+}catch(e){console.warn('hydrate friends',e);}
+// Update profile name from cloud
+if(LC.me&&LC.me.display_name){
+const p=document.getElementById('profileName');
+if(p)p.textContent=LC.me.display_name;
+const b=document.getElementById('displayNameBtn');
+if(b)b.textContent=LC.me.display_name;
+}
+updateHome();
+renderCircles();
+const tab=document.querySelector('.screen.active');
+if(tab&&tab.id==='screen-stats')initStats();
+if(tab&&tab.id==='screen-social')initSocial();
+}
+
+function runDemoInit(){
 updateHome();
 renderCardPromo();
 initStats();
 initProfile();
 initSocial();
 initSafety();
+}
+
+bootApp();
 </script>
 </body>
 </html>
