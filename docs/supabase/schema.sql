@@ -285,23 +285,40 @@ create policy "cheers_delete_own" on storage.objects
   for delete to authenticated
   using (bucket_id = 'cheers-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
+-- ---------- FRIEND REQUEST STATUS ----------
+-- Add status column for friend request approval flow.
+-- Safe to re-run: IF NOT EXISTS / DO NOTHING.
+alter table public.friendships add column if not exists status text default 'pending';
+-- Mark ALL existing friendships as accepted (they were already agreed upon)
+update public.friendships set status = 'accepted' where status is null or status = 'pending';
+
 -- ---------- INVITE LINK (accept_invite RPC) ----------
--- Called when a new user signs up via an invite link. Inserts friendship
--- rows in BOTH directions so the inviter and invitee become mutual friends.
--- SECURITY DEFINER lets it bypass RLS to insert into the inviter's row.
+-- Called when a new user signs up via an invite link. Both directions auto-accepted.
 create or replace function public.accept_invite(inviter_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  -- Add inviter to invitee's friends
-  insert into friendships (user_id, friend_id, tier)
-  values (auth.uid(), inviter_id, 'friends')
-  on conflict (user_id, friend_id) do nothing;
-  -- Add invitee to inviter's friends
-  insert into friendships (user_id, friend_id, tier)
-  values (inviter_id, auth.uid(), 'friends')
-  on conflict (user_id, friend_id) do nothing;
+  insert into friendships (user_id, friend_id, tier, status)
+  values (auth.uid(), inviter_id, 'friends', 'accepted')
+  on conflict (user_id, friend_id) do update set status = 'accepted';
+  insert into friendships (user_id, friend_id, tier, status)
+  values (inviter_id, auth.uid(), 'friends', 'accepted')
+  on conflict (user_id, friend_id) do update set status = 'accepted';
+end;
+$$;
+
+-- ---------- ACCEPT FRIEND REQUEST RPC ----------
+-- Called when a user approves an incoming friend request.
+-- Updates the requester's row to accepted + creates the reverse row as accepted.
+create or replace function public.accept_friend_request(requester_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update friendships set status = 'accepted'
+  where user_id = requester_id and friend_id = auth.uid();
+  insert into friendships (user_id, friend_id, tier, status)
+  values (auth.uid(), requester_id, 'friends', 'accepted')
+  on conflict (user_id, friend_id) do update set status = 'accepted';
 end;
 $$;
 
 -- ---------- DONE ----------
--- After this runs successfully, head back to your app and sign in with email magic link.
+-- After this runs successfully, head back to your app and sign in.
