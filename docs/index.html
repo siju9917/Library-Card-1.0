@@ -625,18 +625,44 @@ const hours=elapsedMs/3600000;
 const bac=(gramsAlcohol/(weightKg*1000*r))*100-(0.015*hours);
 return Math.max(bac,0);
 }
+// Library-themed escalation phrases — driven by TOTAL drinks (incl. NA),
+// because the vibe gets better even when you're not drinking alcohol.
+// The COLOR is still BAC-based (see bacColor), so NA drinks don't redden it.
+const vibePhrases=[
+// Level 0 — 0 drinks
+['Just walked into the library 📖','Browsing the shelves','Card not yet checked out','Picking out tonight\'s read'],
+// Level 1 — 1 drink
+['Cracked the spine 📖','Reading the prologue','Just opened the book','Chapter one, page one'],
+// Level 2 — 2 drinks
+['Settling into the story','Bookmark placed 🔖','Getting comfy in the stacks','First chapter down'],
+// Level 3 — 3 drinks
+['Finding the vibe ✨','Plot building nicely','This one\'s a page turner','Deep in the second act'],
+// Level 4 — 4 drinks
+['Story\'s getting good 📚','Can\'t put this one down','Highlighter caps off','Skipping the footnotes'],
+// Level 5 — 5 drinks
+['Plot twist incoming 📚','Halfway through the book','Library card warming up','Reading between the lines'],
+// Level 6 — 6 drinks
+['Renewed for another hour ⏰','Speed-reading the night','Back-to-back chapters','The librarian\'s watching 👀'],
+// Level 7 — 7 drinks
+['Library card on FIRE 🔥','Marginalia in pen','Past closing time','Annotated to oblivion'],
+// Level 8 — 8 drinks
+['Wildin\' in the stacks 🔥','Books flying off shelves','The librarian gave up','Banned book energy 🚫📚'],
+// Level 9 — 9 drinks
+['Reference desk in shambles 💥','Burning through chapters','The plot is unhinged','Last call at the card catalog'],
+// Level 10+ — 10+ drinks
+['Burning the library down 🔥📖','Rewriting the canon','Encyclopedic levels of rowdy 📕','The book is reading YOU now','Plot has officially derailed','Banned in 12 districts'],
+];
+function vibeLabel(totalDrinks){
+const lvl=Math.min(totalDrinks,vibePhrases.length-1);
+const bucket=vibePhrases[lvl];
+// Deterministic pick within the bucket based on count — same drink count
+// always shows the same phrase, but next drink rolls a different one.
+return bucket[(totalDrinks*7)%bucket.length];
+}
 function bacColor(bac){
 if(bac<0.04)return'var(--green)';
 if(bac<0.08)return'var(--orange)';
 return'var(--red)';
-}
-function bacLabel(bac){
-if(bac<0.02)return'Just cracked the spine 📖';
-if(bac<0.04)return'Starting off slow';
-if(bac<0.06)return'Finding the vibe';
-if(bac<0.08)return'Story\'s getting good';
-if(bac<0.10)return'Plot twist incoming';
-return'Wildn\' in the stacks 🔥';
 }
 function editBodyStats(){
 const w=prompt('Weight (lbs):',String(userWeight));
@@ -676,10 +702,10 @@ const cpmLive=elapsed>0&&cheersCountLive>0?(cheersCountLive/(elapsed/60000)).toF
 document.getElementById('sessCheers').textContent=cheersCountLive;
 document.getElementById('sessCPM').textContent=cpmLive;
 document.getElementById('sessPace').textContent=dph+'/hr';
-// Vibe Check card
+// Vibe Check card — color from BAC (alcohol only), commentary from total drinks (NA counts)
 const bacLive=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);
 const bcLive=bacColor(bacLive);
-const blLive=bacLabel(bacLive);
+const blLive=vibeLabel(drinks.length);
 const vibeCard=document.getElementById('sessVibeCard');
 vibeCard.style.borderLeftColor=bcLive;
 vibeCard.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📖 Vibe Check</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bcLive+'"></div><span style="font-size:20px;font-weight:700;color:'+bcLive+'">'+blLive+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. Get a ride if in doubt.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div>';
@@ -1068,7 +1094,7 @@ const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:8px">🎉</div><h2>Session Complete!</h2></div>'+
-(function(){const bac=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);const bl=bacLabel(bac);const cheers=drinks.filter(d=>d.hasPhoto).length;const cpmR=elapsed>0&&cheers>0?(cheers/(elapsed/60000)).toFixed(3):'0.000';const venues='The Pub';return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+cheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+venues+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+cpmR+'</div><div class="lbl">CPM</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bl+'</div><div class="lbl">Vibe</div></div></div></div>';})()+
+(function(){const bac=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);const bl=vibeLabel(drinks.length);const cheers=drinks.filter(d=>d.hasPhoto).length;const cpmR=elapsed>0&&cheers>0?(cheers/(elapsed/60000)).toFixed(3):'0.000';const venues='The Pub';return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+cheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+venues+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+cpmR+'</div><div class="lbl">CPM</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bl+'</div><div class="lbl">Vibe</div></div></div></div>';})()+
 '<div style="margin-top:16px"><button class="btn btn-primary" onclick="resetSession()">Done</button></div>';
 updateHome();
 }
@@ -1082,7 +1108,7 @@ updateHome();
 }
 
 // ========== STATS ==========
-let statsPeriod='All';
+let statsPeriod='1M';
 function initStats(){
 const periods=['7D','1M','3M','1Y','All'];
 document.getElementById('periodPicker').innerHTML=periods.map(p=>
