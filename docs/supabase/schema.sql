@@ -263,6 +263,7 @@ alter publication supabase_realtime add table public.likes;
 alter publication supabase_realtime add table public.comments;
 alter publication supabase_realtime add table public.drink_gifts;
 alter publication supabase_realtime add table public.sos_alerts;
+alter publication supabase_realtime add table public.friendships;
 
 -- ---------- STORAGE BUCKET FOR PHOTOS ----------
 -- Run this in Storage → New bucket UI as well, OR via SQL:

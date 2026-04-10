@@ -2746,35 +2746,27 @@ LC.signOut().then(()=>location.reload());
 }
 
 // ========== INVITE LINKS ==========
-async function shareInviteLink(){
-try{
-// If in demo mode, offer to switch to real mode
+function shareInviteLink(){
+// Must be synchronous — navigator.share requires direct user activation
 if(LC_DEMO){
-alert('You\'re in demo mode. To invite real friends, reload the app and sign in with your email + password.');
+alert('You\'re in demo mode. Sign in with your email + password to invite real friends.');
 return;
-}
-// Try to load user profile if it's missing
-if(window.LC&&LC.cloud&&!LC.me){
-const s=await LC.getSession();
-if(s){await LC.loadMe();}
 }
 if(!window.LC||!LC.cloud||!LC.me){
-alert('Could not load your profile. Try closing and reopening the app, then try again.\n\nDebug: LC='+(!!window.LC)+' cloud='+(window.LC&&LC.cloud)+' me='+(window.LC&&!!LC.me));
+alert('Still loading your profile — wait a moment and try again.');
 return;
 }
-const url=window.location.origin+window.location.pathname+'?invite='+LC.me.id;
+var url=window.location.origin+window.location.pathname+'?invite='+LC.me.id;
 if(navigator.share){
-await navigator.share({title:'Join me on The Library',text:'Track our nights out together — tap to join my Circle:',url:url});
-}else{
-try{
-await navigator.clipboard.writeText(url);
+navigator.share({title:'Join me on The Library',text:'Track our nights out together — tap to join my Circle:',url:url}).catch(function(){});
+}else if(navigator.clipboard&&navigator.clipboard.writeText){
+navigator.clipboard.writeText(url).then(function(){
 showCelebrationToast('🔗','Link Copied!','Share it with your friend');
-}catch(_){
-prompt('Copy this link and send it to your friend:',url);
-}
-}
-}catch(e){
-alert('Invite error: '+e.message);
+}).catch(function(){
+prompt('Copy this invite link:',url);
+});
+}else{
+prompt('Copy this invite link:',url);
 }
 }
 
@@ -3000,7 +2992,11 @@ await LC.loadMe();
 }
 // Subscribe to friend activity for live updates
 try{
-LC.subscribeFriendActivity(()=>{
+LC.subscribeFriendActivity((payload)=>{
+// Friendship changes: re-hydrate circles from cloud
+if(payload&&payload.table==='friendships'){
+hydrateFromCloud();
+}
 // Refresh whichever tab is currently visible
 const active=document.querySelector('.screen.active');
 if(!active)return;
