@@ -4,7 +4,7 @@
 // Bump CACHE_VERSION whenever you change index.html or assets.
 // ============================================================
 
-const CACHE_VERSION = 'lc-v13';
+const CACHE_VERSION = 'lc-v14';
 const ASSETS = [
   './',
   './index.html',

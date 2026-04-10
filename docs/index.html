@@ -2687,9 +2687,21 @@ LC.signOut().then(()=>location.reload());
 }
 
 // ========== INVITE LINKS ==========
-function shareInviteLink(){
+async function shareInviteLink(){
+// If in demo mode, offer to switch to real mode
+if(LC_DEMO){
+alert('You\'re in demo mode. To invite real friends, reload the app and sign in with your email + password.');
+return;
+}
+// Try to load user profile if it's missing (can happen if afterSignedIn was slow)
+if(window.LC&&LC.cloud&&!LC.me){
+try{
+const s=await LC.getSession();
+if(s){await LC.loadMe();}
+}catch(e){}
+}
 if(!window.LC||!LC.cloud||!LC.me){
-alert('Sign in first to invite friends.');
+alert('Could not load your profile. Try closing and reopening the app, then try again.');
 return;
 }
 const url=window.location.origin+window.location.pathname+'?invite='+LC.me.id;
@@ -2902,6 +2914,18 @@ return;
 }
 document.getElementById('authGate').style.display='none';
 await LC.loadMe();
+// Safety net: if public.users row doesn't exist (trigger failed or account
+// was recreated), create it now so LC.me is never null during the session.
+if(!LC.me&&LC.session){
+try{
+const uid=LC.session.user.id;
+const email=LC.session.user.email||'';
+await LC.sb.from('users').upsert({
+id:uid,email:email,display_name:email.split('@')[0]||'Friend'
+},{onConflict:'id'});
+await LC.loadMe();
+}catch(e){console.warn('create missing user row',e);}
+}
 // Subscribe to friend activity for live updates
 try{
 LC.subscribeFriendActivity(()=>{
