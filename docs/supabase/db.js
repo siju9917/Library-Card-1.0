@@ -325,6 +325,7 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, onChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sos_alerts' }, onChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drink_gifts' }, onChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, onChange)
       .subscribe();
     LC.realtimeChannels.push(channel);
     return channel;
