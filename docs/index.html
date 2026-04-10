@@ -200,7 +200,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nCovers what data we collect, how it is stored, your rights to export and delete, and our commitment to never selling your data.\n\nFull legal page available in the native app.')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nEligibility (21+), responsible use guidelines, content policy, safety feature disclaimers, and account management.\n\nFull legal page available in the native app.')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">The Library v1.0.0 (1)</div>
-<div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm('Reset all demo data?')){localStorage.clear();location.reload()}">Reset Demo Data</button></div>
+<div id="resetDemoBtn"></div>
 </div>
 
 <!-- SOCIAL & SAFETY SCREEN -->
@@ -1812,6 +1812,15 @@ updateCapBtn();
 renderProfileHero();
 renderLibraryCardSection();
 renderFutureFeatures();
+// Only show Reset Demo button in demo mode
+const resetBtn=document.getElementById('resetDemoBtn');
+if(resetBtn){
+if(LC_DEMO){
+resetBtn.innerHTML='<div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm(\'Reset all demo data?\')){const toDel=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(\'lc_\'))toDel.push(k);}toDel.forEach(k=>localStorage.removeItem(k));location.reload();}">Reset Demo Data</button></div>';
+}else{
+resetBtn.innerHTML='';
+}
+}
 const allCheers=allSessions.reduce((a,s)=>a+((s.drinkList||[]).filter(d=>d.hasPhoto).length),0);
 document.getElementById('profileStats').innerHTML=
 '<div style="display:flex;justify-content:space-around;text-align:center;padding:8px 0">'+
