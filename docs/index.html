@@ -174,6 +174,12 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>📅 This Weekend</h2>
 <div class="card" id="weekendPlan"></div>
 
+<h2>🗺️ Live Bar Map</h2>
+<div class="card" id="liveBarMap"></div>
+
+<h2>🧭 AR Friend Finder</h2>
+<div class="card" id="arFinderCard"></div>
+
 <h2>🔥 Mutual Streaks</h2>
 <div class="card" id="mutualStreaks"></div>
 
@@ -558,7 +564,7 @@ function startSession(){
 sessionActive=true;
 sessionStart=Date.now();
 drinks=[];
-barInhabitants=null;
+friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
 // Swap Home from normal view to live session view
@@ -621,7 +627,7 @@ container.innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div id="sessTimer" style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCPM">0.000</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
 '<div class="card" id="sessVibeCard" style="margin-bottom:16px;border-left:3px solid var(--green)"></div>'+
-'<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
+'<h3>You vs. Friends</h3><div class="card" id="barDistChart" style="position:relative;height:200px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
@@ -711,30 +717,37 @@ html+='<div class="card" style="padding:12px"><div style="display:flex;justify-c
 el.innerHTML=html;
 }
 
-// Kahoot-style anonymous bar names
+// Kahoot-style anonymous bar names (kept for archived "You vs The Bar" demo)
 const kahootNames=['Thirsty Penguin','Wobbly Giraffe','Sloppy Flamingo','Tipsy Moose','Rowdy Panda','Dizzy Koala','Funky Llama','Boozy Parrot','Silly Otter','Clumsy Fox','Wild Walrus','Jolly Yak','Groovy Sloth','Snappy Turtle','Fizzy Badger','Loud Toucan','Brave Capybara','Sneaky Raccoon','Happy Hippo','Chill Narwhal','Spicy Iguana','Zesty Falcon'];
-// Each session gets stable bar inhabitants
-let barInhabitants=null;
-function getBarInhabitants(){
-if(barInhabitants)return barInhabitants;
-const count=10+Math.floor(Math.random()*8);
-barInhabitants=[];
-const shuffled=[...kahootNames].sort(()=>Math.random()-.5);
-for(let i=0;i<count;i++){
-// Paces from slow (1.0/hr) to fast (4.0/hr)
-const pace=1.0+Math.random()*3.0;
-// Head start: they arrived 30-120 min before you, so they already have drinks
-const headStart=30+Math.floor(Math.random()*90);
-barInhabitants.push({name:shuffled[i%shuffled.length],pace:pace,headStart:headStart});
-}
-barInhabitants.sort((a,b)=>b.pace-a.pace);
-return barInhabitants;
+// Friends out tonight — 5 named friends already at venues with head starts
+let friendInhabitants=null;
+function getFriendInhabitants(){
+if(friendInhabitants)return friendInhabitants;
+const seedFriends=[
+{name:'Jake M.',emoji:'😎',color:'#3B82F6'},
+{name:'Sarah K.',emoji:'🎉',color:'#EC4899'},
+{name:'Mike R.',emoji:'🍻',color:'#10B981'},
+{name:'Emma L.',emoji:'💃',color:'#F59E0B'},
+{name:'Chris P.',emoji:'🤙',color:'#8B5CF6'},
+];
+friendInhabitants=seedFriends.map(f=>({
+name:f.name,
+emoji:f.emoji,
+color:f.color,
+// Pace 1.5–3.5 cheers/hr
+pace:1.5+Math.random()*2.0,
+// Head start: friends were already out 30–120 min before you started
+headStart:30+Math.floor(Math.random()*90),
+}));
+// Sort by current pace × headstart so leader appears first
+friendInhabitants.sort((a,b)=>(b.pace*b.headStart)-(a.pace*a.headStart));
+return friendInhabitants;
 }
 
 function renderBarDist(elapsed){
 const chart=document.getElementById('barDistChart');
 if(!chart||!chart.clientWidth)return;
-const inhabitants=getBarInhabitants();
+const friends=getFriendInhabitants();
 const nowMin=Math.max(elapsed/60000,0.5);
 // Build points every ~5% of elapsed time
 const numPts=Math.max(Math.ceil(nowMin/2),2);
@@ -743,47 +756,46 @@ for(let i=0;i<=numPts;i++){
 const t=(i/numPts)*nowMin;
 const cutoff=sessionStart+t*60000;
 const you=drinks.filter(d=>d.time<=cutoff).length;
-// Bar average: mean of all inhabitants at this time
-// headStart = minutes they were here before you, so total time = t + headStart
-const inhDrinks=inhabitants.map(p=>Math.max(0,Math.floor(((t+p.headStart)/60)*p.pace)));
-const barAvg=inhDrinks.reduce((a,b)=>a+b,0)/inhDrinks.length;
-const topD=Math.max(...inhDrinks);
-points.push({t,you,barAvg,topD});
+// Each friend's cheers at time t = (t + their headStart) hrs * their pace
+const friendCheers=friends.map(f=>Math.max(0,Math.floor(((t+f.headStart)/60)*f.pace)));
+const avg=friendCheers.reduce((a,b)=>a+b,0)/friendCheers.length;
+points.push({t,you,avg,friends:friendCheers});
 }
 const youNow=drinks.length;
 // Compute max across all lines for Y scale, add 20% headroom
-const allVals=points.flatMap(p=>[p.you,p.barAvg,p.topD]);
+const allVals=points.flatMap(p=>[p.you,p.avg,...p.friends]);
 const maxVal=Math.max(...allVals,3)*1.2;
 const padding={top:15,right:10,bottom:5,left:10};
 const w=chart.clientWidth-padding.left-padding.right;
 const h=130;
 const toX=(t)=>padding.left+(t/Math.max(nowMin,0.5))*w;
 const toY=(v)=>padding.top+h-(v/maxVal)*h;
-const mkPath=(key)=>'M'+points.map(p=>toX(p.t)+','+toY(p[key])).join(' L');
-// Your rank among inhabitants
-const inhNow=inhabitants.map(p=>Math.max(0,Math.floor(((nowMin+p.headStart)/60)*p.pace)));
-const ahead=inhNow.filter(d=>d>youNow).length;
-const pct=Math.round(((inhabitants.length-ahead)/inhabitants.length)*100);
-// Top drinker name
-const topName=inhabitants[0].name;
+const mkPath=(arr)=>'M'+points.map((p,i)=>toX(p.t)+','+toY(arr(p,i))).join(' L');
+// Friend lines
+const friendPaths=friends.map((f,fi)=>'<path d="'+mkPath((p)=>p.friends[fi])+'" fill="none" stroke="'+f.color+'" stroke-width="1.5" opacity="0.55"/>').join('');
+// Friend rank (how many friends are ahead of you right now)
+const friendsNow=friends.map((f,fi)=>points[points.length-1].friends[fi]);
+const ahead=friendsNow.filter(d=>d>youNow).length;
+const rankLabel=ahead===0?'Leading the group':ahead===friends.length?'Catching up':(ahead+1)+' of '+(friends.length+1);
+const avgNow=Math.round(points[points.length-1].avg);
 const primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
 chart.innerHTML=
 '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-'<div style="font-size:12px;color:var(--text2)">'+inhabitants.length+' people at this bar</div>'+
-'<div style="font-size:12px"><span style="color:'+primary+';font-weight:600">Top '+pct+'%</span></div></div>'+
+'<div style="font-size:12px;color:var(--text2)">'+friends.length+' friends out tonight</div>'+
+'<div style="font-size:12px"><span style="color:'+primary+';font-weight:600">'+rankLabel+'</span></div></div>'+
 '<svg width="100%" height="'+(h+padding.top+padding.bottom)+'" viewBox="0 0 '+(w+padding.left+padding.right)+' '+(h+padding.top+padding.bottom)+'" preserveAspectRatio="none" style="display:block">'+
-// Top drinker line
-'<path d="'+mkPath('topD')+'" fill="none" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>'+
-// Bar avg line
-'<path d="'+mkPath('barAvg')+'" fill="none" stroke="#666" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.6"/>'+
-// Your line (on top)
-'<path d="'+mkPath('you')+'" fill="none" stroke="'+primary+'" stroke-width="2.5"/>'+
+friendPaths+
+// Group average line
+'<path d="'+mkPath((p)=>p.avg)+'" fill="none" stroke="#999" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>'+
+// Your line on top
+'<path d="'+mkPath((p)=>p.you)+'" fill="none" stroke="'+primary+'" stroke-width="2.8"/>'+
 '<circle cx="'+toX(nowMin)+'" cy="'+toY(youNow)+'" r="4" fill="'+primary+'"/>'+
 '</svg>'+
-'<div style="display:flex;gap:12px;justify-content:center;margin-top:4px;font-size:11px;flex-wrap:wrap">'+
-'<span><span style="color:'+primary+'">━</span> You ('+youNow+')</span>'+
-'<span><span style="color:#666">╌</span> Bar Avg ('+Math.round(points[points.length-1].barAvg)+')</span>'+
-'<span><span style="color:#EF4444">╌</span> '+topName+' ('+Math.round(points[points.length-1].topD)+')</span></div>';
+'<div style="display:flex;gap:8px;justify-content:center;margin-top:6px;font-size:10px;flex-wrap:wrap">'+
+'<span style="font-weight:600"><span style="color:'+primary+'">━</span> You ('+youNow+')</span>'+
+'<span><span style="color:#999">╌</span> Avg ('+avgNow+')</span>'+
+friends.map((f,fi)=>'<span><span style="color:'+f.color+'">━</span> '+f.emoji+' '+f.name.split(' ')[0]+' ('+friendsNow[fi]+')</span>').join('')+
+'</div>';
 }
 
 function addDrink(type,isNA){
@@ -1020,6 +1032,7 @@ localStorage.setItem('lc_alltime',String(allTimeDrinks));
 sessionActive=false;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
+friendInhabitants=null;
 // Celebrate PRs after the recap renders
 if(isDrinksPR){setTimeout(()=>triggerPR('Most drinks ever: '+drinks.length),700);}
 else if(isCheersPR){setTimeout(()=>triggerPR('Most Cheers ever: '+cheersCount),700);}
@@ -1343,19 +1356,33 @@ alert("How Auto-Tracking Works\n\nThe Library Card is a thin pass-through. When 
 
 // ========== FUTURE FEATURES ARCHIVE ==========
 const futureFeatures=[
-{icon:'🗺️',title:'Live Bar Map',desc:'See which bars are bumping right now with friend and crowd counts.',unlock:'Needs many users checking in at bars',action:'tryLiveBarMap'},
+{icon:'🏟️',title:'You vs The Bar',desc:'Your Cheers vs the average user at the same bar — see if you\'re paced ahead or chilling behind.',unlock:'Needs many active users at the same bar',action:'tryYouVsBar'},
 {icon:'👑',title:'Bar Raids',desc:'Get 5+ friends at the same bar to claim it. Orgs compete for bar ownership.',unlock:'Needs many active users + orgs',action:'tryBarRaids'},
 {icon:'💘',title:'Swipe at the Bar',desc:'See other Library users at the same bar. Mutual swipes = match.',unlock:'Needs users at the same bar',action:'trySwipeAtBar'},
 {icon:'⭐',title:'Pre-Swipe (Premium)',desc:'Swipe on people planning to go out tonight. Match before you arrive.',unlock:'Needs active user base planning nights',action:'tryPreSwipe'},
-{icon:'🧭',title:'AR Friend Finder',desc:'At a crowded bar, hold your phone up — arrow points to your friends with distance.',unlock:'Needs real-time friend location data',action:'tryARFinder'},
 {icon:'👥',title:'Friends of Friends Nearby',desc:'Discover people your friends know at bars near you. LinkedIn-style 2nd connections.',unlock:'Needs a real friend network',action:'tryFriendsOfFriends'},
 {icon:'🏆',title:'Community Drink Ratings',desc:'Top rated drinks across all Library users. "Fat Albert at The Pub — 4.8★ (347 reviews)".',unlock:'Needs 100+ reviews per drink',action:'tryCommunityRatings'},
 {icon:'🏢',title:'Best Drink by Bar',desc:'Must-try signature drink at every bar, ranked by community reviews.',unlock:'Needs bar + drink coverage',action:'tryBestByBar'},
 {icon:'🎵',title:'Jukebox Mode',desc:'Queue songs at the bar from your phone. Premium members skip the queue and get priority.',unlock:'Needs bar partnerships + Spotify integration',action:'tryJukebox'},
 ];
 // ========== ARCHIVE DEMO LAUNCHERS ==========
-function tryLiveBarMap(){
-alert('🗺️ Live Bar Map — PREVIEW\n\nSee every bar in your area in real time:\n\n🔥🔥🔥 Club X — 24 people (Chris P., Rachel T. here)\n🔥🔥 Rooftop Bar — 18 people (Emma L., RAIDED by Sigma Chi)\n🔥 The Pub — 12 people (Jake M., Sarah K., Mike R.)\n🔥 The Library Lounge — 15 people (Sarah K.)\n✨ Tavern on Main — 7 people\n✨ Brews & Views — 9 people (Jake M.)\n\nTap any bar to see friends there, the vibe, and check in.\n\n🔒 Unlocks in your city once locals are checking in at bars. Spread the word!');
+function tryYouVsBar(){
+// Generate 6 anonymous bar inhabitants for the demo
+const shuffled=[...kahootNames].sort(()=>Math.random()-.5);
+const ppl=[];
+for(let i=0;i<6;i++){
+const pace=1.5+Math.random()*2.5;
+const head=30+Math.floor(Math.random()*90);
+const cheers=Math.floor((head/60)*pace)+Math.floor(Math.random()*3);
+ppl.push({name:shuffled[i],cheers:cheers});
+}
+ppl.sort((a,b)=>b.cheers-a.cheers);
+const yourCheers=2;
+const avg=Math.round(ppl.reduce((a,p)=>a+p.cheers,0)/ppl.length);
+let txt='🏟️ You vs The Bar — PREVIEW\n\n📍 The Pub — '+(ppl.length+1)+' Library users here right now\n\n';
+ppl.forEach((p,i)=>{txt+=(i+1)+'. '+p.name+' — '+p.cheers+' 🔥\n';});
+txt+='\n🏆 You — '+yourCheers+' 🔥\n\nBar avg: '+avg+' 🔥\nYou\'re paced '+(yourCheers>avg?'AHEAD':'BEHIND')+' the bar\n\nKnow exactly where you stand at every bar — anonymously, so it stays fun.\n\n🔒 Unlocks once enough Library users are at the same bar. Spread the word!';
+alert(txt);
 }
 function tryBarRaids(){
 alert('👑 Bar Raids — PREVIEW\n\nGet 5+ friends at the same bar to claim it for your crew. The org with the most drinks owns the bar for the night.\n\nLIVE NOW:\n👑 Rooftop Bar — OWNED by Sigma Chi (14 members)\n⚡ Club X — RAID BUILDING (Kappa Kappa 4/5)\n🎯 The Pub — AVAILABLE (Your Squad 3/5, need 2 more!)\n\nRally your friends → all check in at the same bar → claim the bar → your org name shows on the map for everyone to see.\n\n🔒 Unlocks in your city once your friends and rival orgs are on The Library. Spread the word!');
@@ -1365,9 +1392,6 @@ alert('💘 Swipe at The Pub — PREVIEW\n\nSee other Library Card users at the 
 }
 function tryPreSwipe(){
 alert('⭐ Pre-Swipe (Premium) — PREVIEW\n\nPeople going out tonight near you:\n\n👩‍🦰 Olivia, 22 — The Pub at 9 PM\n👩 Mia, 23 — Rooftop Bar at 10 PM\n💁‍♀️ Ava, 22 — Club X at 11 PM\n\nSwipe right before they arrive. If you both right-swiped AND end up at the same bar, you get a notification:\n\n"🎉 Your pre-match Olivia just checked in at The Pub!"\n\n💎 Premium feature — gives you first-mover advantage on the matching pool.\n\n🔒 Unlocks in your city once locals are planning their nights on The Library. Spread the word!');
-}
-function tryARFinder(){
-alert('🧭 AR Friend Finder — PREVIEW\n\nAt a crowded bar, concert, or festival, hold your phone up. An arrow points toward your drinking partner with estimated distance.\n\nLike a compass, but for finding friends in a crowd.\n\nPrivacy-first: only works between people set as drinking partners for the night (both must opt in).\n\n🔒 Unlocks once your friends are on The Library too. Invite them!');
 }
 function tryFriendsOfFriends(){
 alert('👥 Friends of Friends Nearby — PREVIEW\n\nPeople your friends know, currently at nearby bars:\n\n👤 Alex T. · via Jake M. · @ The Pub\n👤 Bella R. · via Sarah K. · @ Club X\n👤 Marcus W. · via Mike R. · @ Rooftop Bar\n👤 Nina C. · via Emma L. · @ The Pub\n\nUse cases:\n• Meet new people via mutual connections\n• Safety — if you\'re stuck, a friend\'s trusted friend nearby can help\n• Expand your network organically\n\n🔒 Unlocks once your friends (and their friends) are on The Library. Invite them!');
@@ -1954,6 +1978,77 @@ moments.map(m=>'<div style="padding:10px 0;border-bottom:0.5px solid #333"><div 
 '<div style="padding-top:8px;text-align:center;font-size:11px;color:var(--text3)">When the Library Card detects you at the same venue, it creates a moment.</div>';
 }
 
+// ========== LIVE BAR MAP (real, friend-based) ==========
+function renderLiveBarMap(){
+const el=document.getElementById('liveBarMap');
+if(!el)return;
+// Each friend's current venue (deterministic-ish based on hour for variety)
+const h=new Date().getHours();
+const friendVenues=[
+{name:'Jake M.',emoji:'😎',venue:'The Pub',since:'8:42 PM',cheers:3,vibe:'🍺 Posted'},
+{name:'Sarah K.',emoji:'🎉',venue:'Rooftop Bar',since:'9:15 PM',cheers:2,vibe:'📸 Just posted'},
+{name:'Mike R.',emoji:'🍻',venue:'The Pub',since:'8:55 PM',cheers:4,vibe:'🔥 On fire'},
+{name:'Emma L.',emoji:'💃',venue:'Club X',since:'10:02 PM',cheers:1,vibe:'Just got here'},
+{name:'Chris P.',emoji:'🤙',venue:'Tavern on Main',since:'9:30 PM',cheers:2,vibe:'☕ Espresso martini'},
+{name:'Rachel T.',emoji:'✨',venue:'Rooftop Bar',since:'9:20 PM',cheers:3,vibe:'With Sarah'},
+];
+// Group by venue
+const byVenue={};
+friendVenues.forEach(f=>{
+if(!byVenue[f.venue])byVenue[f.venue]={friends:[],heat:0};
+byVenue[f.venue].friends.push(f);
+byVenue[f.venue].heat+=f.cheers;
+});
+const venueList=Object.entries(byVenue).sort((a,b)=>b[1].friends.length-a[1].friends.length);
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Friends out tonight, by venue. Updates when they start a session.</div>'+
+venueList.map(([venue,data])=>{
+const heatEmoji=data.friends.length>=3?'🔥🔥🔥':data.friends.length>=2?'🔥🔥':'🔥';
+const peopleStr=data.friends.length+' '+(data.friends.length===1?'friend':'friends');
+return '<div onclick="openVenuePin(\''+venue.replace(/\'/g,"\\\'")+'\')" style="padding:12px 0;border-bottom:0.5px solid #333;cursor:pointer">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">'+heatEmoji+' '+venue+'</div><div style="font-size:11px;color:var(--primary);font-weight:600">'+peopleStr+'</div></div>'+
+'<div style="display:flex;flex-wrap:wrap;gap:6px">'+data.friends.map(f=>'<span style="font-size:11px;background:var(--card2);padding:4px 8px;border-radius:999px"><span>'+f.emoji+'</span> '+f.name+' · '+f.cheers+' 🔥</span>').join('')+'</div>'+
+'</div>';
+}).join('')+
+'<div style="padding-top:8px;text-align:center;font-size:11px;color:var(--text3)">Friends not started a session tonight don\'t appear. Privacy by default.</div>';
+}
+function openVenuePin(venue){
+const friends=[
+{name:'Jake M.',emoji:'😎',venue:'The Pub',since:'8:42 PM',cheers:3},
+{name:'Sarah K.',emoji:'🎉',venue:'Rooftop Bar',since:'9:15 PM',cheers:2},
+{name:'Mike R.',emoji:'🍻',venue:'The Pub',since:'8:55 PM',cheers:4},
+{name:'Emma L.',emoji:'💃',venue:'Club X',since:'10:02 PM',cheers:1},
+{name:'Chris P.',emoji:'🤙',venue:'Tavern on Main',since:'9:30 PM',cheers:2},
+{name:'Rachel T.',emoji:'✨',venue:'Rooftop Bar',since:'9:20 PM',cheers:3},
+].filter(f=>f.venue===venue);
+let txt='📍 '+venue+'\n\nFriends here right now:\n\n';
+friends.forEach(f=>{txt+=f.emoji+' '+f.name+' — checked in '+f.since+' · '+f.cheers+' 🔥\n';});
+txt+='\nWant to join? Tap Start Session and pick this venue.';
+alert(txt);
+}
+
+// ========== AR FRIEND FINDER (real, small-group) ==========
+function renderARFinder(){
+const el=document.getElementById('arFinderCard');
+if(!el)return;
+// Simulated bearings/distances for friends at "your" venue
+const here=[
+{name:'Jake M.',emoji:'😎',bearing:32,dist:14},
+{name:'Mike R.',emoji:'🍻',bearing:185,dist:8},
+];
+el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Friends at your venue right now. Tap to point to them in AR.</div>'+
+here.map(f=>'<div onclick="launchARFinder(\''+f.name.replace(/\'/g,"\\\'")+'\','+f.bearing+','+f.dist+')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid #333;cursor:pointer">'+
+'<div style="font-size:24px">'+f.emoji+'</div>'+
+'<div style="flex:1"><div style="font-weight:600;font-size:14px">'+f.name+'</div><div style="font-size:11px;color:var(--text3)">~'+f.dist+' ft · bearing '+f.bearing+'°</div></div>'+
+'<div style="font-size:18px;color:var(--primary);transform:rotate('+(f.bearing-90)+'deg)">↗</div>'+
+'<span style="color:var(--text3)">›</span>'+
+'</div>').join('')+
+'<div style="padding-top:8px;text-align:center;font-size:11px;color:var(--text3)">Both phones must be in the same session and Die Hards/Besties tier.</div>';
+}
+function launchARFinder(name,bearing,dist){
+const arrow=bearing<45||bearing>=315?'⬆ Forward':bearing<135?'➡ Right':bearing<225?'⬇ Behind you':'⬅ Left';
+alert('🧭 AR Compass — '+name+'\n\nDistance: ~'+dist+' ft\nDirection: '+arrow+' (bearing '+bearing+'°)\n\nHold your phone up — an arrow on the camera view points to '+name+'.\n\n📡 Live updates every 2s as you both move.\n\n🔧 Demo — real AR uses ARKit + Bluetooth/UWB ranging.');
+}
+
 function renderMemories(){
 const el=document.getElementById('memoriesSection');
 if(!el)return;
@@ -1978,6 +2073,8 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 
 function initSocial(){
 renderWeekendPlan();
+renderLiveBarMap();
+renderARFinder();
 renderDMInbox();
 renderOrgs();
 renderMutualStreaks();
