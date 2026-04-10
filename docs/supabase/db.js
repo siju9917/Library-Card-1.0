@@ -219,6 +219,11 @@
     return data;
   };
 
+  LC.acceptInvite = async function (inviterId) {
+    const { error } = await sb.rpc('accept_invite', { inviter_id: inviterId });
+    if (error) throw error;
+  };
+
   LC.moveFriendTier = async function (friendId, tier) {
     if (tier === null) {
       await sb.from('friendships').delete().match({ user_id: LC.me.id, friend_id: friendId });

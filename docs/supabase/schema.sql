@@ -285,5 +285,23 @@ create policy "cheers_delete_own" on storage.objects
   for delete to authenticated
   using (bucket_id = 'cheers-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
+-- ---------- INVITE LINK (accept_invite RPC) ----------
+-- Called when a new user signs up via an invite link. Inserts friendship
+-- rows in BOTH directions so the inviter and invitee become mutual friends.
+-- SECURITY DEFINER lets it bypass RLS to insert into the inviter's row.
+create or replace function public.accept_invite(inviter_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  -- Add inviter to invitee's friends
+  insert into friendships (user_id, friend_id, tier)
+  values (auth.uid(), inviter_id, 'friends')
+  on conflict (user_id, friend_id) do nothing;
+  -- Add invitee to inviter's friends
+  insert into friendships (user_id, friend_id, tier)
+  values (inviter_id, auth.uid(), 'friends')
+  on conflict (user_id, friend_id) do nothing;
+end;
+$$;
+
 -- ---------- DONE ----------
 -- After this runs successfully, head back to your app and sign in with email magic link.
