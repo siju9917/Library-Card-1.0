@@ -2589,8 +2589,9 @@ async function bootApp(){
 if('serviceWorker' in navigator){
 try{await navigator.serviceWorker.register('sw.js');}catch(e){console.warn('sw',e);}
 }
-// If cloud isn't configured, just run as a local demo
-if(!window.LC||!LC.cloud){
+// Demo mode (either cloud not configured OR user tapped Try the Demo) —
+// bypass the auth gate entirely and run the seeded prototype.
+if(!window.LC||!LC.cloud||LC_DEMO){
 document.getElementById('authGate').style.display='none';
 runDemoInit();
 return;
