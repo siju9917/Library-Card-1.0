@@ -12,8 +12,8 @@
 // ============================================================
 
 window.LC_CONFIG = {
-  SUPABASE_URL: 'https://abjnusmeyfytxzjydqfc.supabase.co',  // e.g. 'https://abcdefgh.supabase.co'
-  SUPABASE_ANON_KEY: 'abjnusmeyfytxzjydqfc',  // e.g. 'eyJhbGciOiJIUzI1NiIs...'
+  SUPABASE_URL: 'https://abjnusmeyfytxzjydqfc.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiam51c21leWZ5dHh6anlkcWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NzI3ODIsImV4cCI6MjA5MTM0ODc4Mn0.r_m99X-0rjHNmuPq1ViSIooObEfP06gokUuvMTcRN_E',
 };
 
 // When both fields above are filled in, the app will switch from
