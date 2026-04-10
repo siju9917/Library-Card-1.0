@@ -13,8 +13,8 @@
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <title>The Library</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=6"></script>
-<script src="supabase/db.js?v=6"></script>
+<script src="supabase/config.js?v=7"></script>
+<script src="supabase/db.js?v=7"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -1214,7 +1214,7 @@ const r=prompt('Rate this drink 1-5 stars:','');
 if(r&&parseInt(r)>=1&&parseInt(r)<=5){drinks[index].rating=parseInt(r);updateSessionUI();}
 }
 
-function endSession(){
+async function endSession(){
 if(!sessionActive)return;
 clearInterval(sessionTimer);
 const elapsed=Date.now()-sessionStart;
@@ -1224,14 +1224,19 @@ const isDrinksPR=drinks.length>prevMaxDrinks&&drinks.length>=3;
 const cheersCount=drinks.filter(d=>d.hasPhoto).length;
 const prevMaxCheers=allSessions.reduce((m,s)=>{const c=(s.drinkList||[]).filter(d=>d.hasPhoto).length;return Math.max(m,c);},0);
 const isCheersPR=cheersCount>prevMaxCheers&&cheersCount>=3;
-const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:null,drinkList:drinks};
+const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:null,drinkList:drinks,cloudId:cloudSessionId};
 allSessions.push(session);
 allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
-// Cloud: close out the session row
+// Cloud: close out the session row — AWAITED so it actually commits
+// before we tear the session down. Otherwise closing the tab in the
+// next few ms kills the in-flight fetch and the row is left orphaned
+// with end_time=null, which hydrate then filters out on reload.
 if(cloudSessionId&&window.LC&&LC.cloud){
-LC.endSession(cloudSessionId,{totalDrinks:drinks.length,totalCheers:cheersCount}).catch(e=>console.warn('cloud endSession',e));
+try{
+await LC.endSession(cloudSessionId,{totalDrinks:drinks.length,totalCheers:cheersCount});
+}catch(e){console.warn('cloud endSession',e);}
 }
 cloudSessionId=null;
 sessionActive=false;
@@ -2807,10 +2812,31 @@ runDemoInit();
 
 async function hydrateFromCloud(){
 if(!LC.me)return;
-// Sessions
+// Sessions — first, close out any orphaned active sessions (rows with
+// end_time=null from a previous tab that was killed before endSession
+// could finish). We close them server-side using the last known drink
+// time so the session still appears in history.
+try{
+const active=await LC.sb.from('sessions').select('*, drinks(*)').eq('user_id',LC.me.id).is('end_time',null);
+if(active.data&&active.data.length>0){
+for(const s of active.data){
+const lastDrinkTime=(s.drinks||[]).reduce((m,d)=>{
+const t=new Date(d.logged_at).getTime();
+return t>m?t:m;
+},new Date(s.start_time).getTime());
+// Clamp to at least start_time + 1 minute so we don't end before start
+const endT=Math.max(lastDrinkTime,new Date(s.start_time).getTime()+60000);
+await LC.sb.from('sessions').update({
+end_time:new Date(endT).toISOString(),
+total_drinks:(s.drinks||[]).filter(d=>!d.is_na).length,
+total_cheers:(s.drinks||[]).filter(d=>d.has_photo).length,
+}).eq('id',s.id);
+}
+}
+}catch(e){console.warn('auto-close orphaned sessions',e);}
 try{
 const sessions=await LC.listMySessions(50);
-const local=sessions.map(s=>({
+const cloud=sessions.map(s=>({
 time:new Date(s.start_time).getTime(),
 drinks:s.total_drinks||0,
 duration:s.end_time?new Date(s.end_time).getTime()-new Date(s.start_time).getTime():0,
@@ -2821,8 +2847,14 @@ comments:[],
 kudosdBy:[],
 cloudId:s.id,
 }));
-allSessions=local;
-allTimeDrinks=local.reduce((a,s)=>a+s.drinks,0);
+// Merge: anything in localStorage that the cloud doesn't know about
+// (typically because an endSession fetch was killed by tab close)
+// stays in the list. The cloud is authoritative for anything with a
+// matching cloudId, but local-only sessions are preserved.
+const cloudIds=new Set(cloud.map(s=>s.cloudId));
+const localOnly=(allSessions||[]).filter(s=>!s.cloudId||!cloudIds.has(s.cloudId));
+allSessions=[...cloud,...localOnly].sort((a,b)=>b.time-a.time);
+allTimeDrinks=allSessions.reduce((a,s)=>a+s.drinks,0);
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
 }catch(e){console.warn('hydrate sessions',e);}
