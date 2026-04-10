@@ -257,6 +257,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <!-- CAMERA MODAL (fake) -->
 <div id="cameraModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#000;flex-direction:column"></div>
 <div id="pickerModal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,.7);align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)"></div>
+<div id="demoModal" style="display:none;position:fixed;inset:0;z-index:1002;background:var(--bg);flex-direction:column"></div>
 
 <!-- TAB BAR -->
 <div class="tab-bar">
@@ -1374,9 +1375,24 @@ const futureFeatures=[
 {icon:'🏢',title:'Best Drink by Bar',desc:'Must-try signature drink at every bar, ranked by community reviews.',unlock:'Needs bar + drink coverage',action:'tryBestByBar'},
 {icon:'🎵',title:'Jukebox Mode',desc:'Queue songs at the bar from your phone. Premium members skip the queue and get priority.',unlock:'Needs bar partnerships + Spotify integration',action:'tryJukebox'},
 ];
+// ========== FULL-SCREEN DEMO MODAL ==========
+function showDemo(title,unlock,bodyHTML){
+const modal=document.getElementById('demoModal');
+modal.style.display='flex';
+modal.innerHTML=
+'<div style="padding:calc(12px + var(--safe-top)) 16px 12px 16px;display:flex;align-items:center;gap:12px;border-bottom:0.5px solid #222;background:var(--bg2);position:sticky;top:0;z-index:2">'+
+'<button onclick="closeDemo()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px">←</button>'+
+'<div style="flex:1"><div style="font-size:16px;font-weight:700">'+title+'</div><div style="font-size:10px;color:var(--primary);margin-top:2px">⚡ INTERACTIVE PREVIEW</div></div>'+
+'<span style="font-size:9px;background:var(--card2);color:var(--text3);padding:3px 8px;border-radius:6px;font-weight:600">DEMO</span>'+
+'</div>'+
+'<div style="flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(80px + var(--safe-bottom))">'+bodyHTML+
+'<div style="margin-top:24px;padding:14px;background:linear-gradient(135deg,rgba(232,163,23,.1),rgba(255,107,43,.05));border:1px solid rgba(232,163,23,.3);border-radius:12px;text-align:center"><div style="font-size:11px;color:var(--primary);font-weight:700;margin-bottom:4px">🔒 UNLOCKS WHEN</div><div style="font-size:12px;color:var(--text2)">'+unlock+'</div><button onclick="closeDemo()" style="margin-top:10px;background:var(--primary);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Spread the Word →</button></div>'+
+'</div>';
+}
+function closeDemo(){document.getElementById('demoModal').style.display='none';}
+
 // ========== ARCHIVE DEMO LAUNCHERS ==========
 function tryYouVsBar(){
-// Generate 6 anonymous bar inhabitants for the demo
 const shuffled=[...kahootNames].sort(()=>Math.random()-.5);
 const ppl=[];
 for(let i=0;i<6;i++){
@@ -1388,34 +1404,132 @@ ppl.push({name:shuffled[i],cheers:cheers});
 ppl.sort((a,b)=>b.cheers-a.cheers);
 const yourCheers=2;
 const avg=Math.round(ppl.reduce((a,p)=>a+p.cheers,0)/ppl.length);
-let txt='🏟️ You vs The Bar — PREVIEW\n\n📍 The Pub — '+(ppl.length+1)+' Library users here right now\n\n';
-ppl.forEach((p,i)=>{txt+=(i+1)+'. '+p.name+' — '+p.cheers+' 🔥\n';});
-txt+='\n🏆 You — '+yourCheers+' 🔥\n\nBar avg: '+avg+' 🔥\nYou\'re paced '+(yourCheers>avg?'AHEAD':'BEHIND')+' the bar\n\nKnow exactly where you stand at every bar — anonymously, so it stays fun.\n\n🔒 Unlocks once enough Library users are at the same bar. Spread the word!';
-alert(txt);
+const max=Math.max(...ppl.map(p=>p.cheers),yourCheers);
+const rows=ppl.map((p,i)=>{
+const pct=(p.cheers/max)*100;
+return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0"><span style="width:18px;text-align:center;font-weight:700;color:var(--text3);font-size:12px">'+(i+1)+'</span><span style="flex:1;font-size:13px">'+p.name+'</span><div style="width:100px;height:10px;background:var(--card2);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#666;border-radius:5px"></div></div><span style="width:30px;text-align:right;font-weight:700;font-size:12px">'+p.cheers+' 🔥</span></div>';
+}).join('');
+const youPct=(yourCheers/max)*100;
+const youRow='<div style="display:flex;align-items:center;gap:10px;padding:10px 8px;background:linear-gradient(90deg,rgba(232,163,23,.18),transparent);border-radius:10px;margin-top:6px;border:1px solid var(--primary)"><span style="width:18px;text-align:center;font-weight:800;color:var(--primary);font-size:12px">🏆</span><span style="flex:1;font-size:13px;font-weight:700;color:var(--primary)">You</span><div style="width:100px;height:10px;background:var(--card2);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+youPct+'%;background:var(--primary);border-radius:5px"></div></div><span style="width:30px;text-align:right;font-weight:800;font-size:12px;color:var(--primary)">'+yourCheers+' 🔥</span></div>';
+showDemo('🏟️ You vs The Bar','Enough Library users are at the same bar at the same time',
+'<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px"><div><div style="font-weight:700;font-size:15px">📍 The Pub</div><div style="font-size:11px;color:var(--text3);margin-top:2px">'+(ppl.length+1)+' Library users here · live</div></div><div style="text-align:right"><div style="font-size:10px;color:var(--text3)">BAR AVG</div><div style="font-size:18px;font-weight:800;color:var(--primary)">'+avg+' 🔥</div></div></div><div class="divider"></div>'+rows+youRow+'</div>'+
+'<div style="margin-top:14px;padding:12px;background:var(--card);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.5">Anonymous nicknames protect privacy. Watch your rank shift as the night progresses — climb the leaderboard or coast at the bar avg.</div>');
 }
+
 function tryBarRaids(){
-alert('👑 Bar Raids — PREVIEW\n\nGet 5+ friends at the same bar to claim it for your crew. The org with the most drinks owns the bar for the night.\n\nLIVE NOW:\n👑 Rooftop Bar — OWNED by Sigma Chi (14 members)\n⚡ Club X — RAID BUILDING (Kappa Kappa 4/5)\n🎯 The Pub — AVAILABLE (Your Squad 3/5, need 2 more!)\n\nRally your friends → all check in at the same bar → claim the bar → your org name shows on the map for everyone to see.\n\n🔒 Unlocks in your city once your friends and rival orgs are on The Library. Spread the word!');
+const raids=[
+{name:'Rooftop Bar',org:'Sigma Chi',state:'OWNED',count:14,need:5,color:'#10B981'},
+{name:'Club X',org:'Kappa Kappa',state:'BUILDING',count:4,need:5,color:'#F59E0B'},
+{name:'The Pub',org:'Your Squad',state:'AVAILABLE',count:3,need:5,color:'var(--primary)'},
+{name:'Tavern on Main',org:'Lambda Chi',state:'BUILDING',count:2,need:5,color:'#888'},
+];
+const list=raids.map(r=>{
+const pct=Math.min(100,(r.count/r.need)*100);
+return '<div class="card" style="padding:14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:700;font-size:15px">'+(r.state==='OWNED'?'👑 ':'')+r.name+'</div><div style="font-size:11px;color:'+r.color+';margin-top:2px;font-weight:700">'+r.state+(r.state==='OWNED'?' by '+r.org:' · '+r.org)+'</div></div><div style="text-align:right;font-size:11px;color:var(--text3)">'+r.count+'/'+r.need+'</div></div><div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+r.color+';border-radius:4px"></div></div></div>';
+}).join('');
+showDemo('👑 Bar Raids','Rival orgs in your city sign up + start showdowns',
+'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">Get 5+ friends at the same bar to claim it for your crew. The org with the most Cheers owns the bar for the night.</div>'+list+
+'<button onclick="alert(\'🚨 Raid alert sent to your squad!\\n\\n4 friends notified — they have 30 min to check in at The Pub.\')" style="width:100%;background:var(--primary);color:#fff;border:none;padding:14px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px">⚡ Rally Squad to The Pub</button>');
 }
+
 function trySwipeAtBar(){
-alert('💘 Swipe at The Pub — PREVIEW\n\nSee other Library Card users at the same bar. Swipe right if interested. Mutual right-swipe = match.\n\nProfiles show: name, age, bio, Live Photo verified badge, current vibe, drinks in.\n\nOnce matched you can:\n• Send a DM (no phone number needed)\n• Buy them a drink (loaded to their Library Card)\n• See each other on the bar map\n\n🔒 Unlocks in your city once enough locals have a Library Card. Spread the word!');
+const profiles=[
+{name:'Olivia',age:22,emoji:'👩‍🦰',bio:'Espresso martini girl · NYU',cheers:3,gradient:'linear-gradient(135deg,#EC4899,#F59E0B)'},
+{name:'Mia',age:23,emoji:'👩',bio:'Here for the playlist',cheers:4,gradient:'linear-gradient(135deg,#8B5CF6,#3B82F6)'},
+{name:'Ava',age:22,emoji:'💁‍♀️',bio:'Tequila enthusiast 🌵',cheers:5,gradient:'linear-gradient(135deg,#10B981,#F59E0B)'},
+];
+const cards=profiles.map((p,i)=>{
+return '<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px"><div style="height:120px;background:'+p.gradient+';display:flex;align-items:center;justify-content:center;font-size:60px">'+p.emoji+'</div><div style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:700;font-size:16px">'+p.name+', '+p.age+'</div><div style="font-size:12px;color:var(--text3);margin-top:2px">'+p.bio+'</div></div><div style="font-size:10px;background:var(--green);color:#fff;padding:3px 8px;border-radius:4px;font-weight:700">✓ VERIFIED</div></div><div style="display:flex;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)"><span>📍 Same bar</span><span>·</span><span>'+p.cheers+' 🔥 in</span></div><div style="display:flex;gap:8px;margin-top:12px"><button onclick="alert(\'❌ Swiped left\')" style="flex:1;background:var(--card2);color:var(--text);border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:600">Pass</button><button onclick="alert(\'💘 It\\\'s a match!\\n\\n'+p.name+' also swiped right.\\n\\nSay hi or buy her a drink (loaded to her Library Card) — no phone numbers exchanged.\')" style="flex:2;background:linear-gradient(135deg,#EC4899,#8B5CF6);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:700">💘 Swipe Right</button></div></div></div>';
+}).join('');
+showDemo('💘 Swipe at the Bar','Enough locals have a Library Card and are at the same bar',
+'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">📍 The Pub — '+profiles.length+' Library users open to matching here right now</div>'+cards);
 }
+
 function tryPreSwipe(){
-alert('⭐ Pre-Swipe (Premium) — PREVIEW\n\nPeople going out tonight near you:\n\n👩‍🦰 Olivia, 22 — The Pub at 9 PM\n👩 Mia, 23 — Rooftop Bar at 10 PM\n💁‍♀️ Ava, 22 — Club X at 11 PM\n\nSwipe right before they arrive. If you both right-swiped AND end up at the same bar, you get a notification:\n\n"🎉 Your pre-match Olivia just checked in at The Pub!"\n\n💎 Premium feature — gives you first-mover advantage on the matching pool.\n\n🔒 Unlocks in your city once locals are planning their nights on The Library. Spread the word!');
+const tonight=[
+{name:'Olivia',age:22,emoji:'👩‍🦰',venue:'The Pub',time:'9:00 PM',vibe:'Happy hour first'},
+{name:'Mia',age:23,emoji:'👩',venue:'Rooftop Bar',time:'10:00 PM',vibe:'Late night vibes'},
+{name:'Ava',age:22,emoji:'💁‍♀️',venue:'Club X',time:'11:00 PM',vibe:'Dancing till close'},
+{name:'Sophia',age:24,emoji:'👱‍♀️',venue:'Tavern on Main',time:'9:30 PM',vibe:'Chill convo'},
+];
+const cards=tonight.map(p=>'<div class="card" style="padding:14px;margin-bottom:10px;display:flex;gap:14px;align-items:center"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(135deg,#EC4899,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">'+p.emoji+'</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+p.name+', '+p.age+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">📍 '+p.venue+' · '+p.time+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px;font-style:italic">"'+p.vibe+'"</div></div><button onclick="alert(\'⭐ Pre-swiped on '+p.name+'!\\n\\nIf '+p.name+' pre-swipes you back AND ends up at '+p.venue+' tonight, you\\\'ll both get a notification.\')" style="background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700;font-size:11px;flex-shrink:0">⭐ Swipe</button></div>').join('');
+showDemo('⭐ Pre-Swipe (Premium)','Locals are planning their nights on The Library',
+'<div style="padding:12px;background:linear-gradient(135deg,rgba(232,163,23,.15),rgba(255,107,43,.05));border:1px solid var(--primary);border-radius:10px;margin-bottom:14px"><div style="font-size:11px;color:var(--primary);font-weight:700">💎 PREMIUM</div><div style="font-size:13px;color:var(--text);margin-top:4px;line-height:1.4">Swipe on people planning to go out tonight. Match before you arrive — first-mover advantage on the matching pool.</div></div>'+
+'<div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600">📅 GOING OUT TONIGHT</div>'+cards);
 }
+
 function tryFriendsOfFriends(){
-alert('👥 Friends of Friends Nearby — PREVIEW\n\nPeople your friends know, currently at nearby bars:\n\n👤 Alex T. · via Jake M. · @ The Pub\n👤 Bella R. · via Sarah K. · @ Club X\n👤 Marcus W. · via Mike R. · @ Rooftop Bar\n👤 Nina C. · via Emma L. · @ The Pub\n\nUse cases:\n• Meet new people via mutual connections\n• Safety — if you\'re stuck, a friend\'s trusted friend nearby can help\n• Expand your network organically\n\n🔒 Unlocks once your friends (and their friends) are on The Library. Invite them!');
+const fofs=[
+{name:'Alex T.',via:'Jake M.',venue:'The Pub',mutuals:3,emoji:'👤'},
+{name:'Bella R.',via:'Sarah K.',venue:'Club X',mutuals:5,emoji:'💅'},
+{name:'Marcus W.',via:'Mike R.',venue:'Rooftop Bar',mutuals:2,emoji:'🧔'},
+{name:'Nina C.',via:'Emma L.',venue:'The Pub',mutuals:4,emoji:'👩'},
+{name:'Diego H.',via:'Chris P.',venue:'Tavern on Main',mutuals:2,emoji:'🧑'},
+];
+const list=fofs.map(f=>'<div class="card" style="padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:12px"><div style="font-size:30px">'+f.emoji+'</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+f.name+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">via '+f.via+' · '+f.mutuals+' mutual friends</div><div style="font-size:11px;color:var(--primary);margin-top:2px">📍 '+f.venue+'</div></div><button onclick="alert(\'👋 Wave sent to '+f.name+'\\n\\n'+f.via+' will see you both connected. Safer than a cold DM.\')" style="background:var(--card2);color:var(--text);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600">👋 Wave</button></div>').join('');
+showDemo('👥 Friends of Friends Nearby','Your friends (and their friends) join The Library',
+'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">People your friends know, currently at nearby bars. LinkedIn-style 2nd connections — meet new people through someone you trust.</div>'+list);
 }
+
 function tryCommunityRatings(){
-alert('🏆 Community Favorites — PREVIEW\n\nTop rated drinks across all Library Card users:\n\n🍹 Fat Albert · The Pub · 4.8⭐ (347 reviews)\n☕ Espresso Martini · Rooftop Bar · 4.7⭐ (512 reviews)\n🥃 Old Fashioned · The Library Lounge · 4.6⭐ (298 reviews)\n🍸 Margarita · Tavern on Main · 4.5⭐ (189 reviews)\n🍺 House IPA · Brews & Views · 4.5⭐ (234 reviews)\n🥃 Rum & Coke · Club X · 4.2⭐ (156 reviews)\n\n🔒 Unlocks in your city once locals have rated enough drinks. Spread the word!');
+const drinks=[
+{name:'Fat Albert',venue:'The Pub',rating:4.8,reviews:347,emoji:'🍹'},
+{name:'Espresso Martini',venue:'Rooftop Bar',rating:4.7,reviews:512,emoji:'☕'},
+{name:'Old Fashioned',venue:'The Library Lounge',rating:4.6,reviews:298,emoji:'🥃'},
+{name:'Margarita',venue:'Tavern on Main',rating:4.5,reviews:189,emoji:'🍸'},
+{name:'House IPA',venue:'Brews & Views',rating:4.5,reviews:234,emoji:'🍺'},
+{name:'Rum & Coke',venue:'Club X',rating:4.2,reviews:156,emoji:'🥃'},
+];
+const rows=drinks.map((d,i)=>{
+const stars='⭐'.repeat(Math.round(d.rating));
+return '<div onclick="alert(\''+d.name+' at '+d.venue+'\\n\\n'+d.rating+'⭐ from '+d.reviews+' Library users\\n\\nWhat people say:\\n• \\\"Best in the city\\\" — Jake M.\\n• \\\"Worth the trip\\\" — Sarah K.\\n• \\\"Order it\\\" — Mike R.\')" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);border-radius:10px;margin-bottom:10px;cursor:pointer"><div style="font-size:28px;width:40px;text-align:center">'+d.emoji+'</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+(i+1)+'. '+d.name+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">📍 '+d.venue+'</div><div style="font-size:11px;color:var(--primary);margin-top:2px">'+stars+' '+d.rating+' ('+d.reviews+' reviews)</div></div><span style="color:var(--text3)">›</span></div>';
+}).join('');
+showDemo('🏆 Community Drink Ratings','100+ Library users have rated drinks in your city',
+'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">Top rated drinks across all Library users in your area. Tap any to see what people are saying.</div>'+rows);
 }
+
 function tryBestByBar(){
-alert('🏢 Best Drink by Bar — PREVIEW\n\nMust-try signature drink at every bar:\n\n📍 The Pub → Fat Albert (4.8⭐)\n📍 Rooftop Bar → Espresso Martini (4.7⭐)\n📍 The Library Lounge → Old Fashioned (4.6⭐)\n📍 Tavern on Main → Margarita (4.5⭐)\n📍 Brews & Views → House IPA (4.5⭐)\n📍 Club X → Rum & Coke (4.2⭐)\n\nNever order a bad drink again. Arrive at a bar and see exactly what to order.\n\n🔒 Unlocks in your city once locals have rated enough drinks. Spread the word!');
+const bars=[
+{venue:'The Pub',drink:'Fat Albert',rating:4.8,emoji:'🍹'},
+{venue:'Rooftop Bar',drink:'Espresso Martini',rating:4.7,emoji:'☕'},
+{venue:'The Library Lounge',drink:'Old Fashioned',rating:4.6,emoji:'🥃'},
+{venue:'Tavern on Main',drink:'Margarita',rating:4.5,emoji:'🍸'},
+{venue:'Brews & Views',drink:'House IPA',rating:4.5,emoji:'🍺'},
+{venue:'Club X',drink:'Rum & Coke',rating:4.2,emoji:'🥃'},
+];
+const list=bars.map(b=>'<div class="card" style="padding:14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:700;font-size:14px">📍 '+b.venue+'</div><div style="font-size:11px;color:var(--primary);font-weight:700">⭐ '+b.rating+'</div></div><div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--card2);border-radius:8px"><span style="font-size:24px">'+b.emoji+'</span><div style="flex:1"><div style="font-size:11px;color:var(--text3)">MUST ORDER</div><div style="font-size:14px;font-weight:700">'+b.drink+'</div></div></div></div>').join('');
+showDemo('🏢 Best Drink by Bar','Locals have rated enough drinks at every bar in your area',
+'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">Never order a bad drink again. Walk into any bar and instantly know what to order — the community-rated signature.</div>'+list);
 }
+
 function tryJukebox(){
-const song=prompt('🎵 Jukebox Mode — PREVIEW\n\nCurrently playing at The Pub:\n🎵 "Dancing Queen" — ABBA\n\nNext in queue:\n1. "Don\'t Stop Believin\'" — Journey (queued by Jake M.)\n2. "Mr. Brightside" — The Killers (queued by Sarah K.)\n3. "Sweet Caroline" — Neil Diamond (queued by Mike R.)\n\nYour queue position: #8 (regular · 35 min wait)\n💎 Premium would bump you to #4 (12 min wait)\n\nWhat do you want to play? (just a name):','Valerie');
-if(song&&song.trim()){
-alert('🎵 Queued!\n\n"'+song.trim()+'" added to the jukebox at The Pub.\n\nYour position: #8 (regular)\n💎 Upgrade to Premium to skip to #4\n\nEveryone at the bar will hear it play in ~35 min.\n\n🔒 Jukebox Mode unlocks in your city once bars sign up as Library partners. Spread the word!');
+const queue=[
+{song:'Dancing Queen',artist:'ABBA',by:'Now Playing',pos:0},
+{song:'Don\'t Stop Believin\'',artist:'Journey',by:'Jake M.',pos:1},
+{song:'Mr. Brightside',artist:'The Killers',by:'Sarah K.',pos:2},
+{song:'Sweet Caroline',artist:'Neil Diamond',by:'Mike R.',pos:3},
+{song:'Wonderwall',artist:'Oasis',by:'Emma L.',pos:4},
+];
+const list=queue.map((q,i)=>{
+const isPlaying=i===0;
+return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:'+(isPlaying?'rgba(232,163,23,.15)':'var(--card)')+';border-radius:10px;margin-bottom:8px;border:'+(isPlaying?'1px solid var(--primary)':'none')+'"><div style="width:32px;text-align:center;font-size:18px">'+(isPlaying?'🎵':(i))+'</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+q.song+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">'+q.artist+' · '+q.by+'</div></div>'+(isPlaying?'<div style="font-size:10px;color:var(--primary);font-weight:700">PLAYING</div>':'')+'</div>';
+}).join('');
+showDemo('🎵 Jukebox Mode','Bars in your city sign up as Library partners',
+'<div style="font-size:12px;color:var(--text2);margin-bottom:14px">📍 Live at The Pub. Queue songs from your phone — everyone at the bar hears them.</div>'+
+'<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px">QUEUE</div>'+list+
+'<div style="margin-top:14px;padding:14px;background:linear-gradient(135deg,rgba(232,163,23,.15),rgba(255,107,43,.05));border:1px solid var(--primary);border-radius:10px"><div style="font-size:11px;color:var(--primary);font-weight:700;margin-bottom:6px">💎 PREMIUM PRIORITY</div><div style="font-size:12px;color:var(--text2);line-height:1.4;margin-bottom:10px">Regular: queue position #6 (~28 min wait)<br>Premium: skips to #2 (~6 min wait)</div></div>'+
+'<button onclick="jukeboxQueue()" style="width:100%;background:var(--primary);color:#fff;border:none;padding:14px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;margin-top:10px">+ Queue a Song</button>');
 }
+function jukeboxQueue(){
+showPicker('🎵 Pick a song','What do you want to play?',[
+{label:'Valerie',emoji:'🎤',sub:'Amy Winehouse'},
+{label:'Dancing in the Moonlight',emoji:'🌙',sub:'Toploader'},
+{label:'Mr. Brightside',emoji:'✨',sub:'The Killers'},
+{label:'Take On Me',emoji:'🎹',sub:'a-ha'},
+],(idx)=>{
+const songs=['Valerie','Dancing in the Moonlight','Mr. Brightside','Take On Me'];
+setTimeout(()=>alert('🎵 Queued!\n\n"'+songs[idx]+'" added to The Pub jukebox.\n\nPosition: #6 (regular)\n💎 Upgrade to Premium → bumps to #2 (~6 min wait)'),200);
+});
 }
 
 function renderFutureFeatures(){
