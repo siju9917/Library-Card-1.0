@@ -12,8 +12,8 @@
 // ============================================================
 
 window.LC_CONFIG = {
-  SUPABASE_URL: '',  // e.g. 'https://abcdefgh.supabase.co'
-  SUPABASE_ANON_KEY: '',  // e.g. 'eyJhbGciOiJIUzI1NiIs...'
+  SUPABASE_URL: 'https://abjnusmeyfytxzjydqfc.supabase.co',  // e.g. 'https://abcdefgh.supabase.co'
+  SUPABASE_ANON_KEY: 'abjnusmeyfytxzjydqfc',  // e.g. 'eyJhbGciOiJIUzI1NiIs...'
 };
 
 // When both fields above are filled in, the app will switch from
