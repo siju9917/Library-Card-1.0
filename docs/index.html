@@ -2056,12 +2056,63 @@ function saveCircles(){localStorage.setItem('lc_circles',JSON.stringify(circles)
 function renderCircles(){
 const el=document.getElementById('circlesSection');
 if(!el)return;
-el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Different levels of trust = different levels of access.</div>'+
+// Pending friend requests section (only in cloud mode)
+let requestsHTML='';
+if(!LC_DEMO&&window.LC&&LC.cloud&&LC.me){
+renderPendingRequests();
+}
+el.innerHTML='<div id="pendingRequestsArea"></div>'+
+'<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Different levels of trust = different levels of access.</div>'+
 tierBlock('diehards','💎 Die Hards','Live location · SOS · Dead Man\'s Switch · Walk Home','var(--primary)')+
 '<div class="divider"></div>'+
 tierBlock('besties','⭐ Besties','Bar check-ins · Departure alerts · See drinks in progress','var(--green)')+
 '<div class="divider"></div>'+
 tierBlock('friends','👥 Friends','Session stats only · No location · No DMs','var(--text2)');
+// Load pending requests after rendering circles
+if(!LC_DEMO&&window.LC&&LC.cloud&&LC.me){
+renderPendingRequests();
+}
+}
+
+async function renderPendingRequests(){
+const area=document.getElementById('pendingRequestsArea');
+if(!area||!window.LC||!LC.cloud||!LC.me)return;
+try{
+const reqs=await LC.listPendingRequests();
+if(!reqs||reqs.length===0){area.innerHTML='';return;}
+area.innerHTML='<div style="margin-bottom:16px;padding:14px;background:linear-gradient(135deg,rgba(232,163,23,.12),rgba(255,107,43,.06));border:1px solid rgba(232,163,23,.3);border-radius:14px">'+
+'<div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px">🤝 Friend Requests ('+reqs.length+')</div>'+
+reqs.map(r=>{
+const name=r.requester?.display_name||'Someone';
+const emoji=r.requester?.emoji||'👤';
+const rid=r.user_id;
+return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:0.5px solid rgba(232,163,23,.15)">'+
+'<span style="font-size:22px">'+emoji+'</span>'+
+'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">'+name+'</div><div style="font-size:11px;color:var(--text3)">wants to be your friend</div></div>'+
+'<button onclick="acceptRequest(\''+rid+'\')" style="background:var(--primary);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Accept</button>'+
+'<button onclick="declineRequest(\''+rid+'\')" style="background:var(--card2);color:var(--text3);border:none;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">✕</button>'+
+'</div>';
+}).join('')+'</div>';
+}catch(e){console.warn('renderPendingRequests',e);area.innerHTML='';}
+}
+
+async function acceptRequest(requesterId){
+if(!window.LC||!LC.cloud)return;
+try{
+await LC.acceptFriendRequest(requesterId);
+// Refresh circles from cloud
+await hydrateFromCloud();
+renderCircles();
+showCelebrationToast('🤝','Friend Added!','You\'re now in each other\'s Circles');
+}catch(e){alert('Error accepting: '+e.message);}
+}
+
+async function declineRequest(requesterId){
+if(!window.LC||!LC.cloud)return;
+try{
+await LC.declineFriendRequest(requesterId);
+renderPendingRequests();
+}catch(e){console.warn('decline',e);}
 }
 
 function tierBlock(key,title,perms,color){
@@ -2077,15 +2128,13 @@ list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\
 function addToTier(tier){
 // Cloud mode: ask for friend's email and look them up in the users table
 if(window.LC&&LC.cloud&&LC.me){
-const email=prompt('Add a friend by email\n\nThey need to have signed in once already.','');
+const email=prompt('Send a friend request by email\n\nThey\'ll need to accept it before you\'re connected.','');
 if(!email||!email.trim())return;
 LC.findUserByEmail(email.trim()).then(u=>{
 if(!u){alert('Couldn\'t find anyone with that email.\n\nMake sure they\'ve signed in at least once first.');return;}
 if(u.id===LC.me.id){alert('That\'s you!');return;}
 LC.addFriend(u.id,tier).then(()=>{
-circles[tier].push({name:u.display_name,emoji:u.emoji||'👤',cloudId:u.id});
-saveCircles();
-renderCircles();
+alert('✅ Friend request sent to '+u.display_name+'!\n\nThey\'ll see it in their Circles next time they open the app.');
 }).catch(e=>alert('Error: '+e.message));
 });
 return;

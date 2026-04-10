@@ -202,7 +202,8 @@
   LC.listMyFriends = async function () {
     const { data } = await sb.from('friendships')
       .select('*, friend:users!friendships_friend_id_fkey(id, display_name, emoji, email)')
-      .eq('user_id', LC.me.id);
+      .eq('user_id', LC.me.id)
+      .eq('status', 'accepted');
     return data || [];
   };
 
@@ -213,7 +214,7 @@
 
   LC.addFriend = async function (friendId, tier = 'friends') {
     const { data, error } = await sb.from('friendships').upsert({
-      user_id: LC.me.id, friend_id: friendId, tier
+      user_id: LC.me.id, friend_id: friendId, tier, status: 'pending'
     }, { onConflict: 'user_id,friend_id' }).select().single();
     if (error) throw error;
     return data;
@@ -222,6 +223,24 @@
   LC.acceptInvite = async function (inviterId) {
     const { error } = await sb.rpc('accept_invite', { inviter_id: inviterId });
     if (error) throw error;
+  };
+
+  LC.listPendingRequests = async function () {
+    const { data } = await sb.from('friendships')
+      .select('*, requester:users!friendships_user_id_fkey(id, display_name, emoji, email)')
+      .eq('friend_id', LC.me.id)
+      .eq('status', 'pending');
+    return data || [];
+  };
+
+  LC.acceptFriendRequest = async function (requesterId) {
+    const { error } = await sb.rpc('accept_friend_request', { requester_id: requesterId });
+    if (error) throw error;
+  };
+
+  LC.declineFriendRequest = async function (requesterId) {
+    await sb.from('friendships').update({ status: 'declined' })
+      .match({ user_id: requesterId, friend_id: LC.me.id });
   };
 
   LC.moveFriendTier = async function (friendId, tier) {
