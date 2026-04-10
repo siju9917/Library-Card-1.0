@@ -4,12 +4,11 @@
 // Bump CACHE_VERSION whenever you change index.html or assets.
 // ============================================================
 
-const CACHE_VERSION = 'lc-v3';
+const CACHE_VERSION = 'lc-v5';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './supabase/config.js',
   './supabase/db.js',
 ];
 
@@ -33,6 +32,12 @@ self.addEventListener('fetch', (event) => {
 
   // Never cache Supabase API or auth — always go to network
   if (url.hostname.endsWith('supabase.co') || url.hostname.endsWith('supabase.in')) {
+    return;
+  }
+
+  // Network-first + no-cache for config.js so key changes propagate instantly
+  if (url.pathname.endsWith('/supabase/config.js')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request)));
     return;
   }
 
