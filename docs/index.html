@@ -628,7 +628,7 @@ container.innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div id="sessTimer" style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCPM">0.000</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
 '<div class="card" id="sessVibeCard" style="margin-bottom:16px;border-left:3px solid var(--green)"></div>'+
-'<h3>You vs. Friends</h3><div class="card" id="barDistChart" style="position:relative;height:200px;margin-bottom:24px"></div>'+
+'<h3>You vs. Friends</h3><div class="card" id="barDistChart" style="position:relative;padding:14px;margin-bottom:28px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
@@ -662,8 +662,8 @@ if(customFavs.length>0){favEl.innerHTML='<div style="display:flex;gap:8px;overfl
 // Default types grid (only built once — static content)
 const gridEl=document.getElementById('drinkGrid');
 if(!gridEl.dataset.built){
-const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'💧'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Sake',e:'🍶'},{n:'Margarita',e:'🍸'},{n:'Tequila',e:'🌵'},{n:'Whiskey',e:'🥃'},{n:'Vodka',e:'🍶'},{n:'Espresso',e:'☕'},{n:'Soda',e:'🥤',na:true},{n:'Lemonade',e:'🍋',na:true},{n:'Mocktail',e:'🍸',na:true},{n:'Water',e:'💧',na:true},{n:'Other',e:'❓'}];
-gridEl.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\','+(t.na?'true':'false')+')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px"><span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
+const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'🥂'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Coffee',e:'☕'},{n:'Soda',e:'🥤',na:true},{n:'Mocktail',e:'🍸',na:true},{n:'Water',e:'💧',na:true},{n:'Other',e:'❓'}];
+gridEl.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\','+(t.na?'true':'false')+')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:26px;min-width:0;overflow:hidden"><span>'+t.e+'</span><span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+t.n+'</span></button>').join('');
 gridEl.dataset.built='1';
 }
 // Cheers log — only rebuild when drinks changed
@@ -757,46 +757,51 @@ for(let i=0;i<=numPts;i++){
 const t=(i/numPts)*nowMin;
 const cutoff=sessionStart+t*60000;
 const you=drinks.filter(d=>d.time<=cutoff).length;
-// Each friend's cheers at time t = (t + their headStart) hrs * their pace
 const friendCheers=friends.map(f=>Math.max(0,Math.floor(((t+f.headStart)/60)*f.pace)));
 const avg=friendCheers.reduce((a,b)=>a+b,0)/friendCheers.length;
 points.push({t,you,avg,friends:friendCheers});
 }
 const youNow=drinks.length;
-// Compute max across all lines for Y scale, add 20% headroom
+// Compute current standings + find top 3 friends to actually plot
+const friendsNow=friends.map((f,fi)=>({f:f,fi:fi,cheers:points[points.length-1].friends[fi]}));
+const sortedByCheers=[...friendsNow].sort((a,b)=>b.cheers-a.cheers);
+const topThree=sortedByCheers.slice(0,3);
+const ahead=friendsNow.filter(d=>d.cheers>youNow).length;
+const rankLabel=ahead===0?'🏆 Leading':(ahead+1)+' of '+(friends.length+1);
+const avgNow=Math.round(points[points.length-1].avg);
+// Y scale based on top friend + headroom
 const allVals=points.flatMap(p=>[p.you,p.avg,...p.friends]);
-const maxVal=Math.max(...allVals,3)*1.2;
-const padding={top:15,right:10,bottom:5,left:10};
-const w=chart.clientWidth-padding.left-padding.right;
-const h=130;
+const maxVal=Math.max(...allVals,3)*1.25;
+const padding={top:10,right:10,bottom:18,left:10};
+const w=chart.clientWidth-padding.left-padding.right-28;// subtract card padding
+const h=120;
 const toX=(t)=>padding.left+(t/Math.max(nowMin,0.5))*w;
 const toY=(v)=>padding.top+h-(v/maxVal)*h;
 const mkPath=(arr)=>'M'+points.map((p,i)=>toX(p.t)+','+toY(arr(p,i))).join(' L');
-// Friend lines
-const friendPaths=friends.map((f,fi)=>'<path d="'+mkPath((p)=>p.friends[fi])+'" fill="none" stroke="'+f.color+'" stroke-width="1.5" opacity="0.55"/>').join('');
-// Friend rank (how many friends are ahead of you right now)
-const friendsNow=friends.map((f,fi)=>points[points.length-1].friends[fi]);
-const ahead=friendsNow.filter(d=>d>youNow).length;
-const rankLabel=ahead===0?'Leading the group':ahead===friends.length?'Catching up':(ahead+1)+' of '+(friends.length+1);
-const avgNow=Math.round(points[points.length-1].avg);
+// Only plot top 3 friends to keep chart clean
+const friendPaths=topThree.map(({f,fi})=>'<path d="'+mkPath((p)=>p.friends[fi])+'" fill="none" stroke="'+f.color+'" stroke-width="1.8" opacity="0.7"/>').join('');
 const primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+// Legend: 2-column grid so it never overflows
+const legendItems=[
+'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:'+primary+';flex-shrink:0"></span><span style="font-weight:700;color:'+primary+';font-size:11px">You</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+youNow+'</span></div>',
+'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:#999;flex-shrink:0"></span><span style="font-size:11px;color:var(--text2)">Avg</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+avgNow+'</span></div>',
+].concat(topThree.map(({f,cheers})=>'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:'+f.color+';flex-shrink:0"></span><span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.emoji+' '+f.name.split(' ')[0]+'</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+cheers+'</span></div>'));
+// Other friends (not plotted) shown as a compact footer line
+const others=sortedByCheers.slice(3);
+const othersStr=others.length?'<div style="font-size:10px;color:var(--text3);margin-top:8px;text-align:center">+ '+others.map(o=>o.f.emoji+' '+o.f.name.split(' ')[0]+' ('+o.cheers+')').join(' · ')+'</div>':'';
 chart.innerHTML=
-'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
 '<div style="font-size:12px;color:var(--text2)">'+friends.length+' friends out tonight</div>'+
-'<div style="font-size:12px"><span style="color:'+primary+';font-weight:600">'+rankLabel+'</span></div></div>'+
+'<div style="font-size:12px;color:'+primary+';font-weight:700">'+rankLabel+'</div>'+
+'</div>'+
 '<svg width="100%" height="'+(h+padding.top+padding.bottom)+'" viewBox="0 0 '+(w+padding.left+padding.right)+' '+(h+padding.top+padding.bottom)+'" preserveAspectRatio="none" style="display:block">'+
 friendPaths+
-// Group average line
 '<path d="'+mkPath((p)=>p.avg)+'" fill="none" stroke="#999" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>'+
-// Your line on top
-'<path d="'+mkPath((p)=>p.you)+'" fill="none" stroke="'+primary+'" stroke-width="2.8"/>'+
-'<circle cx="'+toX(nowMin)+'" cy="'+toY(youNow)+'" r="4" fill="'+primary+'"/>'+
+'<path d="'+mkPath((p)=>p.you)+'" fill="none" stroke="'+primary+'" stroke-width="3"/>'+
+'<circle cx="'+toX(nowMin)+'" cy="'+toY(youNow)+'" r="4.5" fill="'+primary+'"/>'+
 '</svg>'+
-'<div style="display:flex;gap:8px;justify-content:center;margin-top:6px;font-size:10px;flex-wrap:wrap">'+
-'<span style="font-weight:600"><span style="color:'+primary+'">━</span> You ('+youNow+')</span>'+
-'<span><span style="color:#999">╌</span> Avg ('+avgNow+')</span>'+
-friends.map((f,fi)=>'<span><span style="color:'+f.color+'">━</span> '+f.emoji+' '+f.name.split(' ')[0]+' ('+friendsNow[fi]+')</span>').join('')+
-'</div>';
+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px">'+legendItems.join('')+'</div>'+
+othersStr;
 }
 
 function addDrink(type,isNA){
