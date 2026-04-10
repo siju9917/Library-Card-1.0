@@ -139,7 +139,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 <div id="homeNormal">
 <h2 style="margin-top:8px">Quick Start</h2>
-<div id="homeStartBtn"><button onclick="startSession()" style="width:100%;padding:22px;border:none;border-radius:20px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(232,163,23,.4);animation:glowPulse 2.5s ease-in-out infinite"><div style="display:flex;align-items:center;justify-content:center;gap:14px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:26px">▶</div><div style="text-align:left"><div style="font-size:20px;font-weight:800;letter-spacing:.5px">START SESSION</div><div style="font-size:12px;opacity:.9;margin-top:2px">Tap to go live with your crew</div></div></div></button></div>
+<div id="homeStartBtn"><button onclick="promptStartSession()" style="width:100%;padding:22px;border:none;border-radius:20px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(232,163,23,.4);animation:glowPulse 2.5s ease-in-out infinite"><div style="display:flex;align-items:center;justify-content:center;gap:14px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:26px">▶</div><div style="text-align:left"><div style="font-size:20px;font-weight:800;letter-spacing:.5px">START SESSION</div><div style="font-size:12px;opacity:.9;margin-top:2px">Tap to go live with your crew</div></div></div></button></div>
 <h2 style="margin-top:16px">Recent Sessions</h2>
 <div id="recentSessions">
 <div class="empty-state"><div class="icon">🌙</div><div class="title">No sessions yet</div><div class="sub">Start your first session to see stats here</div></div>
@@ -485,7 +485,7 @@ if(!LC_DEMO){
 // Real mode: show only "You" + any friends from Circles (empty until they add some)
 const realStories=[{name:'You',emoji:'🏆',gradient:'linear-gradient(135deg,#E8A317,#FF6B2B)',status:'Start',isYou:true}];
 el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">'+
-realStories.map((s,i)=>'<div onclick="startSession()" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
+realStories.map((s,i)=>'<div onclick="promptStartSession()" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
 '<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">＋</div></div></div>'+
 '<div style="font-size:11px;font-weight:700;text-align:center">You</div>'+
 '<div style="font-size:9px;color:var(--text3);text-align:center">Start</div>'+
@@ -504,7 +504,7 @@ friendStories.map((s,i)=>'<div onclick="openStory('+i+')" style="flex-shrink:0;d
 }
 function openStory(i){
 const s=friendStories[i];
-if(s.isYou){startSession();return;}
+if(s.isYou){promptStartSession();return;}
 alert('📸 '+s.emoji+' '+s.name+'\n\n'+s.status+'\n\nLatest Cheers: '+s.cheers+'\n\n[Full-screen story view would show their most recent photo, drink, and venue here — tap to advance, swipe to next friend]');
 }
 
@@ -633,9 +633,41 @@ const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);const sec=s%60;
 return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
 }
 
-// Session functions (stub - expanded in commit 2)
+// Session functions
 let cloudSessionId=null;
 let pendingVenueName=null;
+let knownVenues=JSON.parse(localStorage.getItem('lc_venues')||'[]');
+
+function promptStartSession(){
+if(!LC_DEMO&&window.LC&&LC.cloud){
+// Real mode: let user pick or create a venue
+const venueOpts=knownVenues.map(v=>({label:v,emoji:'📍',sub:''}));
+venueOpts.push({label:'+ New venue',emoji:'➕',sub:'Name a bar or spot'});
+venueOpts.push({label:'Skip — no venue',emoji:'🌙',sub:'Start without a location'});
+showPicker('📍 Where are you?','Pick a bar or add a new one',venueOpts,(idx)=>{
+if(idx===venueOpts.length-1){
+// Skip
+startSession(null);
+}else if(idx===venueOpts.length-2){
+// New venue
+const name=prompt('Name this spot (e.g. "Rooftop Bar"):','');
+if(!name||!name.trim()){startSession(null);return;}
+const trimmed=name.trim();
+if(!knownVenues.includes(trimmed)){
+knownVenues.push(trimmed);
+localStorage.setItem('lc_venues',JSON.stringify(knownVenues));
+}
+startSession(trimmed);
+}else{
+startSession(venueOpts[idx].label);
+}
+});
+return;
+}
+// Demo mode: start immediately
+startSession(null);
+}
+
 function startSession(venueName){
 sessionActive=true;
 sessionStart=Date.now();
@@ -1235,7 +1267,7 @@ const isDrinksPR=drinks.length>prevMaxDrinks&&drinks.length>=3;
 const cheersCount=drinks.filter(d=>d.hasPhoto).length;
 const prevMaxCheers=allSessions.reduce((m,s)=>{const c=(s.drinkList||[]).filter(d=>d.hasPhoto).length;return Math.max(m,c);},0);
 const isCheersPR=cheersCount>prevMaxCheers&&cheersCount>=3;
-const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:null,drinkList:drinks,cloudId:cloudSessionId};
+const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:pendingVenueName||null,drinkList:drinks,cloudId:cloudSessionId};
 allSessions.push(session);
 allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
@@ -1261,9 +1293,17 @@ else if(drinks.length>=5){setTimeout(()=>spawnConfetti(30),500);}
 // Show recap
 const dph=(drinks.length/(elapsed/3600000)).toFixed(1);
 const dpm=(drinks.length/(elapsed/60000)).toFixed(3);
+const recapVenue=pendingVenueName||'Night Out';
+const recapPhotos=drinks.filter(d=>d.hasPhoto&&(d.photoDataUrl||d.photoUrl));
+const recapBac=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);
+const recapBl=vibeLabel(drinks.length);
+const recapCheers=drinks.filter(d=>d.hasPhoto).length;
+const recapCpm=elapsed>0&&recapCheers>0?(recapCheers/(elapsed/60000)).toFixed(3):'0.000';
 document.getElementById('sessionContent').innerHTML=
 '<div style="text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:8px">🎉</div><h2>Session Complete!</h2></div>'+
-(function(){const bac=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);const bl=vibeLabel(drinks.length);const cheers=drinks.filter(d=>d.hasPhoto).length;const cpmR=elapsed>0&&cheers>0?(cheers/(elapsed/60000)).toFixed(3):'0.000';const venues='The Pub';return '<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+cheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+venues+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+cpmR+'</div><div class="lbl">CPM</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(bac)+'">'+bl+'</div><div class="lbl">Vibe</div></div></div></div>';})()+
+'<div class="card" style="text-align:center"><div style="font-size:56px;font-weight:700;color:var(--primary)">'+recapCheers+'</div><div style="color:var(--text2);margin-bottom:4px">📸 Cheers</div><div style="font-size:11px;color:var(--text3);margin-bottom:16px">at '+recapVenue+'</div><div class="divider"></div><div class="stats" style="display:flex;justify-content:space-around;padding-top:12px"><div class="stat"><div class="num">'+formatDur(elapsed)+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+recapCpm+'</div><div class="lbl">CPM</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num" style="color:'+bacColor(recapBac)+'">'+recapBl+'</div><div class="lbl">Vibe</div></div></div></div>'+
+// Photo gallery from this session
+(recapPhotos.length>0?'<h3 style="margin-top:16px">📸 Tonight\'s Cheers</h3><div style="display:flex;gap:8px;overflow-x:auto;padding:8px 0">'+recapPhotos.map(d=>'<div style="flex-shrink:0;width:120px;border-radius:12px;overflow:hidden;position:relative"><img src="'+(d.photoDataUrl||d.photoUrl)+'" style="width:100%;height:160px;object-fit:cover"/>'+(d.caption?'<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:8px 6px 6px;font-size:10px;color:rgba(255,255,255,.9);font-style:italic">'+d.caption+'</div>':'')+'</div>').join('')+'</div>':'')+
 '<div style="margin-top:16px"><button class="btn btn-primary" onclick="resetSession()">Done</button></div>';
 updateHome();
 }
@@ -2242,10 +2282,18 @@ alert('⭐ Pre-Swipe Tonight (Premium)\n\nPeople going out tonight to bars near 
 
 // ========== GIFT A DRINK ==========
 function giftADrinkFlow(){
-const friendOpts=[
+// Build friend list from real Circles in cloud mode, demo friends otherwise
+let friendOpts;
+if(!LC_DEMO&&window.LC&&LC.cloud){
+const all=[...(circles.diehards||[]),...(circles.besties||[]),...(circles.friends||[])];
+if(all.length===0){alert('Add friends in Social → Circles first.');return;}
+friendOpts=all.map(f=>({label:f.name,emoji:f.emoji||'👤',cloudId:f.cloudId}));
+}else{
+friendOpts=[
 {label:'Jake M.',emoji:'😎'},{label:'Sarah K.',emoji:'🎉'},{label:'Mike R.',emoji:'🍻'},
 {label:'Emma L.',emoji:'💃'},{label:'Chris P.',emoji:'🤙'},{label:'Rachel T.',emoji:'✨'},
 ];
+}
 showPicker('🎁 Pick a friend','Who are you treating tonight?',friendOpts,(fIdx)=>{
 const drinkOpts=[
 {label:'Beer',emoji:'🍺'},{label:'Wine',emoji:'🍷'},{label:'Cocktail',emoji:'🍹'},
