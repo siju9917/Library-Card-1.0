@@ -26,13 +26,8 @@ button:active,[onclick]:active{transform:scale(0.96)}
 h1,h2{letter-spacing:-0.02em}
 h1{font-size:30px;font-weight:800}
 h2{font-size:19px;font-weight:700}
-.screen.active>*{animation:slideUp .4s ease-out backwards}
-.screen.active>*:nth-child(1){animation-delay:.02s}
-.screen.active>*:nth-child(2){animation-delay:.06s}
-.screen.active>*:nth-child(3){animation-delay:.1s}
-.screen.active>*:nth-child(4){animation-delay:.14s}
-.screen.active>*:nth-child(5){animation-delay:.18s}
-.screen.active>*:nth-child(n+6){animation-delay:.22s}
+.screen-container{scroll-behavior:auto}
+#sessionContent{animation:none!important}
 .screen{display:none;padding:16px}
 .screen.active{display:block;animation:screenFade .3s ease-out}
 @keyframes screenFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -286,12 +281,15 @@ localStorage.clear();
 
 // Tab switching
 function switchTab(tab){
+const target=document.getElementById('screen-'+tab);
+if(!target)return;
+const wasActive=target.classList.contains('active');
 document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-document.getElementById('screen-'+tab).classList.add('active');
+target.classList.add('active');
 document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
 const tabBtn=document.querySelector('.tab[data-tab="'+tab+'"]');
 if(tabBtn)tabBtn.classList.add('active');
-document.getElementById('screenContainer').scrollTop=0;
+if(!wasActive)document.getElementById('screenContainer').scrollTop=0;
 if(navigator.vibrate)navigator.vibrate(12);
 }
 
@@ -559,11 +557,13 @@ sessionActive=true;
 sessionStart=Date.now();
 drinks=[];
 barInhabitants=null;
+sessionUIBuilt=false;
+lastDrinksLen=-1;
 // Swap Home from normal view to live session view
 const nrm=document.getElementById('homeNormal');
 const sc=document.getElementById('sessionContent');
 if(nrm)nrm.style.display='none';
-if(sc)sc.style.display='block';
+if(sc){sc.style.display='block';sc.innerHTML='';}
 updateSessionUI();
 sessionTimer=setInterval(()=>{updateSessionUI()},1000);
 updateHome();
@@ -605,35 +605,66 @@ if(s&&(s==='male'||s==='female')){userSex=s;localStorage.setItem('lc_sex',userSe
 updateSessionUI();
 }
 
+let sessionUIBuilt=false;
+let lastDrinksLen=-1;
 function updateSessionUI(){
 if(!sessionActive)return;
 const elapsed=Date.now()-sessionStart;
 const dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
 const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
-document.getElementById('sessionContent').innerHTML=
-'<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
-(function(){const cheersCount=drinks.filter(d=>d.hasPhoto).length;const cpm=elapsed>0&&cheersCount>0?(cheersCount/(elapsed/60000)).toFixed(3):'0.000';return '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value">'+cheersCount+'</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+cpm+'</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value">'+dph+'/hr</div><div class="label">Pace</div></div></div>';})()+
-(function(){const bac=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);const bc=bacColor(bac);const bl=bacLabel(bac);return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📖 Vibe Check</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bc+'"></div><span style="font-size:20px;font-weight:700;color:'+bc+'">'+bl+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. Get a ride if in doubt.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div></div>';})()+ '<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
+const container=document.getElementById('sessionContent');
+// Only rebuild the structure on first render
+if(!sessionUIBuilt){
+container.innerHTML=
+'<div style="text-align:center;margin-bottom:20px"><div id="sessTimer" style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
+'<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCPM">0.000</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
+'<div class="card" id="sessVibeCard" style="margin-bottom:16px;border-left:3px solid var(--green)"></div>'+
+'<h3>You vs. The Bar</h3><div class="card" id="barDistChart" style="position:relative;height:180px;margin-bottom:24px"></div>'+
 '<div id="rewardsSection"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
-// Favorites row
+sessionUIBuilt=true;
+lastDrinksLen=-1;
+}
+// Always update the live stats (timer, counts, BAC)
+document.getElementById('sessTimer').textContent=formatTimer(elapsed);
+const cheersCountLive=drinks.filter(d=>d.hasPhoto).length;
+const cpmLive=elapsed>0&&cheersCountLive>0?(cheersCountLive/(elapsed/60000)).toFixed(3):'0.000';
+document.getElementById('sessCheers').textContent=cheersCountLive;
+document.getElementById('sessCPM').textContent=cpmLive;
+document.getElementById('sessPace').textContent=dph+'/hr';
+// Vibe Check card
+const bacLive=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);
+const bcLive=bacColor(bacLive);
+const blLive=bacLabel(bacLive);
+const vibeCard=document.getElementById('sessVibeCard');
+vibeCard.style.borderLeftColor=bcLive;
+vibeCard.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="flex:1"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📖 Vibe Check</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div style="width:14px;height:14px;border-radius:50%;background:'+bcLive+'"></div><span style="font-size:20px;font-weight:700;color:'+bcLive+'">'+blLive+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Based on '+userWeight+' lbs · '+Math.floor(userHeight/12)+"'"+Math.round(userHeight%12)+'"</div><div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠️ Estimate only. Never use to decide if you can drive. Get a ride if in doubt.</div></div><button onclick="editBodyStats()" style="background:var(--card2);border:none;color:var(--primary);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0">Edit</button></div>';
+// Only rebuild Quick Add + Cheers Log when drinks array length changes
+const drinksChanged=drinks.length!==lastDrinksLen;
+if(drinksChanged){
+lastDrinksLen=drinks.length;
 const favEl=document.getElementById('favDrinks');
 const favs=getTopDrinks(6);
 const defaultNames=['Beer','Wine','Cocktail','Spirit','Shot','Seltzer','Cider','Sake','Other'];
 const customFavs=favs.filter(([n])=>!defaultNames.includes(n));
 if(customFavs.length>0){favEl.innerHTML='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px">'+customFavs.map(([n,c])=>'<button onclick="addDrinkDirect(\''+n.replace(/'/g,"\\'")+'\')" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:10px 16px;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;border-radius:999px;color:#fff;cursor:pointer;font-size:13px;font-weight:600">⭐ '+n+' <span style="opacity:.7;font-size:11px">('+c+')</span></button>').join('')+'</div>';}else{favEl.innerHTML='';}
-// Default types grid
+// Default types grid (only built once — static content)
+const gridEl=document.getElementById('drinkGrid');
+if(!gridEl.dataset.built){
 const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'💧'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Sake',e:'🍶'},{n:'Soda',e:'🥤',na:true},{n:'NA Beer',e:'🍺',na:true},{n:'Mocktail',e:'🍸',na:true},{n:'Other',e:'❓'}];
-const grid=document.getElementById('drinkGrid');
-grid.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\','+(t.na?'true':'false')+')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:'+(t.na?'1px solid rgba(34,197,94,.35)':'none')+';border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px;position:relative">'+(t.na?'<span style="position:absolute;top:4px;right:4px;font-size:8px;font-weight:700;background:var(--green);color:#fff;padding:1px 4px;border-radius:3px">NA</span>':'')+'<span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
-// Bar distribution chart (you vs bar avg vs top drinker)
-renderBarDist(elapsed);
-renderRewards(drinks.length);
+gridEl.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\','+(t.na?'true':'false')+')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:'+(t.na?'1px solid rgba(34,197,94,.35)':'none')+';border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px;position:relative">'+(t.na?'<span style="position:absolute;top:4px;right:4px;font-size:8px;font-weight:700;background:var(--green);color:#fff;padding:1px 4px;border-radius:3px">NA</span>':'')+'<span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
+gridEl.dataset.built='1';
+}
+// Cheers log — only rebuild when drinks changed
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a category above to log your first Cheers.</p>';}
 else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const naBadge=d.isNA?'<span style="background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">NA</span>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+naBadge+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
+}
+// Bar distribution chart + rewards update every tick
+renderBarDist(elapsed);
+renderRewards(drinks.length);
 // Update home banner timer
 const bt=document.getElementById('homeBannerTime');
 if(bt)bt.textContent=formatTimer(elapsed);
@@ -956,6 +987,8 @@ allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
 sessionActive=false;
+sessionUIBuilt=false;
+lastDrinksLen=-1;
 // Celebrate PRs after the recap renders
 if(isDrinksPR){setTimeout(()=>triggerPR('Most drinks ever: '+drinks.length),700);}
 else if(isCheersPR){setTimeout(()=>triggerPR('Most Cheers ever: '+cheersCount),700);}
