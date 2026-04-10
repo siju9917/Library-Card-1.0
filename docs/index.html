@@ -489,7 +489,7 @@ const cpm=s.duration>0&&cheersC>0?(cheersC/(s.duration/60000)).toFixed(3):'0.000
 return '<div class="card session-card"><div class="header"><span class="venue">'+(s.venue||'Night Out')+'</span><span class="badge badge-blue">Completed</span></div><div class="divider"></div><div class="stats"><div class="stat"><div class="num">'+cheersC+'</div><div class="lbl">Cheers</div></div><div class="stat"><div class="num">'+dur+'</div><div class="lbl">Duration</div></div><div class="stat"><div class="num">'+dph+'/hr</div><div class="lbl">Pace</div></div><div class="stat"><div class="num">'+cpm+'</div><div class="lbl">CPM</div></div></div>'+
 '<div class="divider"></div>'+
 '<div style="display:flex;gap:16px;align-items:center;padding-top:8px">'+
-'<button onclick="toggleKudos('+realIdx+');event.stopPropagation()" style="background:none;border:none;color:'+(iLiked?'var(--red)':'var(--text2)')+';cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;padding:0"><span style="font-size:16px">'+(iLiked?'❤️':'🤍')+'</span><span>'+(s.kudos||0)+'</span></button>'+
+'<button onclick="toggleKudos('+realIdx+');event.stopPropagation()" style="background:none;border:none;color:'+(iLiked?'#ff6b1a':'var(--text2)')+';cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;padding:0;'+(iLiked?'filter:drop-shadow(0 0 4px rgba(255,107,26,.5))':'opacity:.55')+'"><span style="font-size:16px">🔥</span><span>'+(s.kudos||0)+'</span></button>'+
 '<button onclick="openComments('+realIdx+');event.stopPropagation()" style="background:none;border:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;padding:0"><span style="font-size:16px">💬</span><span>'+(s.comments?s.comments.length:0)+'</span></button>'+
 '<div style="flex:1;text-align:right;font-size:11px;color:var(--text3)">'+new Date(s.time).toLocaleDateString([],{month:'short',day:'numeric'})+'</div>'+
 '</div>'+
@@ -534,7 +534,7 @@ updateHome();
 
 function showXPDetails(){
 const nextLvl=xpForLevel(userLevel+1);
-alert('⚡ Level '+userLevel+' · '+userXP+' XP\n\nNext level: '+nextLvl+' XP\nTo go: '+(nextLvl-userXP)+' XP\n\nEarn XP by:\n🍺 +10 per drink logged\n📸 +15 per photo posted\n❤️ +5 per kudos given\n💬 +10 per comment\n🏆 +50 per milestone\n🎉 +100 per PR broken\n\nLevel up to unlock badges, themes, and premium features.');
+alert('⚡ Level '+userLevel+' · '+userXP+' XP\n\nNext level: '+nextLvl+' XP\nTo go: '+(nextLvl-userXP)+' XP\n\nEarn XP by:\n🍺 +10 per drink logged\n📸 +15 per photo posted\n🔥 +5 per 🔥 given\n💬 +10 per comment\n🏆 +50 per milestone\n🎉 +100 per PR broken\n\nLevel up to unlock badges, themes, and premium features.');
 }
 
 function formatDur(ms){
@@ -655,14 +655,14 @@ if(customFavs.length>0){favEl.innerHTML='<div style="display:flex;gap:8px;overfl
 // Default types grid (only built once — static content)
 const gridEl=document.getElementById('drinkGrid');
 if(!gridEl.dataset.built){
-const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'💧'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Sake',e:'🍶'},{n:'Soda',e:'🥤',na:true},{n:'NA Beer',e:'🍺',na:true},{n:'Mocktail',e:'🍸',na:true},{n:'Other',e:'❓'}];
-gridEl.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\','+(t.na?'true':'false')+')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:'+(t.na?'1px solid rgba(34,197,94,.35)':'none')+';border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px;position:relative">'+(t.na?'<span style="position:absolute;top:4px;right:4px;font-size:8px;font-weight:700;background:var(--green);color:#fff;padding:1px 4px;border-radius:3px">NA</span>':'')+'<span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
+const types=[{n:'Beer',e:'🍺'},{n:'Wine',e:'🍷'},{n:'Cocktail',e:'🍹'},{n:'Spirit',e:'🥃'},{n:'Shot',e:'💧'},{n:'Seltzer',e:'🫧'},{n:'Cider',e:'🍏'},{n:'Sake',e:'🍶'},{n:'Margarita',e:'🍸'},{n:'Tequila',e:'🌵'},{n:'Whiskey',e:'🥃'},{n:'Vodka',e:'🍶'},{n:'Espresso',e:'☕'},{n:'Soda',e:'🥤',na:true},{n:'Lemonade',e:'🍋',na:true},{n:'Mocktail',e:'🍸',na:true},{n:'Water',e:'💧',na:true},{n:'Other',e:'❓'}];
+gridEl.innerHTML=types.map(t=>'<button onclick="addDrink(\''+t.n+'\','+(t.na?'true':'false')+')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--card);border:none;border-radius:var(--radius-sm);color:var(--text);cursor:pointer;font-size:24px"><span>'+t.e+'</span><span style="font-size:12px">'+t.n+'</span></button>').join('');
 gridEl.dataset.built='1';
 }
 // Cheers log — only rebuild when drinks changed
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a category above to log your first Cheers.</p>';}
-else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const naBadge=d.isNA?'<span style="background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">NA</span>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+naBadge+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
+else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
 }
 // Bar distribution chart + rewards update every tick
 renderBarDist(elapsed);
@@ -788,7 +788,7 @@ chart.innerHTML=
 
 function addDrink(type,isNA){
 if(!isNA&&drinkCap>0&&drinks.filter(d=>!d.isNA).length>=drinkCap){
-alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. NA drinks still count as Cheers though — keep the photos coming!');
+alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. Soft drinks still count as Cheers — keep the photos coming!');
 return;
 }
 const custom=prompt('Name this Cheers (or leave blank for "'+type+'"):','');
@@ -1611,18 +1611,22 @@ return '<div style="padding:10px 0;border-bottom:0.5px solid #333">'+
 // ========== GHOST MODE & VISIBILITY ==========
 let visibility=JSON.parse(localStorage.getItem('lc_visibility')||'null')||{
 ghostMode:true, // Default to private for new users (gender-safe default)
-showOnBarMap:'partners', // everyone | friends | partners | off
+showOnBarMap:'diehards', // everyone | friends | besties | diehards | off
 allowStrangerDMs:false,
-allowDrinkGifts:'friends', // everyone | friends | partners | off
-shareBarRoute:'partners'
+allowDrinkGifts:'besties', // everyone | friends | besties | diehards | off
+shareBarRoute:'diehards'
 };
+// Migrate old visibility values
+['showOnBarMap','allowDrinkGifts','shareBarRoute'].forEach(k=>{
+if(visibility[k]==='partners')visibility[k]='diehards';
+});
 function saveVisibility(){localStorage.setItem('lc_visibility',JSON.stringify(visibility));}
 
 function renderGhostMode(){
 const el=document.getElementById('ghostModeSection');
 if(!el)return;
 const opts=(val,field)=>{
-const choices=['everyone','friends','partners','off'];
+const choices=['everyone','besties','diehards','off'];
 return '<div style="display:flex;gap:4px;margin-top:6px">'+choices.map(c=>'<button onclick="setVisibility(\''+field+'\',\''+c+'\')" style="flex:1;padding:6px 4px;border:none;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;background:'+(val===c?'var(--primary)':'var(--card2)')+';color:'+(val===c?'#fff':'var(--text2)')+'">'+c+'</button>').join('')+'</div>';
 };
 el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">Control who sees you. Ghost Mode is on by default for your safety — you\'re only visible to people you\'ve explicitly approved.</div>'+
@@ -1638,21 +1642,30 @@ function toggleStrangerDMs(){visibility.allowStrangerDMs=!visibility.allowStrang
 
 // ========== CIRCLES (Trust Tiers) ==========
 let circles=JSON.parse(localStorage.getItem('lc_circles')||'null')||{
-partners:[{name:'Jake M.',emoji:'😎'},{name:'Sarah K.',emoji:'🎉'}],
-friends:[{name:'Mike R.',emoji:'🍻'},{name:'Emma L.',emoji:'💃'},{name:'Chris P.',emoji:'🤙'}],
-acquaintances:[{name:'Rachel T.',emoji:'✨'},{name:'Alex T.',emoji:'👤'},{name:'Bella R.',emoji:'💅'}]
+diehards:[{name:'Jake M.',emoji:'😎'},{name:'Sarah K.',emoji:'🎉'}],
+besties:[{name:'Mike R.',emoji:'🍻'},{name:'Emma L.',emoji:'💃'},{name:'Chris P.',emoji:'🤙'}],
+friends:[{name:'Rachel T.',emoji:'✨'},{name:'Alex T.',emoji:'👤'},{name:'Bella R.',emoji:'💅'}]
 };
+// Migrate old tier keys if present
+if(circles.partners||circles.acquaintances){
+circles={
+diehards:circles.partners||[],
+besties:circles.friends||[],
+friends:circles.acquaintances||[]
+};
+localStorage.setItem('lc_circles',JSON.stringify(circles));
+}
 function saveCircles(){localStorage.setItem('lc_circles',JSON.stringify(circles));}
 
 function renderCircles(){
 const el=document.getElementById('circlesSection');
 if(!el)return;
 el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Different levels of trust = different levels of access.</div>'+
-tierBlock('partners','🤝 Partners','Live location · SOS · Dead Man\'s Switch · Walk Home','var(--primary)')+
+tierBlock('diehards','💎 Die Hards','Live location · SOS · Dead Man\'s Switch · Walk Home','var(--primary)')+
 '<div class="divider"></div>'+
-tierBlock('friends','👥 Friends','Bar check-ins · Departure alerts · See drinks in progress','var(--green)')+
+tierBlock('besties','⭐ Besties','Bar check-ins · Departure alerts · See drinks in progress','var(--green)')+
 '<div class="divider"></div>'+
-tierBlock('acquaintances','🙋 Acquaintances','Session stats only · No location · No DMs','var(--text2)');
+tierBlock('friends','👥 Friends','Session stats only · No location · No DMs','var(--text2)');
 }
 
 function tierBlock(key,title,perms,color){
@@ -1696,7 +1709,7 @@ let txt='📸 Memories Archive\n\nYour best nights, all in one place:\n\n';
 const sorted=[...allSessions].sort((a,b)=>b.drinks-a.drinks).slice(0,8);
 sorted.forEach((s,i)=>{
 const date=new Date(s.time).toLocaleDateString([],{month:'short',day:'numeric'});
-txt+=(i+1)+'. '+(s.venue||'Night Out')+' — '+date+'\n   🍺 '+s.drinks+' drinks · ❤️ '+(s.kudos||0)+' kudos\n';
+txt+=(i+1)+'. '+(s.venue||'Night Out')+' — '+date+'\n   🍺 '+s.drinks+' drinks · 🔥 '+(s.kudos||0)+'\n';
 });
 txt+='\nThe Library auto-saves your best sessions: highest drink counts, PR nights, friend moments, and milestone events. Tap any to relive.';
 alert(txt);
@@ -1834,16 +1847,16 @@ alert('🏛️ '+o.name+' (@'+o.handle+')\n\n👥 '+o.members+' members\n🏆 Ra
 
 // ========== INTERACTIVE SAFETY DEMOS ==========
 function sendSOS(){
-const partners=circles.partners.map(p=>p.name).join(', ');
-const ok=confirm('🆘 Send SOS Alert?\n\nThis will send an emergency message with your live location to your Partners:\n\n'+partners+'\n\nThey will get a critical push notification.');
+const diehards=circles.diehards.map(p=>p.name).join(', ');
+const ok=confirm('🆘 Send SOS Alert?\n\nThis will send an emergency message with your live location to your Die Hards:\n\n'+diehards+'\n\nThey will get a critical push notification.');
 if(!ok)return;
 setTimeout(()=>{
-alert('✅ SOS SENT\n\n📍 Location shared: The Pub, 123 Main St\n📱 Notified: '+partners+'\n\n— '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' —\n\n🟢 Jake M. acknowledged\n🟢 Sarah K. is on her way (ETA 8 min)\n\nStay where you are.');
+alert('✅ SOS SENT\n\n📍 Location shared: The Pub, 123 Main St\n📱 Notified: '+diehards+'\n\n— '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' —\n\n🟢 Jake M. acknowledged\n🟢 Sarah K. is on her way (ETA 8 min)\n\nStay where you are.');
 },400);
 }
 
 function showLowBatteryDemo(){
-alert('🔋 Low Battery Alert — Active\n\nWhen your phone hits 10%, your Partners automatically receive:\n\n———\n📱 PUSH NOTIFICATION\n\n"Hey, Jake\'s phone is at 8%.\nLast seen at The Pub (10:47 PM)."\n\n[View Location] [Acknowledge]\n———\n\nCurrent battery: 72%\nThreshold: 10%\nPartners notified: '+circles.partners.length+'\n\n🔧 Demo — real monitoring requires backend.');
+alert('🔋 Low Battery Alert — Active\n\nWhen your phone hits 5% (and again at 1%), your Die Hards automatically receive:\n\n———\n📱 PUSH NOTIFICATION\n\n"Hey, Jake\'s phone is at 4%.\nLast seen at The Pub (10:47 PM)."\n\n[View Location] [Acknowledge]\n———\n\nCurrent battery: 72%\nThresholds: 5% · 1%\nDie Hards notified: '+circles.diehards.length+'\n\n🔧 Demo — real monitoring requires backend.');
 }
 
 function showBarRoute(){
@@ -1866,14 +1879,21 @@ updateDMSStatus();
 }
 return;
 }
-const time=prompt('⏰ Check-In Reminder\n\nSet a check-in time. We\'ll remind you 15 minutes before, and if you don\'t confirm you\'re safe, your Partners get a gentle nudge to check on you.\n\nThis is a friendly reminder system — not a safety guarantee. In a real emergency, call 911.\n\nEnter check-in time (e.g. 2:00 AM):','2:00 AM');
-if(!time)return;
+const opts=[
+{label:'12:30 AM',emoji:'🌙',sub:'Early checkpoint'},
+{label:'1:30 AM',emoji:'🌃',sub:'Mid-night nudge'},
+{label:'2:30 AM',emoji:'🌌',sub:'Late-night safety net'},
+{label:'3:30 AM',emoji:'🌠',sub:'Last call territory'},
+];
+showPicker('⏰ Check-In Reminder','We\'ll nudge you 15 min before — if you miss it, your Die Hards get a heads up.',opts,(idx)=>{
+const time=opts[idx].label;
 dmsEnabled=true;
 dmsCheckTime=time;
 localStorage.setItem('lc_dms','true');
 localStorage.setItem('lc_dms_time',time);
 updateDMSStatus();
-alert('✅ Check-In Reminder Set\n\nCheck-in at: '+time+'\n\n• 15 min before: you get a reminder\n• If you miss it: your Partners ('+circles.partners.map(p=>p.name).join(', ')+') get a friendly nudge\n• Reply "I\'m ok" to clear the alert\n\n⚠️ This is a friend check-in system, not a safety guarantee. In a real emergency, always call 911.');
+alert('✅ Check-In Reminder Set\n\nCheck-in at: '+time+'\n\n• 15 min before: you get a reminder\n• If you miss it: your Die Hards ('+circles.diehards.map(p=>p.name).join(', ')+') get a friendly nudge\n• Reply "I\'m ok" to clear the alert\n\n⚠️ This is a friend check-in system, not a safety guarantee. In a real emergency, always call 911.');
+});
 }
 function updateDMSStatus(){
 const el=document.getElementById('dmsStatus');
@@ -1885,26 +1905,26 @@ el.textContent=dmsEnabled?('🟢 Active — check in by '+dmsCheckTime):'Off —
 let walkHomeActive=localStorage.getItem('lc_walkhome')==='true';
 function startWalkHomeMode(){
 if(walkHomeActive){
-if(confirm('🚶 Walk Home Mode is active.\n\nETA: 12 min · 0.7 mi remaining\nPartners watching: '+circles.partners.length+'\n\nStop sharing location?')){
+if(confirm('🚶 Walk Home Mode is active.\n\nETA: 12 min · 0.7 mi remaining\nDie Hards watching: '+circles.diehards.length+'\n\nStop sharing location?')){
 walkHomeActive=false;
 localStorage.setItem('lc_walkhome','false');
 updateWalkHomeStatus();
 }
 return;
 }
-const choice=confirm('🚶 Start Walk Home Mode?\n\nLive GPS shared with: '+circles.partners.map(p=>p.name).join(', ')+'\n\n• They see you moving in real-time\n• Auto-stops at "Home"\n• Battery-optimized\n\nStart now?');
+const choice=confirm('🚶 Start Walk Home Mode?\n\nLive GPS shared with: '+circles.diehards.map(p=>p.name).join(', ')+'\n\n• They see you moving in real-time\n• Auto-stops at "Home"\n• Battery-optimized\n\nStart now?');
 if(!choice)return;
 walkHomeActive=true;
 localStorage.setItem('lc_walkhome','true');
 updateWalkHomeStatus();
 setTimeout(()=>{
-alert('🚶 Walk Home Mode Active\n\n📍 Current: Club X (123 Main St)\n🏠 Destination: Home\n🛣 Route: 0.8 mi · ETA 14 min\n📱 Sharing with: '+circles.partners.length+' Partners\n\n🟢 Jake M. is watching\n🟢 Sarah K. is watching');
+alert('🚶 Walk Home Mode Active\n\n📍 Current: Club X (123 Main St)\n🏠 Destination: Home\n🛣 Route: 0.8 mi · ETA 14 min\n📱 Sharing with: '+circles.diehards.length+' Die Hards\n\n🟢 Jake M. is watching\n🟢 Sarah K. is watching');
 },300);
 }
 function updateWalkHomeStatus(){
 const el=document.getElementById('walkHomeStatus');
 if(!el)return;
-el.textContent=walkHomeActive?'🟢 Active — ETA 12 min · sharing with '+circles.partners.length+' Partners':'Share live GPS with Circle until you reach home';
+el.textContent=walkHomeActive?'🟢 Active — ETA 12 min · sharing with '+circles.diehards.length+' Die Hards':'Share live GPS with Circle until you reach home';
 el.style.color=walkHomeActive?'var(--green)':'';
 }
 
@@ -1953,7 +1973,7 @@ const dph=s.duration>0?(s.drinks/(s.duration/3600000)).toFixed(1):'0.0';
 const dpm=s.duration>0?(s.drinks/(s.duration/60000)).toFixed(3):'0.000';
 const topDrink=s.drinkList&&s.drinkList.length>0?s.drinkList.reduce((acc,d)=>{acc[d.name]=(acc[d.name]||0)+1;return acc;},{}):{};
 const fav=Object.entries(topDrink).sort((a,b)=>b[1]-a[1])[0];
-alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'})+'\n\n📍 '+(s.venue||'Night Out')+'\n\n🍺 '+s.drinks+' drinks\n⏱ '+formatDur(s.duration)+'\n🏃 '+dph+'/hr · '+dpm+' DPM\n❤️ '+(s.kudos||0)+' kudos\n💬 '+((s.comments&&s.comments.length)||0)+' comments'+(fav?'\n🥃 Drink of the night: '+fav[0]+' ×'+fav[1]:''));
+alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'})+'\n\n📍 '+(s.venue||'Night Out')+'\n\n🍺 '+s.drinks+' drinks\n⏱ '+formatDur(s.duration)+'\n🏃 '+dph+'/hr · '+dpm+' DPM\n🔥 '+(s.kudos||0)+'\n💬 '+((s.comments&&s.comments.length)||0)+' comments'+(fav?'\n🥃 Drink of the night: '+fav[0]+' ×'+fav[1]:''));
 }
 
 function initSocial(){
