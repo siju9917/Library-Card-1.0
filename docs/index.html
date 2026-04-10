@@ -13,8 +13,8 @@
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <title>The Library</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=7"></script>
-<script src="supabase/db.js?v=7"></script>
+<script src="supabase/config.js?v=8"></script>
+<script src="supabase/db.js?v=8"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -189,6 +189,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="divider"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0" id="signOutRow"><span>Account</span><button onclick="signOutFromCloud()" style="background:var(--card2);border:none;color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer">Sign Out</button></div>
 </div>
+<h2>Invite Friends</h2>
+<div class="nav-link" onclick="shareInviteLink()"><span class="icon">🔗</span><span class="title">Invite a Friend</span><span class="chevron">›</span></div>
 <h2>Gift a Cheers</h2>
 <div class="nav-link" onclick="giftADrinkFlow()"><span class="icon">🎁</span><span class="title">Buy a Friend a Cheers</span><span class="chevron">›</span></div>
 <h2>Legal</h2>
@@ -237,6 +239,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>💬 Messages</h2>
 <div class="card" id="dmInbox"></div>
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">⚔️</span><span class="title">Showdown Mode</span><span class="chevron">›</span></div>
+
+<h2>🔗 Invite Friends</h2>
+<div class="nav-link" onclick="shareInviteLink()"><span class="icon">🔗</span><span class="title">Invite a Friend</span><span class="chevron">›</span></div>
 
 <h2>🏛️ My Organizations</h2>
 <div class="card" id="orgsList"></div>
@@ -2062,6 +2067,7 @@ return '<div style="padding:10px 0"><div style="display:flex;justify-content:spa
 '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+
 list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\\'")+'\')" style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--card2);border-radius:999px;font-size:12px;cursor:pointer"><span>'+p.emoji+'</span><span>'+p.name+'</span></div>').join('')+
 '<button onclick="addToTier(\''+key+'\')" style="padding:6px 12px;background:none;border:1px dashed '+color+';border-radius:999px;color:'+color+';font-size:12px;cursor:pointer">+ Add</button>'+
+'<button onclick="shareInviteLink()" style="padding:6px 12px;background:none;border:1px dashed '+color+';border-radius:999px;color:'+color+';font-size:12px;cursor:pointer">+ Invite</button>'+
 '</div></div>';
 }
 
@@ -2680,6 +2686,40 @@ if(!confirm('Sign out?'))return;
 LC.signOut().then(()=>location.reload());
 }
 
+// ========== INVITE LINKS ==========
+function shareInviteLink(){
+if(!window.LC||!LC.cloud||!LC.me){
+alert('Sign in first to invite friends.');
+return;
+}
+const url=window.location.origin+window.location.pathname+'?invite='+LC.me.id;
+const shareData={title:'Join me on The Library',text:'Track our nights out together — tap to join my Circle:',url:url};
+if(navigator.share){
+navigator.share(shareData).catch(()=>{});
+}else{
+navigator.clipboard.writeText(url).then(()=>{
+showCelebrationToast('🔗','Link Copied!','Share it with your friend');
+}).catch(()=>{
+prompt('Copy this link and send it to your friend:',url);
+});
+}
+}
+
+async function processInviteLink(){
+const inviterId=localStorage.getItem('lc_pending_invite');
+if(!inviterId||!window.LC||!LC.cloud||!LC.me)return;
+if(inviterId===LC.me.id){
+localStorage.removeItem('lc_pending_invite');
+return;
+}
+try{
+await LC.acceptInvite(inviterId);
+await hydrateFromCloud();
+showCelebrationToast('🤝','Friend Added!','You\'re now in each other\'s Circles');
+}catch(e){console.warn('processInviteLink',e);}
+localStorage.removeItem('lc_pending_invite');
+}
+
 // ========== AUTH GATE (cloud mode) ==========
 function enterDemoMode(){
 localStorage.setItem('lc_demo_mode','true');
@@ -2764,6 +2804,14 @@ btn.disabled=false;btn.textContent='Send Magic Link';
 }
 
 async function bootApp(){
+// Capture invite link param before anything else
+try{
+const inviteId=new URL(window.location).searchParams.get('invite');
+if(inviteId){
+localStorage.setItem('lc_pending_invite',inviteId);
+history.replaceState(null,'',window.location.pathname);
+}
+}catch(e){console.warn('invite param',e);}
 // Service Worker (PWA) — silent failure if unsupported
 if('serviceWorker' in navigator){
 try{await navigator.serviceWorker.register('sw.js');}catch(e){console.warn('sw',e);}
@@ -2840,12 +2888,15 @@ async function afterSignedIn(){
 // on the next page load. This guarantees a clean blank-slate start.
 if(localStorage.getItem('lc_demo_mode')==='true'){
 localStorage.removeItem('lc_demo_mode');
+// Preserve pending invite across demo data wipe
+const savedInvite=localStorage.getItem('lc_pending_invite');
 const toDel=[];
 for(let i=0;i<localStorage.length;i++){
 const k=localStorage.key(i);
 if(k&&k.startsWith('lc_'))toDel.push(k);
 }
 toDel.forEach(k=>localStorage.removeItem(k));
+if(savedInvite)localStorage.setItem('lc_pending_invite',savedInvite);
 location.reload();
 return;
 }
@@ -2864,6 +2915,26 @@ if(id==='screen-social')initSocial();
 }catch(e){console.warn('realtime',e);}
 // Hydrate localStorage from cloud (non-blocking)
 hydrateFromCloud();
+// Process pending invite link (from ?invite=USER_ID)
+try{
+const pendingInvite=localStorage.getItem('lc_pending_invite');
+if(pendingInvite&&LC.me&&pendingInvite!==LC.me.id){
+await LC.acceptInvite(pendingInvite);
+localStorage.removeItem('lc_pending_invite');
+// Add inviter to local circles so they appear immediately
+const inviter=await LC.sb.from('users').select('id,display_name,emoji').eq('id',pendingInvite).single();
+if(inviter.data){
+if(!circles.friends.some(f=>f.cloudId===inviter.data.id)){
+circles.friends.push({name:inviter.data.display_name,emoji:inviter.data.emoji||'🍺',cloudId:inviter.data.id});
+saveCircles();
+renderCircles();
+}
+}
+}else if(pendingInvite&&LC.me&&pendingInvite===LC.me.id){
+// Don't invite yourself
+localStorage.removeItem('lc_pending_invite');
+}
+}catch(e){console.warn('invite processing',e);localStorage.removeItem('lc_pending_invite');}
 runDemoInit();
 }
 
