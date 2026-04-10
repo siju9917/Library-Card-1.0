@@ -98,9 +98,15 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div id="authGate" style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#0A0A0A 0%,#1A1A1C 100%);flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
 <div style="width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,#E8A317,#FF6B2B);display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:800;color:#0A0A0A;margin-bottom:24px;box-shadow:0 20px 60px rgba(232,163,23,.4)">L</div>
 <h1 style="font-size:30px;font-weight:800;margin:0 0 8px 0">The Library</h1>
-<div style="color:#A1A1AA;font-size:14px;margin-bottom:32px;max-width:300px;line-height:1.5">Sign in with your email. We'll send a one-tap magic link — no password.</div>
+<div id="authModeHint" style="color:#A1A1AA;font-size:14px;margin-bottom:24px;max-width:300px;line-height:1.5">Sign in or create an account.</div>
 <input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" style="width:100%;max-width:340px;padding:16px 18px;background:#1A1A1C;border:1px solid #2A2A2E;border-radius:14px;color:#fff;font-size:16px;outline:none;margin-bottom:12px"/>
-<button id="authBtn" onclick="authSendLink()" style="width:100%;max-width:340px;padding:16px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer">Send Magic Link</button>
+<input id="authPassword" type="password" autocomplete="current-password" placeholder="Password" style="width:100%;max-width:340px;padding:16px 18px;background:#1A1A1C;border:1px solid #2A2A2E;border-radius:14px;color:#fff;font-size:16px;outline:none;margin-bottom:12px"/>
+<button id="authBtn" onclick="authSignInWithPassword()" style="width:100%;max-width:340px;padding:16px;background:linear-gradient(135deg,#E8A317,#FF6B2B);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer">Sign In</button>
+<div style="display:flex;gap:12px;margin-top:12px;width:100%;max-width:340px;justify-content:center">
+<button onclick="authSignUp()" style="background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;padding:8px 4px">Create Account</button>
+<span style="color:#2A2A2E;padding:8px 0">|</span>
+<button onclick="authSendLink()" style="background:none;border:none;color:#A1A1AA;font-size:13px;cursor:pointer;padding:8px 4px">Use Magic Link Instead</button>
+</div>
 <div id="authStatus" style="color:#A1A1AA;font-size:13px;margin-top:16px;min-height:20px"></div>
 <div style="width:100%;max-width:340px;display:flex;align-items:center;gap:10px;margin:24px 0 16px 0"><div style="flex:1;height:1px;background:#2A2A2E"></div><div style="color:#52525B;font-size:11px;font-weight:600;letter-spacing:1px">OR</div><div style="flex:1;height:1px;background:#2A2A2E"></div></div>
 <button onclick="enterDemoMode()" style="width:100%;max-width:340px;padding:14px;background:transparent;color:#A1A1AA;border:1px solid #2A2A2E;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">🎮 Try the Demo</button>
@@ -2690,6 +2696,57 @@ if(k&&k.startsWith('lc_'))toDel.push(k);
 }
 toDel.forEach(k=>localStorage.removeItem(k));
 }
+async function authSignInWithPassword(){
+const email=(document.getElementById('authEmail').value||'').trim();
+const password=(document.getElementById('authPassword').value||'');
+const status=document.getElementById('authStatus');
+const btn=document.getElementById('authBtn');
+if(!email||!email.includes('@')){status.textContent='Enter a valid email.';return;}
+if(!password||password.length<6){status.textContent='Enter your password (min 6 characters).';return;}
+btn.disabled=true;btn.textContent='Signing in...';
+try{
+const {data,error}=await LC.sb.auth.signInWithPassword({email,password});
+if(error)throw error;
+// onAuthStateChange will fire SIGNED_IN and handle the rest
+status.innerHTML='✅ Signed in!';
+}catch(e){
+const msg=e.message||String(e);
+if(msg.includes('Invalid login credentials')){
+status.textContent='Wrong email or password. Tap "Create Account" if you\'re new.';
+}else{
+status.textContent='Error: '+msg;
+}
+btn.disabled=false;btn.textContent='Sign In';
+}
+}
+
+async function authSignUp(){
+const email=(document.getElementById('authEmail').value||'').trim();
+const password=(document.getElementById('authPassword').value||'');
+const status=document.getElementById('authStatus');
+if(!email||!email.includes('@')){status.textContent='Enter a valid email.';return;}
+if(!password||password.length<6){status.textContent='Pick a password (min 6 characters).';return;}
+status.textContent='Creating account...';
+try{
+const {data,error}=await LC.sb.auth.signUp({email,password});
+if(error)throw error;
+if(data.session){
+// Auto-confirmed (email confirmations might be off) — we're in
+status.innerHTML='✅ Account created! Signing you in...';
+}else{
+// Email confirmation required
+status.innerHTML='✅ Account created!<br>Check your email and tap the confirmation link, then come back here and tap <b>Sign In</b>.';
+}
+}catch(e){
+const msg=e.message||String(e);
+if(msg.includes('already registered')){
+status.textContent='This email already has an account. Just tap Sign In.';
+}else{
+status.textContent='Error: '+msg;
+}
+}
+}
+
 async function authSendLink(){
 const email=(document.getElementById('authEmail').value||'').trim();
 const status=document.getElementById('authStatus');
