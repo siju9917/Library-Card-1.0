@@ -80,6 +80,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 @keyframes ping{0%{transform:scale(1);opacity:1}100%{transform:scale(3);opacity:0}}
 @keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.7)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUpModal{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes popIn{0%{opacity:0;transform:translateX(-50%) scale(0.5)}60%{opacity:1;transform:translateX(-50%) scale(1.1)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
 @keyframes confetti{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
 @keyframes glowPulse{0%,100%{box-shadow:0 10px 40px rgba(232,163,23,.4)}50%{box-shadow:0 14px 50px rgba(232,163,23,.7),0 0 0 4px rgba(232,163,23,.15)}}
@@ -249,6 +250,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 
 <!-- CAMERA MODAL (fake) -->
 <div id="cameraModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#000;flex-direction:column"></div>
+<div id="pickerModal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,.7);align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)"></div>
 
 <!-- TAB BAR -->
 <div class="tab-bar">
@@ -811,6 +813,35 @@ promptForCheersPhoto(drinks.length-1);
 function promptForCheersPhoto(idx){
 setTimeout(()=>openCheersCamera(idx),100);
 }
+// ========== TAPPABLE PICKER MODAL ==========
+let pickerCallback=null;
+function showPicker(title,subtitle,options,onPick){
+pickerCallback=onPick;
+const modal=document.getElementById('pickerModal');
+modal.style.display='flex';
+modal.innerHTML=
+'<div style="background:var(--bg2);width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:20px;padding-bottom:calc(20px + var(--safe-bottom));max-height:85vh;overflow-y:auto;animation:slideUpModal .3s cubic-bezier(.34,1.56,.64,1)" onclick="event.stopPropagation()">'+
+'<div style="width:40px;height:4px;background:#444;border-radius:2px;margin:0 auto 16px"></div>'+
+'<div style="font-size:18px;font-weight:700;margin-bottom:4px">'+title+'</div>'+
+(subtitle?'<div style="font-size:12px;color:var(--text3);margin-bottom:16px">'+subtitle+'</div>':'<div style="height:12px"></div>')+
+'<div style="display:flex;flex-direction:column;gap:8px">'+
+options.map((o,i)=>'<button onclick="pickerSelect('+i+')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:14px;color:var(--text);cursor:pointer;text-align:left;width:100%">'+(o.emoji?'<span style="font-size:22px">'+o.emoji+'</span>':'')+'<div style="flex:1"><div style="font-size:15px;font-weight:600">'+o.label+'</div>'+(o.sub?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+o.sub+'</div>':'')+'</div><span style="color:var(--text3)">›</span></button>').join('')+
+'</div>'+
+'<button onclick="closePicker()" style="width:100%;margin-top:12px;padding:14px;background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer">Cancel</button>'+
+'</div>';
+modal.onclick=(e)=>{if(e.target===modal)closePicker();};
+if(navigator.vibrate)navigator.vibrate(15);
+}
+function pickerSelect(i){
+const cb=pickerCallback;
+closePicker();
+if(cb)cb(i);
+}
+function closePicker(){
+document.getElementById('pickerModal').style.display='none';
+pickerCallback=null;
+}
+
 // ========== LIBRARY-THEMED CAPTIONS ==========
 const libraryCaptions=[
 "Ah yes, just a peaceful book and a quiet afternoon 📚",
@@ -1268,16 +1299,13 @@ el.innerHTML='<div class="card" style="background:linear-gradient(135deg,#1a1a2e
 }
 }
 function showCardSetup(){
-const intro=confirm('💳 Link Your Library Card\n\nThe Library Card is a thin pass-through. When you pay at a bar with it, the money comes from your real debit/credit card — we just detect the purchase so we can auto-log drinks and start sessions for you.\n\nNo prepaid balance. No financial product. Just a smart layer over your existing card.\n\nContinue?');
-if(!intro)return;
-const choice=prompt('How do you want your card?\n\n1 — Physical card (shipped to you, ~5 days)\n2 — Virtual card only (Apple Wallet, instant)\n3 — Both\n\nEnter 1, 2, or 3:','2');
-if(!choice)return;
-const c=choice.trim();
-if(c==='1')cardType='physical';
-else if(c==='2')cardType='wallet';
-else if(c==='3')cardType='both';
-else{alert('Please enter 1, 2, or 3.');return;}
-alert('🔗 Link your real card\n\nOn the next screen (in the real app), you\'d enter the debit/credit card you already use. All charges pass through to that card — Library just sits in the middle to auto-log your drinks.\n\nDemo: pretend we linked your Chase Sapphire ending in 4829.');
+showPicker('💳 Link Your Library Card','A thin pass-through to your real debit/credit card — we just detect purchases to auto-log your Cheers.',[
+{label:'Physical card',emoji:'💳',sub:'Shipped to you in ~5 days'},
+{label:'Virtual card',emoji:'📱',sub:'Apple Wallet, instant'},
+{label:'Both',emoji:'✨',sub:'Physical + Apple Wallet'},
+],(idx)=>{
+const types=['physical','wallet','both'];
+cardType=types[idx];
 cardFunding='connected';
 hasCard=true;
 localStorage.setItem('lc_hascard','true');
@@ -1285,7 +1313,8 @@ localStorage.setItem('lc_cardtype',cardType);
 localStorage.setItem('lc_cardfunding',cardFunding);
 renderCardPromo();
 renderLibraryCardSection();
-alert('🎉 Library Card Linked!\n\n'+(cardType==='physical'||cardType==='both'?'Your physical card ships in 3-5 days.\n':'')+(cardType==='wallet'||cardType==='both'?'Virtual card added to Apple Wallet.\n':'')+'\nLinked to: Chase Sapphire •••• 4829\nCharges pass through to your real card.\n\nNow when you pay at any bar with your Library Card:\n📸 Sessions auto-start\n🍺 Drinks auto-log\n📍 Venue auto-detected\n\nNo manual input needed!');
+setTimeout(()=>alert('🎉 Library Card Linked!\n\n'+(cardType==='physical'||cardType==='both'?'Your physical card ships in 3-5 days.\n':'')+(cardType==='wallet'||cardType==='both'?'Virtual card added to Apple Wallet.\n':'')+'\nLinked to: Chase Sapphire •••• 4829\nCharges pass through to your real card.\n\nNow when you pay at any bar with your Library Card:\n📸 Sessions auto-start\n🥂 Cheers auto-log\n📍 Venue auto-detected'),200);
+});
 }
 function renderLibraryCardSection(){
 const el=document.getElementById('libraryCardSection');
@@ -1644,16 +1673,21 @@ renderCircles();
 }
 
 function moveFromTier(tier,name){
-const choice=prompt('Move "'+name+'" from '+tier+' to:\n\n1 — Partners\n2 — Friends\n3 — Acquaintances\n4 — Remove\n\nEnter 1-4:','');
-if(!choice)return;
-circles[tier]=circles[tier].filter(p=>p.name!==name);
-const emojiMap={'1':'partners','2':'friends','3':'acquaintances'};
-if(emojiMap[choice]){
+const tierNames={diehards:'Die Hards',besties:'Besties',friends:'Friends'};
+const opts=[
+{label:'Die Hards',emoji:'💎',sub:'Full trust — live location + SOS'},
+{label:'Besties',emoji:'⭐',sub:'Bar check-ins + departures'},
+{label:'Friends',emoji:'👥',sub:'Session stats only'},
+{label:'Remove',emoji:'🗑️',sub:'Take off the list'},
+];
+showPicker('Move '+name,'Current: '+(tierNames[tier]||tier),opts,(idx)=>{
 const person=circles[tier].find(p=>p.name===name)||{name:name,emoji:'👤'};
-circles[emojiMap[choice]].push({name:name,emoji:person.emoji||'👤'});
-}
+circles[tier]=circles[tier].filter(p=>p.name!==name);
+const tiers=['diehards','besties','friends'];
+if(idx<3){circles[tiers[idx]].push({name:name,emoji:person.emoji||'👤'});}
 saveCircles();
 renderCircles();
+});
 }
 
 // ========== MEMORIES ARCHIVE ==========
@@ -1670,9 +1704,13 @@ alert(txt);
 
 // ========== WRAPPED ==========
 function showWrappedDemo(){
-const period=prompt('⭐ Your Wrapped\n\nWhich period?\n\n1 — This Week\n2 — This Month\n3 — This Year\n\nEnter 1-3:','3');
-const num=parseInt(period);
-if(!num||num<1||num>3)return;
+showPicker('⭐ Your Wrapped','Pick a period to recap',[
+{label:'This Week',emoji:'📆',sub:'Last 7 days'},
+{label:'This Month',emoji:'📅',sub:'Last 30 days'},
+{label:'This Year',emoji:'🎉',sub:'Last 365 days'},
+],(idx)=>{renderWrappedFor(idx+1);});
+}
+function renderWrappedFor(num){
 const labels=['','THIS WEEK','THIS MONTH','THIS YEAR'];
 const periods=[null,7,30,365];
 const cutoff=Date.now()-periods[num]*86400000;
@@ -1718,21 +1756,26 @@ alert('⭐ Pre-Swipe Tonight (Premium)\n\nPeople going out tonight to bars near 
 
 // ========== GIFT A DRINK ==========
 function giftADrinkFlow(){
-const friends=['Jake M.','Sarah K.','Mike R.','Emma L.','Chris P.','Rachel T.'];
-const friend=prompt('🎁 Pick a friend to gift:\n\n1 — 😎 Jake M.\n2 — 🎉 Sarah K.\n3 — 🍻 Mike R.\n4 — 💃 Emma L.\n5 — 🤙 Chris P.\n6 — ✨ Rachel T.\n\nEnter 1-6:','');
-const num=parseInt(friend);
-if(!num||num<1||num>6)return;
-const drink=prompt('🥃 Pick a drink to send to '+friends[num-1]+':\n\n1 — 🍺 Beer\n2 — 🍷 Wine\n3 — 🍹 Cocktail\n4 — 💧 Shot\n5 — 🥃 Their usual\n\nEnter 1-5:','');
-const dnum=parseInt(drink);
-if(!dnum||dnum<1||dnum>5)return;
-const occ=prompt('🎉 Pick an occasion:\n\n1 — 🎂 Birthday\n2 — 🎉 Celebration\n3 — ❤️ Just Because\n4 — 🙏 Apology\n5 — ⭐ Congrats\n\nEnter 1-5:','3');
-const onum=parseInt(occ);
-if(!onum||onum<1||onum>5)return;
-const msg=prompt('💌 Add a message (optional):','');
-const occasions=['','Birthday','Celebration','Just Because','Apology','Congrats'];
-const drinks=['','Beer','Wine','Cocktail','Shot','Their usual'];
+const friendOpts=[
+{label:'Jake M.',emoji:'😎'},{label:'Sarah K.',emoji:'🎉'},{label:'Mike R.',emoji:'🍻'},
+{label:'Emma L.',emoji:'💃'},{label:'Chris P.',emoji:'🤙'},{label:'Rachel T.',emoji:'✨'},
+];
+showPicker('🎁 Pick a friend','Who are you treating tonight?',friendOpts,(fIdx)=>{
+const drinkOpts=[
+{label:'Beer',emoji:'🍺'},{label:'Wine',emoji:'🍷'},{label:'Cocktail',emoji:'🍹'},
+{label:'Shot',emoji:'💧'},{label:'Their usual',emoji:'⭐',sub:'We\'ll pick based on their history'},
+];
+showPicker('🥃 Pick a drink','For '+friendOpts[fIdx].label,drinkOpts,(dIdx)=>{
+const occOpts=[
+{label:'Birthday',emoji:'🎂'},{label:'Celebration',emoji:'🎉'},
+{label:'Just Because',emoji:'❤️'},{label:'Apology',emoji:'🙏'},{label:'Congrats',emoji:'⭐'},
+];
+showPicker('🎉 Pick an occasion','',occOpts,(oIdx)=>{
 addXP(20);
-alert('🎁 Drink Sent!\n\nTo: '+friends[num-1]+'\nDrink: '+drinks[dnum]+'\nOccasion: '+occasions[onum]+(msg?'\nMessage: "'+msg+'"':'')+'\n\n💳 Charged to your Library Card\n📱 '+friends[num-1]+' has been notified\n\nWhen they redeem at any partner bar, you both get a notification with a photo of the drink. +20 XP!');
+alert('🎁 Cheers Sent!\n\nTo: '+friendOpts[fIdx].label+'\nDrink: '+drinkOpts[dIdx].label+'\nOccasion: '+occOpts[oIdx].label+'\n\n💳 Charged to your Library Card\n📱 '+friendOpts[fIdx].label+' has been notified\n\nWhen they redeem at any partner bar, you both get a notification with a photo. +20 XP!');
+});
+});
+});
 }
 
 // ========== DM INBOX ==========
