@@ -16,7 +16,18 @@
   const sb = window.supabase.createClient(
     window.LC_CONFIG.SUPABASE_URL,
     window.LC_CONFIG.SUPABASE_ANON_KEY,
-    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        // Implicit flow puts tokens directly in the URL hash — simpler,
+        // works cross-device, and doesn't require a code_verifier in
+        // localStorage (which would break if the user clicks the magic
+        // link on a different device than they requested it from).
+        flowType: 'implicit',
+      },
+    }
   );
 
   const LC = {
