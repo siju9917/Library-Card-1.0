@@ -225,6 +225,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>📸 Memories</h2>
 <div id="memoriesSection"></div>
 
+<h2>👥 Circles · Your People</h2>
+<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
+
 <h2>👥 Friends</h2>
 <div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Leaderboard</span><span style="font-size:12px;color:var(--text2)">This Week</span></div>
@@ -243,9 +246,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="card" id="dmInbox"></div>
 <div class="nav-link" onclick="switchTab('showdown')"><span class="icon">⚔️</span><span class="title">Showdown Mode</span><span class="chevron">›</span></div>
 
-<h2>🔗 Invite Friends</h2>
-<div class="nav-link" onclick="shareInviteLink()"><span class="icon">🔗</span><span class="title">Invite a Friend</span><span class="chevron">›</span></div>
-
 <h2>🏛️ My Organizations</h2>
 <div class="card" id="orgsList"></div>
 
@@ -258,9 +258,6 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 
 <h3 style="margin-top:4px">Privacy & Visibility</h3>
 <div class="card" id="ghostModeSection" style="margin-bottom:16px"></div>
-
-<h3>Circles · Trust Tiers</h3>
-<div class="card" id="circlesSection" style="margin-bottom:16px"></div>
 
 <h3>Active Safety Features</h3>
 <div class="card" style="margin-bottom:16px">
@@ -2067,7 +2064,8 @@ tierBlock('diehards','💎 Die Hards','Live location · SOS · Dead Man\'s Switc
 '<div class="divider"></div>'+
 tierBlock('besties','⭐ Besties','Bar check-ins · Departure alerts · See drinks in progress','var(--green)')+
 '<div class="divider"></div>'+
-tierBlock('friends','👥 Friends','Session stats only · No location · No DMs','var(--text2)');
+tierBlock('friends','👥 Friends','Session stats only · No location · No DMs','var(--text2)')+
+'<div style="text-align:center;font-size:10px;color:var(--text3);margin-top:12px;padding-bottom:4px">Tap a name to move them between tiers or remove</div>';
 // Load pending requests after rendering circles
 if(!LC_DEMO&&window.LC&&LC.cloud&&LC.me){
 renderPendingRequests();
@@ -2119,7 +2117,7 @@ function tierBlock(key,title,perms,color){
 const list=circles[key]||[];
 return '<div style="padding:10px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div><div style="font-weight:700;color:'+color+'">'+title+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+perms+'</div></div><div style="font-size:11px;color:'+color+';font-weight:600">'+list.length+' people</div></div>'+
 '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+
-list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\\'")+'\')" style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--card2);border-radius:999px;font-size:12px;cursor:pointer"><span>'+p.emoji+'</span><span>'+p.name+'</span></div>').join('')+
+list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\\'")+'\')" style="display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--card2);border-radius:999px;font-size:12px;cursor:pointer;active:scale(0.95)"><span>'+p.emoji+'</span><span>'+p.name+'</span><span style="font-size:9px;opacity:.4;margin-left:2px">↕</span></div>').join('')+
 '<button onclick="addToTier(\''+key+'\')" style="padding:6px 12px;background:none;border:1px dashed '+color+';border-radius:999px;color:'+color+';font-size:12px;cursor:pointer">+ Add</button>'+
 '<button onclick="shareInviteLink()" style="padding:6px 12px;background:none;border:1px dashed '+color+';border-radius:999px;color:'+color+';font-size:12px;cursor:pointer">+ Invite</button>'+
 '</div></div>';
@@ -2571,6 +2569,7 @@ alert('📸 Memory from '+new Date(s.time).toLocaleDateString([],{weekday:'long'
 }
 
 function initSocial(){
+renderCircles();
 renderWeekendPlan();
 renderLiveBarMap();
 renderARFinder();
@@ -2584,7 +2583,6 @@ renderPartners();
 }
 function initSafety(){
 renderGhostMode();
-renderCircles();
 updateDMSStatus();
 updateWalkHomeStatus();
 }
