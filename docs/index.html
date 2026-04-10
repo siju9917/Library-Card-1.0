@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
 <link rel="manifest" href="manifest.json">
@@ -2688,32 +2691,34 @@ LC.signOut().then(()=>location.reload());
 
 // ========== INVITE LINKS ==========
 async function shareInviteLink(){
+try{
 // If in demo mode, offer to switch to real mode
 if(LC_DEMO){
 alert('You\'re in demo mode. To invite real friends, reload the app and sign in with your email + password.');
 return;
 }
-// Try to load user profile if it's missing (can happen if afterSignedIn was slow)
+// Try to load user profile if it's missing
 if(window.LC&&LC.cloud&&!LC.me){
-try{
 const s=await LC.getSession();
 if(s){await LC.loadMe();}
-}catch(e){}
 }
 if(!window.LC||!LC.cloud||!LC.me){
-alert('Could not load your profile. Try closing and reopening the app, then try again.');
+alert('Could not load your profile. Try closing and reopening the app, then try again.\n\nDebug: LC='+(!!window.LC)+' cloud='+(window.LC&&LC.cloud)+' me='+(window.LC&&!!LC.me));
 return;
 }
 const url=window.location.origin+window.location.pathname+'?invite='+LC.me.id;
-const shareData={title:'Join me on The Library',text:'Track our nights out together — tap to join my Circle:',url:url};
 if(navigator.share){
-navigator.share(shareData).catch(()=>{});
+await navigator.share({title:'Join me on The Library',text:'Track our nights out together — tap to join my Circle:',url:url});
 }else{
-navigator.clipboard.writeText(url).then(()=>{
+try{
+await navigator.clipboard.writeText(url);
 showCelebrationToast('🔗','Link Copied!','Share it with your friend');
-}).catch(()=>{
+}catch(_){
 prompt('Copy this link and send it to your friend:',url);
-});
+}
+}
+}catch(e){
+alert('Invite error: '+e.message);
 }
 }
 
@@ -2824,9 +2829,20 @@ localStorage.setItem('lc_pending_invite',inviteId);
 history.replaceState(null,'',window.location.pathname);
 }
 }catch(e){console.warn('invite param',e);}
-// Service Worker (PWA) — silent failure if unsupported
+// KILL any existing service worker — it was caching stale code and
+// causing auth failures, missing functions, and outdated UIs for users.
+// For a 10-person friend group, offline support isn't worth the pain.
 if('serviceWorker' in navigator){
-try{await navigator.serviceWorker.register('sw.js');}catch(e){console.warn('sw',e);}
+try{
+const regs=await navigator.serviceWorker.getRegistrations();
+for(const r of regs){await r.unregister();}
+if(regs.length>0){
+// Also wipe the SW caches so stale assets don't linger
+const keys=await caches.keys();
+await Promise.all(keys.map(k=>caches.delete(k)));
+console.log('[lc] unregistered',regs.length,'service workers, cleared',keys.length,'caches');
+}
+}catch(e){console.warn('sw cleanup',e);}
 }
 // Demo mode (either cloud not configured OR user tapped Try the Demo) —
 // bypass the auth gate entirely and run the seeded prototype.
