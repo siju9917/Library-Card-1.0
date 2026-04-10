@@ -13,8 +13,8 @@
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <title>The Library</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=3"></script>
-<script src="supabase/db.js?v=3"></script>
+<script src="supabase/config.js?v=4"></script>
+<script src="supabase/db.js?v=4"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -2501,20 +2501,34 @@ document.getElementById('authGate').style.display='none';
 runDemoInit();
 return;
 }
-// Start with the auth gate HIDDEN so we don't flash the sign-in screen
-// when the user is actually about to be signed in via a magic link
-// whose hash is still being parsed asynchronously.
+// Start with the auth gate HIDDEN. If there's a cached session in
+// localStorage, onAuthStateChange will fire INITIAL_SESSION with it
+// synchronously and we'll never show the gate. If there's no cached
+// session, we show the gate once we know for sure.
 document.getElementById('authGate').style.display='none';
+// Peek at localStorage directly — if there's a Supabase session key,
+// we know the user *should* be signed in, so keep the gate hidden
+// while we wait for the client to rehydrate (avoids false positives
+// from the safety timeout on slow iOS PWAs).
+let looksSignedIn=false;
+try{
+for(let i=0;i<localStorage.length;i++){
+const k=localStorage.key(i);
+if(k&&k.startsWith('sb-')&&k.endsWith('-auth-token')){looksSignedIn=true;break;}
+}
+}catch(_){}
 let handled=false;
 LC.sb.auth.onAuthStateChange(async (event,session)=>{
 console.log('[lc auth]',event,session?'signed in as '+session.user.email:'no session');
 if(event==='SIGNED_OUT'){
-location.reload();
+// Don't reload — that can loop on iOS PWAs. Just show the gate.
+handled=true;
+document.getElementById('authGate').style.display='flex';
 return;
 }
-if(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
+if(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){
 if(session){
-if(handled)return;
+if(handled&&LC.me)return;
 handled=true;
 LC.session=session;
 document.getElementById('authGate').style.display='none';
@@ -2529,14 +2543,21 @@ document.getElementById('authGate').style.display='flex';
 }
 }
 });
-// Safety net: if onAuthStateChange never fires within 3s (stuck init),
-// assume no session and show the gate so the user can at least try again.
+// Safety net: if onAuthStateChange never fires within 10s (stuck init),
+// fall back to showing the gate. 10s so slow iOS PWAs have room to
+// rehydrate a stored session on cold start.
 setTimeout(()=>{
 if(!handled){
 handled=true;
+if(looksSignedIn){
+// A session *should* be here — reload once to give it another shot
+console.warn('[lc auth] stuck init but session key present — reloading');
+location.reload();
+}else{
 document.getElementById('authGate').style.display='flex';
 }
-},3000);
+}
+},10000);
 }
 
 async function afterSignedIn(){
