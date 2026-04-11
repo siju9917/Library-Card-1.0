@@ -321,6 +321,22 @@ Profile
 </div>
 
 <script>
+// ========== AUTO-UPDATE CHECK ==========
+// On every load, fetch a tiny version.json from the server. If the
+// version is newer than what we last loaded, force a hard reload so
+// the PWA (Home Screen app) always runs the latest code.
+(function(){
+var MY_VERSION=15;
+try{
+fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+if(d&&d.v&&d.v>MY_VERSION){
+console.log('[lc] new version detected:',d.v,'(current:',MY_VERSION,') — reloading');
+location.reload(true);
+}
+}).catch(function(){});
+}catch(e){}
+})();
+
 // ========== DEMO vs REAL MODE ==========
 // Demo mode shows fake sessions, friends, and activity — it's the prototype experience.
 // Real mode (cloud enabled + signed in) starts completely blank and fills in as the
