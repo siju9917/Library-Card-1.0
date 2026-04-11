@@ -197,8 +197,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>Gift a Cheers</h2>
 <div class="nav-link" onclick="giftADrinkFlow()"><span class="icon">🎁</span><span class="title">Buy a Friend a Cheers</span><span class="chevron">›</span></div>
 <h2>Legal</h2>
-<div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nCovers what data we collect, how it is stored, your rights to export and delete, and our commitment to never selling your data.\n\nFull legal page available in the native app.')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
-<div class="nav-link" onclick="alert('📄 Terms of Service\n\nEligibility (21+), responsible use guidelines, content policy, safety feature disclaimers, and account management.\n\nFull legal page available in the native app.')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
+<div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">The Library v1.0.0 (1)</div>
 <div id="resetDemoBtn"></div>
 </div>
@@ -328,7 +328,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=16;
+var MY_VERSION=17;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -767,13 +767,21 @@ if(bac<0.08)return'var(--orange)';
 return'var(--red)';
 }
 function editBodyStats(){
+showPicker('⚖️ Body Stats','Used for Vibe Check estimate only',[
+{label:'Set Weight',emoji:'⚖️',sub:'Currently '+userWeight+' lbs'},
+{label:'Set Sex',emoji:'👤',sub:'Currently '+userSex},
+],(idx)=>{
+if(idx===0){
 const w=prompt('Weight (lbs):',String(userWeight));
 if(w&&!isNaN(parseFloat(w))){userWeight=parseFloat(w);localStorage.setItem('lc_weight',String(userWeight));}
-const h=prompt('Height (inches):',String(userHeight));
-if(h&&!isNaN(parseFloat(h))){userHeight=parseFloat(h);localStorage.setItem('lc_height',String(userHeight));}
-const s=prompt('Sex (male/female):',userSex);
-if(s&&(s==='male'||s==='female')){userSex=s;localStorage.setItem('lc_sex',userSex);}
+}else{
+showPicker('👤 Biological Sex','For BAC estimation only',[
+{label:'Male',emoji:'♂️'},{label:'Female',emoji:'♀️'}
+],(si)=>{userSex=si===0?'male':'female';localStorage.setItem('lc_sex',userSex);updateSessionUI();});
+return;
+}
 updateSessionUI();
+});
 }
 
 let sessionUIBuilt=false;
@@ -900,7 +908,7 @@ if(!chart||!chart.clientWidth)return;
 const friends=getFriendInhabitants();
 // Empty state: real user with no friends in their Circles yet
 if(friends.length===0){
-chart.innerHTML='<div style="text-align:center;padding:18px 12px;color:var(--text3);font-size:12px">No friends in your Circles yet.<br><span style="font-size:11px">Add friends in <b>Safety → Circles</b> to race them during sessions.</span></div>';
+chart.innerHTML='<div style="text-align:center;padding:18px 12px;color:var(--text3);font-size:12px">No friends in your Circles yet.<br><span style="font-size:11px">Add friends in <b>Social → Circles</b> to race them during sessions.</span></div>';
 return;
 }
 const nowMin=Math.max(elapsed/60000,0.5);
@@ -963,9 +971,8 @@ if(!isNA&&drinkCap>0&&drinks.filter(d=>!d.isNA).length>=drinkCap){
 alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. Soft drinks still count as Cheers — keep the photos coming!');
 return;
 }
-const custom=prompt('Name this Cheers (or leave blank for "'+type+'"):','');
-if(custom===null)return;
-const name=custom&&custom.trim()?custom.trim():type;
+// Skip the naming prompt — just use the type. Users can rename via rating later.
+const name=type;
 const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA};
 drinks.push(drink);
 // Cloud: log to drinks table
@@ -1276,8 +1283,13 @@ const m={'Beer':'🍺','Wine':'🍷','Cocktail':'🍹','Spirit':'🥃','Shot':'�
 return m[type]||'🍹';
 }
 function rateDrink(index){
-const r=prompt('Rate this drink 1-5 stars:','');
-if(r&&parseInt(r)>=1&&parseInt(r)<=5){drinks[index].rating=parseInt(r);updateSessionUI();}
+showPicker('⭐ Rate this drink','How was it?',[
+{label:'⭐',emoji:'1',sub:'Not great'},
+{label:'⭐⭐',emoji:'2',sub:'OK'},
+{label:'⭐⭐⭐',emoji:'3',sub:'Good'},
+{label:'⭐⭐⭐⭐',emoji:'4',sub:'Really good'},
+{label:'⭐⭐⭐⭐⭐',emoji:'5',sub:'Amazing'},
+],(idx)=>{drinks[index].rating=idx+1;updateSessionUI();});
 }
 
 async function endSession(){
@@ -1866,7 +1878,7 @@ el.innerHTML=
 '<div style="position:relative;z-index:1">'+
 // Avatar + level ring
 '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px"><div style="position:relative;width:72px;height:72px"><svg width="72" height="72" style="position:absolute;transform:rotate(-90deg)"><circle cx="36" cy="36" r="32" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="36" cy="36" r="32" fill="none" stroke="url(#heroGrad)" stroke-width="4" stroke-dasharray="'+(pct*2.01)+' 201" stroke-linecap="round"/><defs><linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#E8A317"/><stop offset="100%" style="stop-color:#FF6B2B"/></linearGradient></defs></svg><div style="position:absolute;inset:8px;border-radius:50%;background:linear-gradient(135deg,#E8A317,#FF6B2B);display:flex;align-items:center;justify-content:center;font-size:28px">🏆</div></div>'+
-'<div style="flex:1"><div style="font-size:20px;font-weight:800" id="profileName">You</div><div style="font-size:12px;color:rgba(255,255,255,.6)" id="profileUsername">@user_'+Math.random().toString(36).slice(2,8)+'</div><div style="font-size:11px;color:var(--primary);margin-top:3px;font-weight:600">⚡ Level '+userLevel+' · '+userXP+' XP</div></div></div>'+
+'<div style="flex:1"><div style="font-size:20px;font-weight:800" id="profileName">'+(window.LC&&LC.me&&LC.me.display_name?LC.me.display_name:'You')+'</div><div style="font-size:12px;color:rgba(255,255,255,.6)" id="profileUsername">'+(window.LC&&LC.me&&LC.me.email?LC.me.email:'Set your name in Settings')+'</div><div style="font-size:11px;color:var(--primary);margin-top:3px;font-weight:600">⚡ Level '+userLevel+' · '+userXP+' XP</div></div></div>'+
 // Stats row
 '<div style="display:flex;gap:12px;margin-bottom:12px">'+
 '<div style="flex:1;background:rgba(255,255,255,.05);padding:10px;border-radius:12px;text-align:center"><div style="font-size:20px;font-weight:800">'+cheers+'</div><div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">📸 Cheers</div></div>'+
@@ -1935,10 +1947,19 @@ showdownTimer=setInterval(render,1000);
 
 // ========== DRINK CAP ==========
 function setDrinkCap(){
-const val=prompt('Set max drinks per night (0 = no limit):',String(drinkCap));
-if(val===null)return;
-const n=parseInt(val);
-if(!isNaN(n)&&n>=0){drinkCap=n;localStorage.setItem('lc_cap',String(n));updateCapBtn();}
+showPicker('🛑 Drink Cap','Set your max drinks per night',[
+{label:'No limit',emoji:'♾️',sub:'No cap tonight'},
+{label:'4 drinks',emoji:'4️⃣',sub:'Chill night'},
+{label:'6 drinks',emoji:'6️⃣',sub:'Moderate'},
+{label:'8 drinks',emoji:'8️⃣',sub:'Going out'},
+{label:'10 drinks',emoji:'🔟',sub:'Big night'},
+{label:'12 drinks',emoji:'💪',sub:'Marathon mode'},
+],(idx)=>{
+const caps=[0,4,6,8,10,12];
+drinkCap=caps[idx];
+localStorage.setItem('lc_cap',String(drinkCap));
+updateCapBtn();
+});
 }
 function updateCapBtn(){
 const btn=document.getElementById('capBtn');
@@ -1981,7 +2002,11 @@ renderRealWeekendPlan(el);
 return;
 }
 if(!LC_DEMO){
-el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No plans yet.</div>';
+el.innerHTML='<div style="text-align:center;padding:16px 12px;color:var(--text3);font-size:12px">Loading plans...</div>';
+// Retry once LC.me is available
+if(window.LC&&LC.cloud){
+setTimeout(()=>{if(LC.me)renderRealWeekendPlan(el);},2000);
+}
 return;
 }
 const totalVotes=weekendOptions.reduce((a,o)=>a+o.votes.length,0);
@@ -2048,7 +2073,8 @@ return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cur
 }).join(''):'<div style="text-align:center;padding:16px 0;color:var(--text3);font-size:12px">No suggestions yet — be the first!</div>')+
 '<div style="padding-top:12px"><button onclick="suggestRealPlan()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:14px;cursor:pointer">+ Suggest a Spot</button></div>';
 }catch(e){
-el.innerHTML='<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Couldn\'t load plans.</div>';
+el.innerHTML='<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">No plans yet — be the first!</div>'+
+'<div style="padding-top:12px"><button onclick="suggestRealPlan()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:14px;cursor:pointer">+ Suggest a Spot</button></div>';
 console.warn('renderRealWeekendPlan',e);
 }
 }
@@ -2468,24 +2494,40 @@ alert('🏛️ '+o.name+' (@'+o.handle+')\n\n👥 '+o.members+' members\n🏆 Ra
 
 // ========== INTERACTIVE SAFETY DEMOS ==========
 function sendSOS(){
-const diehards=circles.diehards.map(p=>p.name).join(', ');
-const ok=confirm('🆘 Send SOS Alert?\n\nThis will send an emergency message with your live location to your Die Hards:\n\n'+diehards+'\n\nThey will get a critical push notification.');
+const diehards=circles.diehards||[];
+if(diehards.length===0){alert('Add friends to your Die Hards tier first (Social → Circles).');return;}
+const names=diehards.map(p=>p.name).join(', ');
+const ok=confirm('🆘 Send SOS Alert?\n\nThis will alert your Die Hards:\n'+names+'\n\nThey will get a critical notification with your location.');
 if(!ok)return;
+if(window.LC&&LC.cloud&&LC.me){
+LC.sendSOS(pendingVenueName||null,null,null).catch(e=>console.warn('SOS',e));
+}
 setTimeout(()=>{
-alert('✅ SOS SENT\n\n📍 Location shared: The Pub, 123 Main St\n📱 Notified: '+diehards+'\n\n— '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' —\n\n🟢 Jake M. acknowledged\n🟢 Sarah K. is on her way (ETA 8 min)\n\nStay where you are.');
+alert('✅ SOS SENT\n\n📱 Notified: '+names+'\n⏰ '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'\n\nStay where you are. Your Die Hards have been alerted.');
 },400);
 }
 
 function showLowBatteryDemo(){
-alert('🔋 Low Battery Alert — Active\n\nWhen your phone hits 5% (and again at 1%), your Die Hards automatically receive:\n\n———\n📱 PUSH NOTIFICATION\n\n"Hey, Jake\'s phone is at 4%.\nLast seen at The Pub (10:47 PM)."\n\n[View Location] [Acknowledge]\n———\n\nCurrent battery: 72%\nThresholds: 5% · 1%\nDie Hards notified: '+circles.diehards.length+'\n\n🔧 Demo — real monitoring requires backend.');
+const count=(circles.diehards||[]).length;
+alert('🔋 Low Battery Alert\n\nWhen your phone hits 5% (and again at 1%), your Die Hards automatically receive a push notification with your last known location.\n\nDie Hards notified: '+count+'\nThresholds: 5% · 1%\n\n🔧 Requires background monitoring — coming in a future update.');
 }
 
 function showBarRoute(){
-alert('🗺️ My Bar Route Tonight\n\n8:30 PM 📍 The Pub\n   ↓ 1h 40m, 4 drinks\n10:10 PM 🚶 Walked to Tavern on Main\n   ↓ 5 min walk\n10:15 PM 📍 Tavern on Main\n   ↓ 1h 25m, 2 drinks\n11:40 PM 🚶 Uber to Club X\n   ↓ 5 min\n11:45 PM 📍 Club X — STILL HERE\n\nTotal: 3 venues, 6 drinks, 3h 15m\n\nYour Partners can see this in real-time. Tap any venue to see exactly when you arrived and left.');
+// Build from real sessions tonight
+const tonight=allSessions.filter(s=>s.time>Date.now()-12*3600000);
+if(tonight.length===0){
+alert('🗺️ Bar Route\n\nNo sessions tonight yet. Start a session to begin tracking your route.');
+return;
+}
+let route=tonight.map(s=>{
+const t=new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+return t+' 📍 '+(s.venue||'Night Out')+' — '+s.drinks+' drinks';
+}).join('\n');
+alert('🗺️ My Bar Route Tonight\n\n'+route+'\n\nTotal: '+tonight.length+' venue'+(tonight.length>1?'s':'')+', '+tonight.reduce((a,s)=>a+s.drinks,0)+' drinks');
 }
 
 function showDepartureFeed(){
-alert('🚪 Departure Feed (Last 24h)\n\n11:42 PM — 😎 Jake M. left The Pub\n11:15 PM — 💃 Emma L. left Rooftop Bar\n10:50 PM — 🎉 Sarah K. arrived at Club X\n10:35 PM — 🍻 Mike R. left Brews & Views\n9:40 PM — 🤙 Chris P. arrived at Club X\n8:30 PM — 🏆 You arrived at The Pub\n\nTap any friend to see their full bar route tonight.');
+alert('🚪 Departure Feed\n\nThis will show when your friends leave venues once enough people are logging sessions.\n\nAs your friend group uses the app, departure alerts will appear here automatically.');
 }
 
 // ========== DEAD MAN'S SWITCH ==========
