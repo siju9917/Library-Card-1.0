@@ -341,7 +341,16 @@
 
     const { data, error } = await sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at');
     if (error) { console.warn('listWeekendPlans error:', error); return []; }
-    return data || [];
+    const plans = data || [];
+    // Fetch votes for all plans in one query
+    const planIds = plans.map(p => p.id);
+    if (planIds.length > 0) {
+      const { data: allVotes } = await sb.from('weekend_votes').select('plan_id,user_id').in('plan_id', planIds);
+      const votesByPlan = {};
+      (allVotes || []).forEach(v => { if (!votesByPlan[v.plan_id]) votesByPlan[v.plan_id] = []; votesByPlan[v.plan_id].push(v); });
+      plans.forEach(p => { p.weekend_votes = votesByPlan[p.id] || []; });
+    }
+    return plans;
   };
 
   LC.suggestPlan = async function (name, description, emoji, invitedFriendIds) {
@@ -360,17 +369,13 @@
       console.warn('suggestPlan error:', error);
       throw error;
     }
-    // Insert invited friends (creator is always implicitly invited)
+    // Insert invited friends
     if (data && invitedFriendIds && invitedFriendIds.length > 0) {
       const rows = invitedFriendIds.map(fid => ({ plan_id: data.id, user_id: fid }));
-      // Also add the creator
-      const uid = LC.userId();
       if (uid) rows.push({ plan_id: data.id, user_id: uid });
-      await sb.from('plan_invites').insert(rows).catch(e => console.warn('plan_invites insert', e));
-    } else if (data) {
-      // No friends selected — just add creator
-      const uid = LC.userId();
-      if (uid) await sb.from('plan_invites').insert({ plan_id: data.id, user_id: uid }).catch(e => console.warn('plan_invites insert', e));
+      try { await sb.from('plan_invites').insert(rows); } catch(e) { console.warn('plan_invites', e); }
+    } else if (data && uid) {
+      try { await sb.from('plan_invites').insert({ plan_id: data.id, user_id: uid }); } catch(e) { console.warn('plan_invites', e); }
     }
     return data;
   };
