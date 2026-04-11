@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=42;
+var MY_VERSION=43;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -509,16 +509,35 @@ function renderStoryRing(){
 const el=document.getElementById('storyRing');
 if(!el)return;
 if(!LC_DEMO){
-// Real mode: show only "You" + any friends from Circles (empty until they add some)
-const realStories=[{name:'You',emoji:'🏆',gradient:'linear-gradient(135deg,#E8A317,#FF6B2B)',status:'Start',isYou:true}];
-el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">'+
-realStories.map((s,i)=>'<div onclick="promptStartSession()" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
-'<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">＋</div></div></div>'+
-'<div style="font-size:11px;font-weight:700;text-align:center">You</div>'+
-'<div style="font-size:9px;color:var(--text3);text-align:center">Start</div>'+
-'</div>').join('')+
-'<div style="display:flex;align-items:center;padding:0 12px;color:var(--text3);font-size:11px;text-align:center;max-width:160px">Invite friends to see them here when they go out</div>'+
-'</div>';
+// Build real stories from current state + active friend sessions
+const stories=[];
+// You — show active session status or "Start"
+const youCheers=sessionActive?drinks.filter(d=>d.hasPhoto).length:0;
+const youDrinks=sessionActive?drinks.length:0;
+const youStatus=sessionActive?(youDrinks+' drinks'):'Start';
+const youGrad=sessionActive?'linear-gradient(135deg,#22C55E,#10B981)':'linear-gradient(135deg,#E8A317,#FF6B2B)';
+stories.push({name:'You',emoji:'🏆',gradient:youGrad,status:youStatus,isYou:true,cheers:youCheers,live:sessionActive,photo:'＋'});
+// Friends with active sessions
+if(window.LC&&LC.cloud&&LC.userId()){
+LC.listFriendsActiveSessions().then(function(rows){
+if(!rows||rows.length===0){finishStoryRing(el,stories);return;}
+rows.forEach(function(r){
+stories.push({
+name:r.users?.display_name||'Friend',
+emoji:r.users?.emoji||'🍻',
+gradient:'linear-gradient(135deg,#a29bfe,#6c5ce7)',
+status:(r.total_drinks||0)+' drinks',
+cheers:r.total_cheers||0,
+live:true,
+photo:r.users?.emoji||'🍻',
+isYou:false
+});
+});
+finishStoryRing(el,stories);
+}).catch(function(){finishStoryRing(el,stories);});
+}else{
+finishStoryRing(el,stories);
+}
 return;
 }
 el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none" onscroll="">'+
@@ -533,6 +552,21 @@ function openStory(i){
 const s=friendStories[i];
 if(s.isYou){promptStartSession();return;}
 alert('📸 '+s.emoji+' '+s.name+'\n\n'+s.status+'\n\nLatest Cheers: '+s.cheers+'\n\n[Full-screen story view would show their most recent photo, drink, and venue here — tap to advance, swipe to next friend]');
+}
+function finishStoryRing(el,stories){
+el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">'+
+stories.map(function(s){
+var inner=s.isYou&&!sessionActive?'＋':(s.photo||s.emoji);
+var action=s.isYou?'promptStartSession()':'void(0)';
+return '<div onclick="'+action+'" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
+'<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">'+inner+'</div></div>'+
+(s.cheers?'<div style="position:absolute;bottom:-2px;right:-2px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:2px 6px;border:2px solid var(--bg)">'+s.cheers+'</div>':'')+
+(s.live?'<div style="position:absolute;top:-1px;right:-1px;width:14px;height:14px;background:var(--green);border-radius:50%;border:2.5px solid var(--bg);animation:livePulse 2s ease-in-out infinite"></div>':'')+
+'</div>'+
+'<div style="font-size:11px;font-weight:'+(s.isYou?'700':'500')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">'+s.name+'</div>'+
+'<div style="font-size:9px;color:'+(s.live?'var(--green)':'var(--text3)')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px;font-weight:'+(s.live?'600':'400')+'">'+(s.live?'● ':'')+s.status+'</div>'+
+'</div>';
+}).join('')+'</div>';
 }
 
 function updateHome(){
