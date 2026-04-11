@@ -329,8 +329,12 @@ create table if not exists public.weekend_plans (
   description text default '',
   emoji text default '📍',
   week_start date not null default (date_trunc('week', current_date + interval '1 day'))::date,
+  invited_ids text[] default '{}',
   created_at timestamptz default now()
 );
+-- Add invited_ids column if table already exists (safe to re-run)
+alter table public.weekend_plans add column if not exists invited_ids text[] default '{}';
+
 alter table public.weekend_plans enable row level security;
 drop policy if exists "plans_select_all" on public.weekend_plans;
 create policy "plans_select_all" on public.weekend_plans for select using (auth.uid() is not null);
@@ -353,6 +357,8 @@ create policy "votes_insert_own" on public.weekend_votes for insert with check (
 drop policy if exists "votes_delete_own" on public.weekend_votes;
 create policy "votes_delete_own" on public.weekend_votes for delete using (auth.uid() = user_id);
 
+-- plan_invites table is no longer used (invited_ids column on weekend_plans replaces it).
+-- Kept for backward compat — safe to ignore.
 create table if not exists public.plan_invites (
   plan_id uuid not null references public.weekend_plans(id) on delete cascade,
   user_id uuid not null references public.users(id) on delete cascade,

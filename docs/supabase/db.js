@@ -330,7 +330,7 @@
 
   // ---------- WEEKEND PLANS ----------
   LC.listWeekendPlans = async function () {
-    // Get plans for this week (Monday-based week start)
+    await LC.getSession();
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0=Sun
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -339,21 +339,29 @@
     monday.setHours(0, 0, 0, 0);
     const weekStart = monday.toISOString().split('T')[0];
 
-    const { data, error } = await sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at');
-    if (error) { console.warn('listWeekendPlans error:', error); return []; }
-    const plans = data || [];
-    // Fetch votes for all plans in one query
-    const planIds = plans.map(p => p.id);
-    if (planIds.length > 0) {
-      const { data: allVotes } = await sb.from('weekend_votes').select('plan_id,user_id').in('plan_id', planIds);
-      const votesByPlan = {};
-      (allVotes || []).forEach(v => { if (!votesByPlan[v.plan_id]) votesByPlan[v.plan_id] = []; votesByPlan[v.plan_id].push(v); });
-      plans.forEach(p => { p.weekend_votes = votesByPlan[p.id] || []; });
+    try {
+      const { data, error } = await sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at');
+      if (error) { console.warn('listWeekendPlans error:', error); return []; }
+      const plans = data || [];
+      // Fetch votes for all plans in one query
+      const planIds = plans.map(function(p){ return p.id; });
+      if (planIds.length > 0) {
+        const { data: allVotes, error: vErr } = await sb.from('weekend_votes').select('plan_id,user_id').in('plan_id', planIds);
+        if (!vErr) {
+          var votesByPlan = {};
+          (allVotes || []).forEach(function(v){ if (!votesByPlan[v.plan_id]) votesByPlan[v.plan_id] = []; votesByPlan[v.plan_id].push(v); });
+          plans.forEach(function(p){ p.weekend_votes = votesByPlan[p.id] || []; });
+        }
+      }
+      return plans;
+    } catch (e) {
+      console.warn('listWeekendPlans exception:', e);
+      return [];
     }
-    return plans;
   };
 
-  LC.suggestPlan = async function (name, description, emoji, invitedFriendIds) {
+  LC.suggestPlan = async function (name, description, emoji, invitedIds) {
+    await LC.getSession();
     const now = new Date();
     const dayOfWeek = now.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -362,38 +370,50 @@
     monday.setHours(0, 0, 0, 0);
 
     const uid = LC.userId();
-    const insertObj = { name, description: description || '', emoji: emoji || '📍', week_start: monday.toISOString().split('T')[0] };
-    if (uid) insertObj.created_by = uid;
+    if (!uid) throw new Error('Not signed in');
+    const insertObj = {
+      name: name,
+      description: description || '',
+      emoji: emoji || '📍',
+      week_start: monday.toISOString().split('T')[0],
+      created_by: uid,
+      invited_ids: invitedIds || []
+    };
     const { data, error } = await sb.from('weekend_plans').insert(insertObj).select().single();
     if (error) {
       console.warn('suggestPlan error:', error);
       throw error;
     }
-    // Insert invited friends
-    if (data && invitedFriendIds && invitedFriendIds.length > 0) {
-      const rows = invitedFriendIds.map(fid => ({ plan_id: data.id, user_id: fid }));
-      if (uid) rows.push({ plan_id: data.id, user_id: uid });
-      try { await sb.from('plan_invites').insert(rows); } catch(e) { console.warn('plan_invites', e); }
-    } else if (data && uid) {
-      try { await sb.from('plan_invites').insert({ plan_id: data.id, user_id: uid }); } catch(e) { console.warn('plan_invites', e); }
-    }
     return data;
   };
 
   LC.toggleVote = async function (planId) {
-    const { data: existing } = await sb.from('weekend_votes')
-      .select('*').match({ plan_id: planId, user_id: LC.userId() });
-    if (existing && existing.length > 0) {
-      await sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: LC.userId() });
-      return false;
-    } else {
-      await sb.from('weekend_votes').insert({ plan_id: planId, user_id: LC.userId() });
-      return true;
+    await LC.getSession();
+    const uid = LC.userId();
+    if (!uid) throw new Error('Not signed in');
+    try {
+      const { data: existing, error: selErr } = await sb.from('weekend_votes')
+        .select('*').match({ plan_id: planId, user_id: uid });
+      if (selErr) throw selErr;
+      if (existing && existing.length > 0) {
+        const { error: delErr } = await sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: uid });
+        if (delErr) throw delErr;
+        return false;
+      } else {
+        const { error: insErr } = await sb.from('weekend_votes').insert({ plan_id: planId, user_id: uid });
+        if (insErr) throw insErr;
+        return true;
+      }
+    } catch (e) {
+      console.warn('toggleVote error:', e);
+      throw e;
     }
   };
 
   LC.deletePlan = async function (planId) {
-    await sb.from('weekend_plans').delete().eq('id', planId);
+    await LC.getSession();
+    const { error } = await sb.from('weekend_plans').delete().eq('id', planId);
+    if (error) throw error;
   };
 
   // ---------- REALTIME ----------
