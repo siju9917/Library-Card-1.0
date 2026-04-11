@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=28;
+var MY_VERSION=29;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2074,26 +2074,18 @@ try{await LC.getSession();}catch(e){}
 }
 if(!LC.userId()){return;}
 try{
-// 5-second timeout so Loading never gets stuck
-const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
-const plans=await Promise.race([LC.listWeekendPlans(),timeout]);
-const totalVotes=plans.reduce((a,p)=>a+(p.weekend_votes?p.weekend_votes.length:0),0);
+const plans=await LC.listWeekendPlans();
 if(plans.length===0){
 listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No suggestions yet — be the first!</div>';
 return;
 }
 listEl.innerHTML=plans.map((p,i)=>{
-const votes=p.weekend_votes||[];
-const myVote=LC.userId()&&votes.some(v=>v.user_id===LC.userId());
-const pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
-const creator='a friend';
-return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
-'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+p.name+'</span>'+(myVote?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.description||'Suggested by '+creator)+'</div></div><span style="font-size:13px;font-weight:700">'+votes.length+'</span></div>'+
-'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(myVote?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
+return '<div style="padding:10px 0;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
+'<div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="font-weight:600;font-size:14px">'+p.name+'</div>'+(p.description?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+p.description+'</div>':'')+'</div></div>'+
 '</div>';
 }).join('');
 }catch(e){
-listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No suggestions yet — be the first!</div>';
+listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">'+e.message+'</div>';
 console.warn('loadWeekendPlans',e);
 }
 }

@@ -339,15 +339,9 @@
     monday.setHours(0, 0, 0, 0);
     const weekStart = monday.toISOString().split('T')[0];
 
-    const { data, error } = await sb.rpc('get_my_weekend_plans', { week_start_param: weekStart });
+    const { data, error } = await sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at');
     if (error) { console.warn('listWeekendPlans error:', error); return []; }
-    const plans = data || [];
-    // Fetch votes per plan
-    for (const p of plans) {
-      const { data: votes } = await sb.from('weekend_votes').select('user_id').eq('plan_id', p.id);
-      p.weekend_votes = votes || [];
-    }
-    return plans;
+    return data || [];
   };
 
   LC.suggestPlan = async function (name, description, emoji, invitedFriendIds) {
@@ -358,12 +352,10 @@
     monday.setDate(now.getDate() + mondayOffset);
     monday.setHours(0, 0, 0, 0);
 
-    const { data, error } = await sb.from('weekend_plans').insert({
-      name,
-      description: description || '',
-      emoji: emoji || '📍',
-      week_start: monday.toISOString().split('T')[0],
-    }).select().single();
+    const uid = LC.userId();
+    const insertObj = { name, description: description || '', emoji: emoji || '📍', week_start: monday.toISOString().split('T')[0] };
+    if (uid) insertObj.created_by = uid;
+    const { data, error } = await sb.from('weekend_plans').insert(insertObj).select().single();
     if (error) {
       console.warn('suggestPlan error:', error);
       throw error;
