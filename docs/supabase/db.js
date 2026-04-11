@@ -316,6 +316,59 @@
     return data;
   };
 
+  // ---------- WEEKEND PLANS ----------
+  LC.listWeekendPlans = async function () {
+    // Get plans for this week (Monday-based week start)
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    const weekStart = monday.toISOString().split('T')[0];
+
+    const { data } = await sb.from('weekend_plans')
+      .select('*, creator:users!weekend_plans_created_by_fkey(display_name, emoji), weekend_votes(user_id)')
+      .gte('week_start', weekStart)
+      .order('created_at');
+    return data || [];
+  };
+
+  LC.suggestPlan = async function (name, description, emoji) {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+
+    const { data, error } = await sb.from('weekend_plans').insert({
+      created_by: LC.me.id,
+      name,
+      description: description || '',
+      emoji: emoji || '📍',
+      week_start: monday.toISOString().split('T')[0],
+    }).select().single();
+    if (error) throw error;
+    return data;
+  };
+
+  LC.toggleVote = async function (planId) {
+    const { data: existing } = await sb.from('weekend_votes')
+      .select('*').match({ plan_id: planId, user_id: LC.me.id });
+    if (existing && existing.length > 0) {
+      await sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: LC.me.id });
+      return false;
+    } else {
+      await sb.from('weekend_votes').insert({ plan_id: planId, user_id: LC.me.id });
+      return true;
+    }
+  };
+
+  LC.deletePlan = async function (planId) {
+    await sb.from('weekend_plans').delete().eq('id', planId);
+  };
+
   // ---------- REALTIME ----------
   LC.subscribeFriendActivity = function (onChange) {
     const channel = sb.channel('lc_friend_activity')
@@ -326,6 +379,8 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sos_alerts' }, onChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drink_gifts' }, onChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, onChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekend_plans' }, onChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekend_votes' }, onChange)
       .subscribe();
     LC.realtimeChannels.push(channel);
     return channel;

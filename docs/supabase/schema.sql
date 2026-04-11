@@ -321,5 +321,40 @@ begin
 end;
 $$;
 
+-- ---------- WEEKEND PLANS ----------
+create table if not exists public.weekend_plans (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid references public.users(id) on delete cascade,
+  name text not null,
+  description text default '',
+  emoji text default '📍',
+  week_start date not null default (date_trunc('week', current_date + interval '1 day'))::date,
+  created_at timestamptz default now()
+);
+alter table public.weekend_plans enable row level security;
+drop policy if exists "plans_select_all" on public.weekend_plans;
+create policy "plans_select_all" on public.weekend_plans for select using (auth.uid() is not null);
+drop policy if exists "plans_insert_own" on public.weekend_plans;
+create policy "plans_insert_own" on public.weekend_plans for insert with check (auth.uid() = created_by);
+drop policy if exists "plans_delete_own" on public.weekend_plans;
+create policy "plans_delete_own" on public.weekend_plans for delete using (auth.uid() = created_by);
+
+create table if not exists public.weekend_votes (
+  plan_id uuid not null references public.weekend_plans(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (plan_id, user_id)
+);
+alter table public.weekend_votes enable row level security;
+drop policy if exists "votes_select_all" on public.weekend_votes;
+create policy "votes_select_all" on public.weekend_votes for select using (auth.uid() is not null);
+drop policy if exists "votes_insert_own" on public.weekend_votes;
+create policy "votes_insert_own" on public.weekend_votes for insert with check (auth.uid() = user_id);
+drop policy if exists "votes_delete_own" on public.weekend_votes;
+create policy "votes_delete_own" on public.weekend_votes for delete using (auth.uid() = user_id);
+
+alter publication supabase_realtime add table public.weekend_plans;
+alter publication supabase_realtime add table public.weekend_votes;
+
 -- ---------- DONE ----------
 -- After this runs successfully, head back to your app and sign in.
