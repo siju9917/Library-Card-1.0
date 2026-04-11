@@ -339,32 +339,9 @@
     monday.setHours(0, 0, 0, 0);
     const weekStart = monday.toISOString().split('T')[0];
 
-    // Get plans the user is invited to (or created)
-    const uid = LC.userId();
-    // First get plan IDs this user is invited to
-    const { data: myInvites } = await sb.from('plan_invites').select('plan_id').eq('user_id', uid);
-    const invitedPlanIds = (myInvites || []).map(i => i.plan_id);
-    // Also get plans this user created (always visible to creator)
-    let plans = [];
-    if (invitedPlanIds.length > 0) {
-      const { data, error } = await sb.from('weekend_plans')
-        .select('*')
-        .gte('week_start', weekStart)
-        .in('id', invitedPlanIds)
-        .order('created_at');
-      if (error) { console.warn('listWeekendPlans error:', error); return []; }
-      plans = data || [];
-    }
-    // Also fetch plans this user created (in case they didn't invite themselves)
-    const { data: myPlans } = await sb.from('weekend_plans')
-      .select('*')
-      .gte('week_start', weekStart)
-      .eq('created_by', uid);
-    if (myPlans) {
-      const existingIds = new Set(plans.map(p => p.id));
-      myPlans.forEach(p => { if (!existingIds.has(p.id)) plans.push(p); });
-    }
-    plans.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const { data, error } = await sb.rpc('get_my_weekend_plans', { week_start_param: weekStart });
+    if (error) { console.warn('listWeekendPlans error:', error); return []; }
+    const plans = data || [];
     // Fetch votes per plan
     for (const p of plans) {
       const { data: votes } = await sb.from('weekend_votes').select('user_id').eq('plan_id', p.id);
