@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=22;
+var MY_VERSION=23;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -613,7 +613,7 @@ addXP(5);
 if(navigator.vibrate)navigator.vibrate(30);
 }
 // Cloud: persist the like
-if(s.cloudId&&window.LC&&LC.cloud&&LC.me){
+if(s.cloudId&&window.LC&&LC.cloud&&LC.userId()){
 LC.toggleLike(s.cloudId).catch(e=>console.warn('toggleLike',e));
 }
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
@@ -704,7 +704,7 @@ pendingVenueName=venueName||null;
 // Cloud: create a real session row — AWAITED so cloudSessionId is
 // guaranteed to be set before the user can log any drinks or end.
 cloudSessionId=null;
-if(window.LC&&LC.cloud&&LC.me){
+if(window.LC&&LC.cloud&&LC.userId()){
 try{
 const s=await LC.startSession(venueName||null,null);
 cloudSessionId=s.id;
@@ -2067,11 +2067,11 @@ return fri.toLocaleDateString([],{month:'short',day:'numeric'});
 async function loadWeekendPlans(){
 const listEl=document.getElementById('weekendPlansList');
 if(!listEl)return;
-// Wait for LC.me if not ready yet
-if(!LC.me){
-await new Promise(r=>{let tries=0;const iv=setInterval(()=>{tries++;if(LC.me||tries>10){clearInterval(iv);r();}},500);});
+// Wait for session if not ready yet
+if(!LC.userId()){
+try{await LC.getSession();}catch(e){}
 }
-if(!LC.me){listEl.innerHTML='<div style="color:var(--text3);font-size:12px">No suggestions yet — be the first!</div>';return;}
+if(!LC.userId()){listEl.innerHTML='<div style="color:var(--text3);font-size:12px">Sign in to see plans.</div>';return;}
 try{
 const plans=await LC.listWeekendPlans();
 const totalVotes=plans.reduce((a,p)=>a+(p.weekend_votes?p.weekend_votes.length:0),0);
@@ -2081,7 +2081,7 @@ return;
 }
 listEl.innerHTML=plans.map((p,i)=>{
 const votes=p.weekend_votes||[];
-const myVote=LC.me&&votes.some(v=>v.user_id===LC.userId());
+const myVote=LC.userId()&&votes.some(v=>v.user_id===LC.userId());
 const pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
 const creator=p.creator?.display_name||'Someone';
 return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
@@ -2246,7 +2246,7 @@ const el=document.getElementById('circlesSection');
 if(!el)return;
 // Pending friend requests section (only in cloud mode)
 let requestsHTML='';
-if(!LC_DEMO&&window.LC&&LC.cloud&&LC.me){
+if(!LC_DEMO&&window.LC&&LC.cloud&&LC.userId()){
 renderPendingRequests();
 }
 el.innerHTML='<div id="pendingRequestsArea"></div>'+
@@ -2258,14 +2258,14 @@ tierBlock('besties','⭐ Besties','Bar check-ins · Departure alerts · See drin
 tierBlock('friends','👥 Friends','Session stats only · No location · No DMs','var(--text2)')+
 '<div style="text-align:center;font-size:10px;color:var(--text3);margin-top:12px;padding-bottom:4px">Tap a name to move them between tiers or remove</div>';
 // Load pending requests after rendering circles
-if(!LC_DEMO&&window.LC&&LC.cloud&&LC.me){
+if(!LC_DEMO&&window.LC&&LC.cloud&&LC.userId()){
 renderPendingRequests();
 }
 }
 
 async function renderPendingRequests(){
 const area=document.getElementById('pendingRequestsArea');
-if(!area||!window.LC||!LC.cloud||!LC.me)return;
+if(!area||!window.LC||!LC.cloud||!LC.userId())return;
 try{
 const reqs=await LC.listPendingRequests();
 if(!reqs||reqs.length===0){area.innerHTML='';return;}
@@ -2316,7 +2316,7 @@ list.map(p=>'<div onclick="moveFromTier(\''+key+'\',\''+p.name.replace(/\'/g,"\\
 
 function addToTier(tier){
 // Cloud mode: ask for friend's email and look them up in the users table
-if(window.LC&&LC.cloud&&LC.me){
+if(window.LC&&LC.cloud&&LC.userId()){
 const email=prompt('Send a friend request by email\n\nThey\'ll need to accept it before you\'re connected.','');
 if(!email||!email.trim())return;
 LC.findUserByEmail(email.trim()).then(u=>{
@@ -2523,7 +2523,7 @@ if(diehards.length===0){alert('Add friends to your Die Hards tier first (Social 
 const names=diehards.map(p=>p.name).join(', ');
 const ok=confirm('🆘 Send SOS Alert?\n\nThis will alert your Die Hards:\n'+names+'\n\nThey will get a critical notification with your location.');
 if(!ok)return;
-if(window.LC&&LC.cloud&&LC.me){
+if(window.LC&&LC.cloud&&LC.userId()){
 LC.sendSOS(pendingVenueName||null,null,null).catch(e=>console.warn('SOS',e));
 }
 setTimeout(()=>{
@@ -2654,7 +2654,7 @@ function renderLiveBarMap(){
 const el=document.getElementById('liveBarMap');
 if(!el)return;
 // Cloud mode: pull real friend active sessions
-if(window.LC&&LC.cloud&&LC.me){
+if(window.LC&&LC.cloud&&LC.userId()){
 el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">Loading…</div>';
 LC.listFriendsActiveSessions().then(rows=>{
 if(!rows||rows.length===0){
@@ -2934,7 +2934,7 @@ function editDisplayName(){
 const cur=(window.LC&&LC.me&&LC.me.display_name)||'';
 const next=prompt('What name should friends see?',cur);
 if(!next||!next.trim())return;
-if(window.LC&&LC.cloud&&LC.me){
+if(window.LC&&LC.cloud&&LC.userId()){
 LC.updateProfile({display_name:next.trim()}).then(()=>{
 const p=document.getElementById('profileName');
 if(p)p.textContent=next.trim();
@@ -2980,7 +2980,7 @@ prompt('Copy this invite link:',url);
 
 async function processInviteLink(){
 const inviterId=localStorage.getItem('lc_pending_invite');
-if(!inviterId||!window.LC||!LC.cloud||!LC.me)return;
+if(!inviterId||!window.LC||!LC.cloud||!LC.userId())return;
 if(inviterId===LC.userId()){
 localStorage.removeItem('lc_pending_invite');
 return;
@@ -3134,7 +3134,7 @@ return;
 }
 if(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){
 if(session){
-if(handled&&LC.me)return;
+if(handled&&LC.userId())return;
 handled=true;
 LC.session=session;
 document.getElementById('authGate').style.display='none';
@@ -3218,7 +3218,7 @@ await hydrateFromCloud();
 // Process pending invite link (from ?invite=USER_ID)
 try{
 const pendingInvite=localStorage.getItem('lc_pending_invite');
-if(pendingInvite&&LC.me&&pendingInvite!==LC.userId()){
+if(pendingInvite&&LC.userId()&&pendingInvite!==LC.userId()){
 await LC.acceptInvite(pendingInvite);
 localStorage.removeItem('lc_pending_invite');
 // Add inviter to local circles so they appear immediately
@@ -3230,7 +3230,7 @@ saveCircles();
 renderCircles();
 }
 }
-}else if(pendingInvite&&LC.me&&pendingInvite===LC.userId()){
+}else if(pendingInvite&&LC.userId()&&pendingInvite===LC.userId()){
 // Don't invite yourself
 localStorage.removeItem('lc_pending_invite');
 }
@@ -3239,7 +3239,7 @@ runDemoInit();
 }
 
 async function hydrateFromCloud(){
-if(!LC.me)return;
+if(!LC.userId())return;
 // Sessions — first, close out any orphaned active sessions (rows with
 // end_time=null from a previous tab that was killed before endSession
 // could finish).
