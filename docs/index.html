@@ -3053,8 +3053,8 @@ if(id==='screen-home')updateHome();
 if(id==='screen-social')initSocial();
 });
 }catch(e){console.warn('realtime',e);}
-// Hydrate localStorage from cloud (non-blocking)
-hydrateFromCloud();
+// Hydrate localStorage from cloud — AWAITED so the UI renders with real data
+await hydrateFromCloud();
 // Process pending invite link (from ?invite=USER_ID)
 try{
 const pendingInvite=localStorage.getItem('lc_pending_invite');
@@ -3082,28 +3082,24 @@ async function hydrateFromCloud(){
 if(!LC.me)return;
 // Sessions — first, close out any orphaned active sessions (rows with
 // end_time=null from a previous tab that was killed before endSession
-// could finish). We close them server-side using the last known drink
-// time so the session still appears in history.
+// could finish).
 try{
-const active=await LC.sb.from('sessions').select('*, drinks(*)').eq('user_id',LC.me.id).is('end_time',null);
+const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.me.id).is('end_time',null);
 if(active.data&&active.data.length>0){
+console.log('[lc] auto-closing',active.data.length,'orphaned sessions');
 for(const s of active.data){
-const lastDrinkTime=(s.drinks||[]).reduce((m,d)=>{
-const t=new Date(d.logged_at).getTime();
-return t>m?t:m;
-},new Date(s.start_time).getTime());
-// Clamp to at least start_time + 1 minute so we don't end before start
-const endT=Math.max(lastDrinkTime,new Date(s.start_time).getTime()+60000);
+const endT=Math.max(new Date(s.start_time).getTime()+60000,Date.now());
 await LC.sb.from('sessions').update({
 end_time:new Date(endT).toISOString(),
-total_drinks:(s.drinks||[]).filter(d=>!d.is_na).length,
-total_cheers:(s.drinks||[]).filter(d=>d.has_photo).length,
+total_drinks:s.total_drinks||0,
+total_cheers:s.total_cheers||0,
 }).eq('id',s.id);
 }
 }
 }catch(e){console.warn('auto-close orphaned sessions',e);}
 try{
 const sessions=await LC.listMySessions(50);
+console.log('[lc] hydrate found',sessions.length,'cloud sessions');
 const cloud=sessions.map(s=>({
 time:new Date(s.start_time).getTime(),
 drinks:s.total_drinks||0,
@@ -3125,7 +3121,8 @@ allSessions=[...cloud,...localOnly].sort((a,b)=>b.time-a.time);
 allTimeDrinks=allSessions.reduce((a,s)=>a+s.drinks,0);
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
-}catch(e){console.warn('hydrate sessions',e);}
+console.log('[lc] hydrate result:',allSessions.length,'total sessions (',cloud.length,'cloud +',localOnly.length,'local-only)');
+}catch(e){console.warn('hydrate sessions FAILED',e);}
 // Friends → Circles
 try{
 const fr=await LC.listMyFriends();
