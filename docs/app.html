@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=39;
+var MY_VERSION=40;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -3424,31 +3424,42 @@ runDemoInit();
 
 async function hydrateFromCloud(){
 if(!LC.userId())return;
-// Sessions — first, close out any orphaned active sessions (rows with
-// end_time=null from a previous tab that was killed before endSession
-// could finish).
+// Sessions — check for active sessions (end_time=null). If found, RESUME
+// the most recent one instead of closing it. This lets users start a
+// session, close the app, come back hours later, and pick up where they left off.
 try{
-const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.userId()).is('end_time',null);
+const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.userId()).is('end_time',null).order('start_time',{ascending:false}).limit(1);
 if(active.data&&active.data.length>0){
-console.log('[lc] auto-closing',active.data.length,'orphaned sessions');
-for(const s of active.data){
-const endT=Math.max(new Date(s.start_time).getTime()+60000,Date.now());
-// Count actual drinks from the drinks table (more reliable than session.total_drinks which may be 0)
-let drinkCount=s.total_drinks||0;
-let cheersCount=s.total_cheers||0;
+const s=active.data[0];
+console.log('[lc] resuming active session',s.id);
+// Load drinks for this session from cloud
+let cloudDrinks=[];
 try{
-const {count}=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',s.id);
-if(count!=null&&count>0)drinkCount=count;
+const {data:drinksData}=await LC.sb.from('drinks').select('*').eq('session_id',s.id).order('logged_at');
+cloudDrinks=drinksData||[];
 }catch(_){}
-console.log('[lc] orphan',s.id,'→ drinks='+drinkCount);
-await LC.sb.from('sessions').update({
-end_time:new Date(endT).toISOString(),
-total_drinks:drinkCount,
-total_cheers:cheersCount,
-}).eq('id',s.id);
+// Restore session state
+sessionActive=true;
+sessionStart=new Date(s.start_time).getTime();
+cloudSessionId=s.id;
+friendInhabitants=null;
+sessionUIBuilt=false;
+lastDrinksLen=-1;
+drinks=cloudDrinks.map(function(d){return{
+name:d.name,type:d.drink_type,time:new Date(d.logged_at).getTime(),
+rating:d.rating,hasPhoto:!!d.has_photo,isNA:!!d.is_na,
+photoUrl:d.photo_url,caption:d.caption,cloudId:d.id
+};});
+// Switch to session UI
+const nrm=document.getElementById('homeNormal');
+const sc=document.getElementById('sessionContent');
+if(nrm)nrm.style.display='none';
+if(sc){sc.style.display='block';sc.innerHTML='';}
+sessionTimer=setInterval(function(){updateSessionUI();},1000);
+updateSessionUI();
+updateHome();
 }
-}
-}catch(e){console.warn('auto-close orphaned sessions',e);}
+}catch(e){console.warn('resume active session',e);}
 try{
 const sessions=await LC.listMySessions(50);
 console.log('[lc] hydrate found',sessions.length,'cloud sessions');
