@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=33;
+var MY_VERSION=34;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2164,9 +2164,10 @@ alert('Could not delete: '+e.message);
 }
 
 async function suggestRealPlan(){
-if(!window.LC||!LC.cloud){alert('Not connected to cloud.');return;}
-try{await LC.getSession();}catch(e){}
-if(!LC.userId()){alert('Sign in first to suggest a spot.');return;}
+try{
+if(!window.LC||!LC.cloud){alert('Not connected.');return;}
+await LC.getSession();
+if(!LC.userId()){alert('Sign in first.');return;}
 var venueOpts=knownVenues.map(function(v){return {label:v,emoji:'📍'};});
 venueOpts.push({label:'Somewhere new...',emoji:'✨',sub:'Type a name'});
 showPicker('📅 Suggest a Spot','Where should the crew go this weekend?',venueOpts,function(idx){
@@ -2189,6 +2190,7 @@ showFriendMultiPicker(allFriends,function(invitedIds){
 finishSuggestPlan(name,desc,invitedIds);
 });
 });
+}catch(e){alert('Error: '+e.message);}
 }
 
 function showFriendMultiPicker(allFriends,onDone){
