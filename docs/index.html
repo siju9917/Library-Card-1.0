@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=34;
+var MY_VERSION=35;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2112,8 +2112,19 @@ await LC.getSession();
 var plans=await LC.listWeekendPlans();
 _weekendPlansCache=plans;
 renderWeekendPlansList(plans);
+// Auth might not be ready — if 0 results, retry once after 2s
+if(plans.length===0&&!loadWeekendPlans._retried){
+loadWeekendPlans._retried=true;
+setTimeout(loadWeekendPlans,2000);
+}else{
+loadWeekendPlans._retried=false;
+}
 }catch(e){
-listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px 0">Could not load plans.</div>';
+// On error, also retry once
+if(!loadWeekendPlans._retried){
+loadWeekendPlans._retried=true;
+setTimeout(loadWeekendPlans,2000);
+}
 console.warn('loadWeekendPlans',e);
 }
 }
