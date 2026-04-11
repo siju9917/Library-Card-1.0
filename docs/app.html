@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=40;
+var MY_VERSION=41;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -3428,9 +3428,22 @@ if(!LC.userId())return;
 // the most recent one instead of closing it. This lets users start a
 // session, close the app, come back hours later, and pick up where they left off.
 try{
-const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.userId()).is('end_time',null).order('start_time',{ascending:false}).limit(1);
+const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.userId()).is('end_time',null).order('start_time',{ascending:false});
 if(active.data&&active.data.length>0){
-const s=active.data[0];
+// Only resume sessions from the last 12 hours. Auto-close older ones.
+const cutoff=Date.now()-12*3600000;
+const toResume=active.data.find(function(s){return new Date(s.start_time).getTime()>cutoff;});
+const toClose=active.data.filter(function(s){return new Date(s.start_time).getTime()<=cutoff;});
+for(var ci=0;ci<toClose.length;ci++){
+var cs=toClose[ci];
+var endT=Math.max(new Date(cs.start_time).getTime()+60000,Date.now());
+var dc=cs.total_drinks||0;
+try{var cr=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',cs.id);if(cr.count>0)dc=cr.count;}catch(_){}
+await LC.sb.from('sessions').update({end_time:new Date(endT).toISOString(),total_drinks:dc}).eq('id',cs.id);
+}
+if(!toResume){/* all were old, none to resume */}
+else{
+const s=toResume;
 console.log('[lc] resuming active session',s.id);
 // Load drinks for this session from cloud
 let cloudDrinks=[];
@@ -3458,7 +3471,8 @@ if(sc){sc.style.display='block';sc.innerHTML='';}
 sessionTimer=setInterval(function(){updateSessionUI();},1000);
 updateSessionUI();
 updateHome();
-}
+}// end else(toResume)
+}// end if(active.data)
 }catch(e){console.warn('resume active session',e);}
 try{
 const sessions=await LC.listMySessions(50);
