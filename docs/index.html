@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=30;
+var MY_VERSION=31;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2069,12 +2069,9 @@ return fri.toLocaleDateString([],{month:'short',day:'numeric'});
 async function loadWeekendPlans(){
 const listEl=document.getElementById('weekendPlansList');
 if(!listEl)return;
-if(!LC.userId()){
-try{await LC.getSession();}catch(e){}
-}
-if(!LC.userId()){return;}
 try{
 const plans=await LC.listWeekendPlans();
+listEl.innerHTML='[DEBUG: query returned '+plans.length+' plans]';
 if(plans.length===0){
 listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No suggestions yet — be the first!</div>';
 return;
@@ -2090,7 +2087,7 @@ return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cur
 '</div>';
 }).join('');
 }catch(e){
-listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">'+e.message+'</div>';
+listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px 0">ERROR: '+e.message+'</div>';
 console.warn('loadWeekendPlans',e);
 }
 }
