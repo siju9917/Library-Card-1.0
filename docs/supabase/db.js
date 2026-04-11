@@ -61,7 +61,12 @@
   };
 
   LC.loadMe = async function () {
-    if (!LC.session) return null;
+    // Get session if we don't have one cached
+    if (!LC.session) {
+      const { data } = await sb.auth.getSession();
+      LC.session = data.session;
+    }
+    if (!LC.session) { console.warn('loadMe: no session'); return null; }
     const { data, error } = await sb.from('users').select('*').eq('id', LC.session.user.id).single();
     if (error) {
       console.warn('loadMe error', error);
