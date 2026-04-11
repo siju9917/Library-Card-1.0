@@ -335,12 +335,14 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=25;
+var MY_VERSION=26;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
-console.log('[lc] new version detected:',d.v,'(current:',MY_VERSION,') — reloading');
-location.reload(true);
+console.log('[lc] new version detected:',d.v,'(current:',MY_VERSION,') — redirecting');
+// Use URL redirect with version param — iOS ignores location.reload() cache busting
+// but treats a new query string as a different page and fetches fresh HTML
+window.location.href=window.location.pathname+'?_v='+d.v;
 }
 }).catch(function(){});
 }catch(e){}

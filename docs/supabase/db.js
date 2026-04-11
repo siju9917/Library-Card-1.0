@@ -340,11 +340,17 @@
     const weekStart = monday.toISOString().split('T')[0];
 
     const { data, error } = await sb.from('weekend_plans')
-      .select('*, weekend_votes(user_id)')
+      .select('*')
       .gte('week_start', weekStart)
       .order('created_at');
     if (error) { console.warn('listWeekendPlans error:', error); return []; }
-    return data || [];
+    // Fetch votes separately (the join was breaking the query)
+    const plans = data || [];
+    for (const p of plans) {
+      const { data: votes } = await sb.from('weekend_votes').select('user_id').eq('plan_id', p.id);
+      p.weekend_votes = votes || [];
+    }
+    return plans;
   };
 
   LC.suggestPlan = async function (name, description, emoji) {
