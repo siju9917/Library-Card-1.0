@@ -668,7 +668,7 @@ return;
 startSession(null);
 }
 
-function startSession(venueName){
+async function startSession(venueName){
 sessionActive=true;
 sessionStart=Date.now();
 drinks=[];
@@ -676,10 +676,15 @@ friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
 pendingVenueName=venueName||null;
-// Cloud: create a real session row
+// Cloud: create a real session row — AWAITED so cloudSessionId is
+// guaranteed to be set before the user can log any drinks or end.
 cloudSessionId=null;
 if(window.LC&&LC.cloud&&LC.me){
-LC.startSession(venueName||null,null).then(s=>{cloudSessionId=s.id;}).catch(e=>console.warn('cloud startSession',e));
+try{
+const s=await LC.startSession(venueName||null,null);
+cloudSessionId=s.id;
+console.log('[lc] cloud session started:',cloudSessionId);
+}catch(e){console.warn('cloud startSession FAILED',e);}
 }
 // Swap Home from normal view to live session view
 const nrm=document.getElementById('homeNormal');
@@ -1272,14 +1277,21 @@ allSessions.push(session);
 allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
-// Cloud: close out the session row — AWAITED so it actually commits
-// before we tear the session down. Otherwise closing the tab in the
-// next few ms kills the in-flight fetch and the row is left orphaned
-// with end_time=null, which hydrate then filters out on reload.
+// Cloud: close out the session row — AWAITED so it actually commits.
 if(cloudSessionId&&window.LC&&LC.cloud){
 try{
-await LC.endSession(cloudSessionId,{totalDrinks:drinks.length,totalCheers:cheersCount});
-}catch(e){console.warn('cloud endSession',e);}
+// Use local drink count, but also verify against the drinks table
+let cloudDrinkCount=drinks.length;
+let cloudCheersCount=cheersCount;
+try{
+const {count}=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',cloudSessionId);
+if(count!=null&&count>0)cloudDrinkCount=Math.max(cloudDrinkCount,count);
+}catch(_){}
+console.log('[lc] endSession cloud: local='+drinks.length+' cloudDrinks='+cloudDrinkCount+' cheers='+cloudCheersCount);
+await LC.endSession(cloudSessionId,{totalDrinks:cloudDrinkCount,totalCheers:cloudCheersCount});
+}catch(e){console.warn('cloud endSession FAILED',e);}
+}else if(window.LC&&LC.cloud){
+console.warn('[lc] endSession skipped — cloudSessionId is null! drinks.length='+drinks.length);
 }
 cloudSessionId=null;
 sessionActive=false;
@@ -3089,10 +3101,18 @@ if(active.data&&active.data.length>0){
 console.log('[lc] auto-closing',active.data.length,'orphaned sessions');
 for(const s of active.data){
 const endT=Math.max(new Date(s.start_time).getTime()+60000,Date.now());
+// Count actual drinks from the drinks table (more reliable than session.total_drinks which may be 0)
+let drinkCount=s.total_drinks||0;
+let cheersCount=s.total_cheers||0;
+try{
+const {count}=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',s.id);
+if(count!=null&&count>0)drinkCount=count;
+}catch(_){}
+console.log('[lc] orphan',s.id,'→ drinks='+drinkCount);
 await LC.sb.from('sessions').update({
 end_time:new Date(endT).toISOString(),
-total_drinks:s.total_drinks||0,
-total_cheers:s.total_cheers||0,
+total_drinks:drinkCount,
+total_cheers:cheersCount,
 }).eq('id',s.id);
 }
 }
