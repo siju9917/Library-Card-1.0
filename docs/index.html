@@ -97,6 +97,13 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </head>
 <body>
 
+<!-- SPLASH SCREEN -->
+<div id="splashScreen" style="position:fixed;inset:0;z-index:99999;background:#0A0A0A;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease-out">
+<div style="width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,#E8A317,#FF6B2B);display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:800;color:#0A0A0A;box-shadow:0 20px 60px rgba(232,163,23,.4);animation:splashPulse 1.5s ease-in-out infinite">L</div>
+<div style="margin-top:20px;font-size:22px;font-weight:700;color:#fff;letter-spacing:1px">The Library</div>
+</div>
+<style>@keyframes splashPulse{0%,100%{transform:scale(1);box-shadow:0 20px 60px rgba(232,163,23,.4)}50%{transform:scale(1.05);box-shadow:0 24px 70px rgba(232,163,23,.6)}}</style>
+
 <!-- AUTH GATE (only shown when cloud is enabled and user is signed out) -->
 <div id="authGate" style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#0A0A0A 0%,#1A1A1C 100%);flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
 <div style="width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,#E8A317,#FF6B2B);display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:800;color:#0A0A0A;margin-bottom:24px;box-shadow:0 20px 60px rgba(232,163,23,.4)">L</div>
@@ -328,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=17;
+var MY_VERSION=18;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -3104,7 +3111,7 @@ console.log('[lc auth]',event,session?'signed in as '+session.user.email:'no ses
 if(event==='SIGNED_OUT'){
 // Don't reload — that can loop on iOS PWAs. Just show the gate.
 handled=true;
-document.getElementById('authGate').style.display='flex';
+document.getElementById('authGate').style.display='flex';dismissSplash();
 return;
 }
 if(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){
@@ -3120,7 +3127,7 @@ history.replaceState(null,'',window.location.pathname+window.location.search);
 await afterSignedIn();
 }else if(event==='INITIAL_SESSION'&&!handled){
 handled=true;
-document.getElementById('authGate').style.display='flex';
+document.getElementById('authGate').style.display='flex';dismissSplash();
 }
 }
 });
@@ -3135,7 +3142,7 @@ if(looksSignedIn){
 console.warn('[lc auth] stuck init but session key present — reloading');
 location.reload();
 }else{
-document.getElementById('authGate').style.display='flex';
+document.getElementById('authGate').style.display='flex';dismissSplash();
 }
 }
 },10000);
@@ -3302,7 +3309,20 @@ initStats();
 initProfile();
 initSocial();
 initSafety();
+dismissSplash();
 }
+function dismissSplash(){
+const splash=document.getElementById('splashScreen');
+if(!splash)return;
+// Hold for at least 1.2s from page load so it feels intentional
+const elapsed=Date.now()-window._splashStart;
+const remaining=Math.max(0,1200-elapsed);
+setTimeout(()=>{
+splash.style.opacity='0';
+setTimeout(()=>{splash.remove();},400);
+},remaining);
+}
+window._splashStart=Date.now();
 
 bootApp();
 </script>
