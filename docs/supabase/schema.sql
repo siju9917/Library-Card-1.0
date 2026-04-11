@@ -353,6 +353,17 @@ create policy "votes_insert_own" on public.weekend_votes for insert with check (
 drop policy if exists "votes_delete_own" on public.weekend_votes;
 create policy "votes_delete_own" on public.weekend_votes for delete using (auth.uid() = user_id);
 
+create table if not exists public.plan_invites (
+  plan_id uuid not null references public.weekend_plans(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  primary key (plan_id, user_id)
+);
+alter table public.plan_invites enable row level security;
+drop policy if exists "plan_invites_select" on public.plan_invites;
+create policy "plan_invites_select" on public.plan_invites for select using (auth.uid() is not null);
+drop policy if exists "plan_invites_insert" on public.plan_invites;
+create policy "plan_invites_insert" on public.plan_invites for insert with check (true);
+
 alter publication supabase_realtime add table public.weekend_plans;
 alter publication supabase_realtime add table public.weekend_votes;
 

@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=26;
+var MY_VERSION=27;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2120,7 +2120,7 @@ if(!LC.userId()){alert('Sign in first to suggest a spot.');return;}
 const venueOpts=knownVenues.map(v=>({label:v,emoji:'📍'}));
 venueOpts.push({label:'Somewhere new...',emoji:'✨',sub:'Type a name'});
 showPicker('📅 Suggest a Spot','Where should the crew go this weekend?',venueOpts,(idx)=>{
-let name,desc;
+let name;
 if(idx===venueOpts.length-1){
 name=prompt('Name this spot:','');
 if(!name||!name.trim())return;
@@ -2128,14 +2128,41 @@ name=name.trim();
 }else{
 name=venueOpts[idx].label;
 }
-desc=prompt('What\'s happening? (optional)','');
-const emojiOpts=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'];
-const emoji=emojiOpts[Math.floor(Math.random()*emojiOpts.length)];
-LC.suggestPlan(name,desc||'',emoji).then(()=>{
+const desc=prompt('What\'s happening? (optional)','');
+// Now pick which friends to invite
+const allFriends=[...(circles.diehards||[]),...(circles.besties||[]),...(circles.friends||[])];
+if(allFriends.length===0){
+// No friends yet — just create the plan visible to creator only
+const emoji=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'][Math.floor(Math.random()*8)];
+LC.suggestPlan(name,desc||'',emoji,[]).then(()=>{
 if(!knownVenues.includes(name)){knownVenues.push(name);localStorage.setItem('lc_venues',JSON.stringify(knownVenues));}
 renderWeekendPlan();
-showCelebrationToast('📅','Spot Suggested!','Friends can now vote on it');
+showCelebrationToast('📅','Spot Suggested!','Add friends to invite them');
 }).catch(e=>alert('Error: '+e.message));
+return;
+}
+// Show friend multi-select
+const friendOpts=allFriends.map(f=>({label:f.name,emoji:f.emoji||'👤',sub:'',cloudId:f.cloudId}));
+friendOpts.push({label:'Everyone',emoji:'👥',sub:'Invite all your friends'});
+showPicker('👥 Who\'s invited?','Pick friends to see this plan',friendOpts,(fIdx)=>{
+let invitedIds;
+if(fIdx===friendOpts.length-1){
+// Everyone
+invitedIds=allFriends.filter(f=>f.cloudId).map(f=>f.cloudId);
+}else{
+// Single friend — but user probably wants to pick multiple.
+// For v1: let them pick one, then the plan is visible to creator + that friend
+// TODO: multi-select picker
+invitedIds=friendOpts[fIdx].cloudId?[friendOpts[fIdx].cloudId]:[];
+}
+const emoji=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'][Math.floor(Math.random()*8)];
+LC.suggestPlan(name,desc||'',emoji,invitedIds).then(()=>{
+if(!knownVenues.includes(name)){knownVenues.push(name);localStorage.setItem('lc_venues',JSON.stringify(knownVenues));}
+renderWeekendPlan();
+const count=fIdx===friendOpts.length-1?allFriends.length:1;
+showCelebrationToast('📅','Spot Suggested!',count+' friend'+(count>1?'s':'')+' invited');
+}).catch(e=>alert('Error: '+e.message));
+});
 });
 }
 
