@@ -2003,16 +2003,32 @@ let weekendOptions=[
 {id:4,name:'House Party @ Jake\'s',desc:'BYOB, Saturday 9pm',votes:[],emoji:'🏠'},
 ];
 let myVote=1;
+// Cache of loaded plans for optimistic UI
+let _weekendPlansCache=[];
+
+function canSeePlan(plan,myId){
+// Creator always sees their own plans
+if(plan.created_by===myId)return true;
+// If invited_ids is empty/null/missing, show to everyone (backward compat for old plans)
+var inv=plan.invited_ids;
+if(!inv||!Array.isArray(inv)||inv.length===0)return true;
+// Otherwise, only show if user is in the invited list
+return inv.indexOf(myId)!==-1;
+}
+
 function renderWeekendPlan(){
-const el=document.getElementById('weekendPlan');
+var el=document.getElementById('weekendPlan');
 if(!el)return;
 if(!LC_DEMO&&window.LC&&LC.cloud){
-// Show suggest button immediately, load plans async
-const fri=getFridayDate();
+var fri=getFridayDate();
 el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">Plan for this weekend</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri+'</div></div>'+
 '<div id="weekendPlansList" style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0"></div>'+
 '<div style="padding-top:8px"><button onclick="suggestRealPlan()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:14px;cursor:pointer">+ Suggest a Spot</button></div>';
-// Load plans in background — retry if LC.me not ready
+// If we have cached plans, render them immediately (no flash)
+if(_weekendPlansCache.length>0){
+renderWeekendPlansList(_weekendPlansCache);
+}
+// Then refresh from DB in background
 loadWeekendPlans();
 return;
 }
@@ -2020,12 +2036,12 @@ if(!LC_DEMO){
 el.innerHTML='<div style="text-align:center;padding:16px 12px;color:var(--text3);font-size:12px">Sign in to plan with friends.</div>';
 return;
 }
-const totalVotes=weekendOptions.reduce((a,o)=>a+o.votes.length,0);
-const fri=getFridayDate();
-el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">Vote by Friday 5pm · '+totalVotes+' votes in</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri+'</div></div>'+
-weekendOptions.map(o=>{
-const isMyPick=myVote===o.id;
-const pct=totalVotes>0?Math.round(o.votes.length/totalVotes*100):0;
+var totalVotes=weekendOptions.reduce(function(a,o){return a+o.votes.length;},0);
+var fri2=getFridayDate();
+el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">Vote by Friday 5pm · '+totalVotes+' votes in</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri2+'</div></div>'+
+weekendOptions.map(function(o){
+var isMyPick=myVote===o.id;
+var pct=totalVotes>0?Math.round(o.votes.length/totalVotes*100):0;
 return '<div onclick="voteWeekend('+o.id+')" style="padding:10px 0;cursor:pointer;'+(o.id<weekendOptions.length?'border-bottom:0.5px solid #333':'')+'">'+
 '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+o.emoji+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+o.name+'</span>'+(isMyPick?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">'+o.desc+'</div></div><span style="font-size:13px;font-weight:700">'+o.votes.length+'</span></div>'+
 '<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:'+pct+'%;background:'+(isMyPick?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
@@ -2036,22 +2052,20 @@ return '<div onclick="voteWeekend('+o.id+')" style="padding:10px 0;cursor:pointe
 '<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">Premium: swipe on people planning to go to your picked bar</div>';
 }
 function preSwipeForPlan(){
-const winner=[...weekendOptions].sort((a,b)=>b.votes.length-a.votes.length)[0];
-alert('💎 Pre-Swipe Tonight — PREMIUM\n\nYou voted for: '+winner.name+'\n\nPeople also going to '+winner.name+' this weekend:\n\n👩‍🦰 Olivia, 22 — ⭐ matched on vibe\n👩 Mia, 23 — friend of Jake M.\n💁‍♀️ Ava, 22 — new to the area\n👩‍🦱 Bella, 21 — loves espresso martinis\n\nSwipe right on any of them. If they also swiped on you AND you both show up Friday night, you get a notification:\n\n"🎉 Your pre-match Olivia just checked in at '+winner.name+'!"\n\n💎 Premium feature — gives you first-mover advantage on the weekend matching pool.\n\n🔒 Unlocks in your city once locals are planning nights on The Library. Spread the word!');
+var winner=[].concat(weekendOptions).sort(function(a,b){return b.votes.length-a.votes.length;})[0];
+alert('💎 Pre-Swipe Tonight — PREMIUM\n\nYou voted for: '+winner.name+'\n\nPeople also going to '+winner.name+' this weekend:\n\n👩\u200D🦰 Olivia, 22 — ⭐ matched on vibe\n👩 Mia, 23 — friend of Jake M.\n💁\u200D♀️ Ava, 22 — new to the area\n👩\u200D🦱 Bella, 21 — loves espresso martinis\n\nSwipe right on any of them. If they also swiped on you AND you both show up Friday night, you get a notification:\n\n"🎉 Your pre-match Olivia just checked in at '+winner.name+'!"\n\n💎 Premium feature — gives you first-mover advantage on the weekend matching pool.\n\n🔒 Unlocks in your city once locals are planning nights on The Library. Spread the word!');
 }
 function voteWeekend(id){
-// Remove "You" from all previous votes
-weekendOptions.forEach(o=>{o.votes=o.votes.filter(v=>v!=='You');});
-// Add to new
-const opt=weekendOptions.find(o=>o.id===id);
+weekendOptions.forEach(function(o){o.votes=o.votes.filter(function(v){return v!=='You';});});
+var opt=weekendOptions.find(function(o){return o.id===id;});
 if(opt){opt.votes.push('You');myVote=id;addXP(5);}
 renderWeekendPlan();
 if(navigator.vibrate)navigator.vibrate(30);
 }
 function suggestWeekendOption(){
-const name=prompt('Suggest a spot for this weekend:','');
+var name=prompt('Suggest a spot for this weekend:','');
 if(!name||!name.trim())return;
-const desc=prompt('What\'s happening there?','');
+var desc=prompt('What\'s happening there?','');
 if(desc===null)return;
 weekendOptions.push({id:Date.now(),name:name.trim(),desc:desc.trim()||'Suggested by you',votes:['You'],emoji:'✨'});
 myVote=weekendOptions[weekendOptions.length-1].id;
@@ -2059,36 +2073,47 @@ addXP(10);
 renderWeekendPlan();
 }
 function getFridayDate(){
-const d=new Date();
-const day=d.getDay();
-const daysUntilFri=(5-day+7)%7||7;
-const fri=new Date(d.getTime()+daysUntilFri*86400000);
+var d=new Date();
+var day=d.getDay();
+var daysUntilFri=(5-day+7)%7||7;
+var fri=new Date(d.getTime()+daysUntilFri*86400000);
 return fri.toLocaleDateString([],{month:'short',day:'numeric'});
 }
 
-async function loadWeekendPlans(){
-const listEl=document.getElementById('weekendPlansList');
+function renderWeekendPlansList(plans){
+var listEl=document.getElementById('weekendPlansList');
 if(!listEl)return;
-// Ensure auth session is loaded before querying (prevents RLS blocking on fresh page load)
-try{await LC.getSession();}catch(e){}
-try{
-const plans=await LC.listWeekendPlans();
-if(plans.length===0){
+var myId=LC.userId();
+// Client-side visibility filter
+var visible=plans.filter(function(p){return canSeePlan(p,myId);});
+if(visible.length===0){
 listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No suggestions yet — be the first!</div>';
 return;
 }
-const totalVotes=plans.reduce((a,p)=>a+(p.weekend_votes||[]).length,0);
-listEl.innerHTML=plans.map((p,i)=>{
-const votes=p.weekend_votes||[];
-const myVote=LC.userId()&&votes.some(v=>v.user_id===LC.userId());
-const pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
-return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
-'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+p.name+'</span>'+(myVote?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div>'+(p.description?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+p.description+'</div>':'')+'</div><span style="font-size:13px;font-weight:700">'+votes.length+'</span></div>'+
-'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(myVote?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
+var totalVotes=visible.reduce(function(a,p){return a+(p.weekend_votes||[]).length;},0);
+listEl.innerHTML=visible.map(function(p,i){
+var votes=p.weekend_votes||[];
+var iVoted=myId&&votes.some(function(v){return v.user_id===myId;});
+var pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
+var isMine=p.created_by===myId;
+var deleteBtn=isMine?'<span onclick="event.stopPropagation();deleteWeekendPlan(\''+p.id+'\')" style="font-size:11px;color:var(--red);cursor:pointer;padding:2px 6px" title="Delete">✕</span>':'';
+return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<visible.length-1?'border-bottom:0.5px solid #333':'')+'">'+
+'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+p.name+'</span>'+(iVoted?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div>'+(p.description?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+p.description+'</div>':'')+'</div><span style="font-size:13px;font-weight:700">'+votes.length+'</span>'+deleteBtn+'</div>'+
+'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(iVoted?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
 '</div>';
 }).join('');
+}
+
+async function loadWeekendPlans(){
+var listEl=document.getElementById('weekendPlansList');
+if(!listEl)return;
+try{
+await LC.getSession();
+var plans=await LC.listWeekendPlans();
+_weekendPlansCache=plans;
+renderWeekendPlansList(plans);
 }catch(e){
-listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px 0">ERROR: '+e.message+'</div>';
+listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px 0">Could not load plans.</div>';
 console.warn('loadWeekendPlans',e);
 }
 }
@@ -2099,23 +2124,53 @@ await loadWeekendPlans();
 
 async function toggleWeekendVote(planId){
 if(!window.LC||!LC.cloud)return;
-if(!LC.userId()){try{await LC.getSession();}catch(e){}}
-if(!LC.userId()){alert('Sign in first.');return;}
+try{await LC.getSession();}catch(e){}
+var myId=LC.userId();
+if(!myId){alert('Sign in first.');return;}
+// Optimistic UI: toggle the vote in cache immediately
+var plan=_weekendPlansCache.find(function(p){return p.id===planId;});
+if(plan){
+var votes=plan.weekend_votes||[];
+var already=votes.some(function(v){return v.user_id===myId;});
+if(already){
+plan.weekend_votes=votes.filter(function(v){return v.user_id!==myId;});
+}else{
+plan.weekend_votes=votes.concat([{plan_id:planId,user_id:myId}]);
+}
+renderWeekendPlansList(_weekendPlansCache);
+}
+if(navigator.vibrate)navigator.vibrate(30);
+// Now persist to DB
 try{
 await LC.toggleVote(planId);
-if(navigator.vibrate)navigator.vibrate(30);
-renderWeekendPlan();
-}catch(e){console.warn('toggleVote',e);}
+}catch(e){
+console.warn('toggleVote error',e);
+// Revert on error by reloading
+await loadWeekendPlans();
+}
+}
+
+async function deleteWeekendPlan(planId){
+if(!confirm('Delete this plan?'))return;
+try{
+await LC.getSession();
+await LC.deletePlan(planId);
+// Remove from cache
+_weekendPlansCache=_weekendPlansCache.filter(function(p){return p.id!==planId;});
+renderWeekendPlansList(_weekendPlansCache);
+}catch(e){
+alert('Could not delete: '+e.message);
+}
 }
 
 async function suggestRealPlan(){
 if(!window.LC||!LC.cloud){alert('Not connected to cloud.');return;}
-if(!LC.userId()){try{await LC.getSession();}catch(e){}}
+try{await LC.getSession();}catch(e){}
 if(!LC.userId()){alert('Sign in first to suggest a spot.');return;}
-const venueOpts=knownVenues.map(v=>({label:v,emoji:'📍'}));
+var venueOpts=knownVenues.map(function(v){return {label:v,emoji:'📍'};});
 venueOpts.push({label:'Somewhere new...',emoji:'✨',sub:'Type a name'});
-showPicker('📅 Suggest a Spot','Where should the crew go this weekend?',venueOpts,(idx)=>{
-let name;
+showPicker('📅 Suggest a Spot','Where should the crew go this weekend?',venueOpts,function(idx){
+var name;
 if(idx===venueOpts.length-1){
 name=prompt('Name this spot:','');
 if(!name||!name.trim())return;
@@ -2123,42 +2178,106 @@ name=name.trim();
 }else{
 name=venueOpts[idx].label;
 }
-const desc=prompt('What\'s happening? (optional)','');
-// Now pick which friends to invite
-const allFriends=[...(circles.diehards||[]),...(circles.besties||[]),...(circles.friends||[])];
+var desc=prompt('What\'s happening? (optional)','');
+var allFriends=[].concat(circles.diehards||[],circles.besties||[],circles.friends||[]);
 if(allFriends.length===0){
-// No friends yet — just create the plan visible to creator only
-const emoji=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'][Math.floor(Math.random()*8)];
-LC.suggestPlan(name,desc||'',emoji,[]).then(()=>{
-if(!knownVenues.includes(name)){knownVenues.push(name);localStorage.setItem('lc_venues',JSON.stringify(knownVenues));}
-renderWeekendPlan();
-showCelebrationToast('📅','Spot Suggested!','Add friends to invite them');
-}).catch(e=>alert('Error: '+e.message));
+finishSuggestPlan(name,desc,[]);
 return;
 }
-// Show friend multi-select
-const friendOpts=allFriends.map(f=>({label:f.name,emoji:f.emoji||'👤',sub:'',cloudId:f.cloudId}));
-friendOpts.push({label:'Everyone',emoji:'👥',sub:'Invite all your friends'});
-showPicker('👥 Who\'s invited?','Pick friends to see this plan',friendOpts,(fIdx)=>{
-let invitedIds;
-if(fIdx===friendOpts.length-1){
-// Everyone
-invitedIds=allFriends.filter(f=>f.cloudId).map(f=>f.cloudId);
-}else{
-// Single friend — but user probably wants to pick multiple.
-// For v1: let them pick one, then the plan is visible to creator + that friend
-// TODO: multi-select picker
-invitedIds=friendOpts[fIdx].cloudId?[friendOpts[fIdx].cloudId]:[];
+// Show friend multi-select picker with checkboxes
+showFriendMultiPicker(allFriends,function(invitedIds){
+finishSuggestPlan(name,desc,invitedIds);
+});
+});
 }
-const emoji=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'][Math.floor(Math.random()*8)];
-LC.suggestPlan(name,desc||'',emoji,invitedIds).then(()=>{
+
+function showFriendMultiPicker(allFriends,onDone){
+var selected={};
+var modal=document.getElementById('pickerModal');
+modal.style.display='flex';
+function renderFriendList(){
+var html='<div style="background:var(--bg2);width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:20px;padding-bottom:calc(20px + var(--safe-bottom));max-height:85vh;overflow-y:auto;animation:slideUpModal .3s cubic-bezier(.34,1.56,.64,1)" onclick="event.stopPropagation()">'+
+'<div style="width:40px;height:4px;background:#444;border-radius:2px;margin:0 auto 16px"></div>'+
+'<div style="font-size:18px;font-weight:700;margin-bottom:4px">👥 Who\'s invited?</div>'+
+'<div style="font-size:12px;color:var(--text3);margin-bottom:16px">Tap friends to invite. Only selected friends (and you) will see this plan.</div>'+
+'<div style="display:flex;flex-direction:column;gap:8px">';
+allFriends.forEach(function(f,i){
+var checked=selected[i];
+html+='<button data-fidx="'+i+'" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:'+(checked?'rgba(99,102,241,.15)':'var(--card)')+';border:1px solid '+(checked?'var(--primary)':'rgba(255,255,255,.06)')+';border-radius:14px;color:var(--text);cursor:pointer;text-align:left;width:100%">'+
+'<span style="font-size:22px">'+(f.emoji||'👤')+'</span>'+
+'<div style="flex:1"><div style="font-size:15px;font-weight:600">'+f.name+'</div></div>'+
+'<span style="font-size:18px">'+(checked?'✅':'○')+'</span></button>';
+});
+// Select All button
+var allChecked=allFriends.length>0&&allFriends.every(function(f,i){return selected[i];});
+html+='<button data-action="all" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:'+(allChecked?'rgba(99,102,241,.15)':'var(--card)')+';border:1px solid '+(allChecked?'var(--primary)':'rgba(255,255,255,.06)')+';border-radius:14px;color:var(--text);cursor:pointer;text-align:left;width:100%">'+
+'<span style="font-size:22px">👥</span>'+
+'<div style="flex:1"><div style="font-size:15px;font-weight:600">Everyone</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Invite all your friends</div></div>'+
+'<span style="font-size:18px">'+(allChecked?'✅':'○')+'</span></button>';
+html+='</div>';
+// Done button
+var count=Object.keys(selected).filter(function(k){return selected[k];}).length;
+html+='<button data-action="done" style="width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:15px;cursor:pointer">'+(count>0?'Invite '+count+' friend'+(count>1?'s':''):'Skip — visible to just me')+'</button>';
+html+='<button data-action="cancel" style="width:100%;margin-top:4px;padding:14px;background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer">Cancel</button>';
+html+='</div>';
+modal.innerHTML=html;
+}
+renderFriendList();
+modal.onclick=function(e){
+if(e.target===modal){modal.style.display='none';return;}
+var btn=e.target.closest('button');
+if(!btn)return;
+var fidx=btn.getAttribute('data-fidx');
+var action=btn.getAttribute('data-action');
+if(fidx!==null){
+var fi=parseInt(fidx,10);
+selected[fi]=!selected[fi];
+renderFriendList();
+if(navigator.vibrate)navigator.vibrate(15);
+return;
+}
+if(action==='all'){
+var allChecked=allFriends.every(function(f,i){return selected[i];});
+allFriends.forEach(function(f,i){selected[i]=!allChecked;});
+renderFriendList();
+if(navigator.vibrate)navigator.vibrate(15);
+return;
+}
+if(action==='done'){
+modal.style.display='none';
+var ids=[];
+allFriends.forEach(function(f,i){if(selected[i]&&f.cloudId)ids.push(f.cloudId);});
+onDone(ids);
+return;
+}
+if(action==='cancel'){
+modal.style.display='none';
+return;
+}
+};
+}
+
+async function finishSuggestPlan(name,desc,invitedIds){
+var emoji=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'][Math.floor(Math.random()*8)];
+try{
+await LC.getSession();
+var plan=await LC.suggestPlan(name,desc||'',emoji,invitedIds);
 if(!knownVenues.includes(name)){knownVenues.push(name);localStorage.setItem('lc_venues',JSON.stringify(knownVenues));}
-renderWeekendPlan();
-const count=fIdx===friendOpts.length-1?allFriends.length:1;
+// Optimistically add the new plan to the cache and render immediately
+if(plan){
+plan.weekend_votes=[];
+_weekendPlansCache.push(plan);
+renderWeekendPlansList(_weekendPlansCache);
+}
+var count=invitedIds.length;
+if(count>0){
 showCelebrationToast('📅','Spot Suggested!',count+' friend'+(count>1?'s':'')+' invited');
-}).catch(e=>alert('Error: '+e.message));
-});
-});
+}else{
+showCelebrationToast('📅','Spot Suggested!','Add friends to invite them');
+}
+}catch(e){
+alert('Error: '+e.message);
+}
 }
 
 function renderBarMap(){
