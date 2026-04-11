@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=21;
+var MY_VERSION=22;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2081,7 +2081,7 @@ return;
 }
 listEl.innerHTML=plans.map((p,i)=>{
 const votes=p.weekend_votes||[];
-const myVote=LC.me&&votes.some(v=>v.user_id===LC.me.id);
+const myVote=LC.me&&votes.some(v=>v.user_id===LC.userId());
 const pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
 const creator=p.creator?.display_name||'Someone';
 return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
@@ -2101,8 +2101,8 @@ await loadWeekendPlans();
 
 async function toggleWeekendVote(planId){
 if(!window.LC||!LC.cloud)return;
-if(!LC.me){try{await LC.getSession().then(s=>s&&LC.loadMe());}catch(e){}}
-if(!LC.me){alert('Still loading — try again in a moment.');return;}
+if(!LC.userId()){try{await LC.getSession();}catch(e){}}
+if(!LC.userId()){alert('Sign in first.');return;}
 try{
 await LC.toggleVote(planId);
 if(navigator.vibrate)navigator.vibrate(30);
@@ -2112,8 +2112,8 @@ renderWeekendPlan();
 
 async function suggestRealPlan(){
 if(!window.LC||!LC.cloud){alert('Not connected to cloud.');return;}
-if(!LC.me){try{const s=await LC.getSession();if(s)await LC.loadMe();}catch(e){}}
-if(!LC.me){alert('Still loading your profile — try again in a moment.');return;}
+if(!LC.userId()){try{await LC.getSession();}catch(e){}}
+if(!LC.userId()){alert('Sign in first to suggest a spot.');return;}
 const venueOpts=knownVenues.map(v=>({label:v,emoji:'📍'}));
 venueOpts.push({label:'Somewhere new...',emoji:'✨',sub:'Type a name'});
 showPicker('📅 Suggest a Spot','Where should the crew go this weekend?',venueOpts,(idx)=>{
@@ -2321,7 +2321,7 @@ const email=prompt('Send a friend request by email\n\nThey\'ll need to accept it
 if(!email||!email.trim())return;
 LC.findUserByEmail(email.trim()).then(u=>{
 if(!u){alert('Couldn\'t find anyone with that email.\n\nMake sure they\'ve signed in at least once first.');return;}
-if(u.id===LC.me.id){alert('That\'s you!');return;}
+if(u.id===LC.userId()){alert('That\'s you!');return;}
 LC.addFriend(u.id,tier).then(()=>{
 alert('✅ Friend request sent to '+u.display_name+'!\n\nThey\'ll see it in their Circles next time they open the app.');
 }).catch(e=>alert('Error: '+e.message));
@@ -2959,11 +2959,12 @@ if(LC_DEMO){
 alert('You\'re in demo mode. Sign in with your email + password to invite real friends.');
 return;
 }
-if(!window.LC||!LC.cloud||!LC.me){
-alert('Still loading your profile — wait a moment and try again.');
+var uid=window.LC&&LC.userId?LC.userId():null;
+if(!uid){
+alert('Still loading — wait a moment and try again.');
 return;
 }
-var url=window.location.origin+window.location.pathname+'?invite='+LC.me.id;
+var url=window.location.origin+window.location.pathname+'?invite='+uid;
 if(navigator.share){
 navigator.share({title:'Join me on The Library',text:'Track our nights out together — tap to join my Circle:',url:url}).catch(function(){});
 }else if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -2980,7 +2981,7 @@ prompt('Copy this invite link:',url);
 async function processInviteLink(){
 const inviterId=localStorage.getItem('lc_pending_invite');
 if(!inviterId||!window.LC||!LC.cloud||!LC.me)return;
-if(inviterId===LC.me.id){
+if(inviterId===LC.userId()){
 localStorage.removeItem('lc_pending_invite');
 return;
 }
@@ -3217,7 +3218,7 @@ await hydrateFromCloud();
 // Process pending invite link (from ?invite=USER_ID)
 try{
 const pendingInvite=localStorage.getItem('lc_pending_invite');
-if(pendingInvite&&LC.me&&pendingInvite!==LC.me.id){
+if(pendingInvite&&LC.me&&pendingInvite!==LC.userId()){
 await LC.acceptInvite(pendingInvite);
 localStorage.removeItem('lc_pending_invite');
 // Add inviter to local circles so they appear immediately
@@ -3229,7 +3230,7 @@ saveCircles();
 renderCircles();
 }
 }
-}else if(pendingInvite&&LC.me&&pendingInvite===LC.me.id){
+}else if(pendingInvite&&LC.me&&pendingInvite===LC.userId()){
 // Don't invite yourself
 localStorage.removeItem('lc_pending_invite');
 }
@@ -3243,7 +3244,7 @@ if(!LC.me)return;
 // end_time=null from a previous tab that was killed before endSession
 // could finish).
 try{
-const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.me.id).is('end_time',null);
+const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.userId()).is('end_time',null);
 if(active.data&&active.data.length>0){
 console.log('[lc] auto-closing',active.data.length,'orphaned sessions');
 for(const s of active.data){
