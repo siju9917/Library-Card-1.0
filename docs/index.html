@@ -1956,8 +1956,12 @@ let myVote=1;
 function renderWeekendPlan(){
 const el=document.getElementById('weekendPlan');
 if(!el)return;
+if(!LC_DEMO&&window.LC&&LC.cloud&&LC.me){
+renderRealWeekendPlan(el);
+return;
+}
 if(!LC_DEMO){
-el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No plans yet.<br><span style="font-size:11px">Add friends and suggest a spot to get started.</span></div>';
+el.innerHTML='<div style="text-align:center;padding:20px 12px;color:var(--text3);font-size:12px">No plans yet.</div>';
 return;
 }
 const totalVotes=weekendOptions.reduce((a,o)=>a+o.votes.length,0);
@@ -2004,6 +2008,62 @@ const day=d.getDay();
 const daysUntilFri=(5-day+7)%7||7;
 const fri=new Date(d.getTime()+daysUntilFri*86400000);
 return fri.toLocaleDateString([],{month:'short',day:'numeric'});
+}
+
+async function renderRealWeekendPlan(el){
+try{
+const plans=await LC.listWeekendPlans();
+const fri=getFridayDate();
+const totalVotes=plans.reduce((a,p)=>a+(p.weekend_votes?p.weekend_votes.length:0),0);
+el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">'+(plans.length>0?totalVotes+' votes in':'Suggest a spot to kick things off')+'</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri+'</div></div>'+
+(plans.length>0?plans.map((p,i)=>{
+const votes=p.weekend_votes||[];
+const myVote=votes.some(v=>v.user_id===LC.me.id);
+const pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
+const creator=p.creator?.display_name||'Someone';
+return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
+'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+p.name+'</span>'+(myVote?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.description||'Suggested by '+creator)+'</div></div><span style="font-size:13px;font-weight:700">'+votes.length+'</span></div>'+
+'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(myVote?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
+'</div>';
+}).join(''):'<div style="text-align:center;padding:16px 0;color:var(--text3);font-size:12px">No suggestions yet — be the first!</div>')+
+'<div style="padding-top:12px"><button onclick="suggestRealPlan()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:14px;cursor:pointer">+ Suggest a Spot</button></div>';
+}catch(e){
+el.innerHTML='<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Couldn\'t load plans.</div>';
+console.warn('renderRealWeekendPlan',e);
+}
+}
+
+async function toggleWeekendVote(planId){
+if(!window.LC||!LC.cloud||!LC.me)return;
+try{
+await LC.toggleVote(planId);
+if(navigator.vibrate)navigator.vibrate(30);
+renderWeekendPlan();
+}catch(e){console.warn('toggleVote',e);}
+}
+
+function suggestRealPlan(){
+if(!window.LC||!LC.cloud||!LC.me)return;
+const venueOpts=knownVenues.map(v=>({label:v,emoji:'📍'}));
+venueOpts.push({label:'Somewhere new...',emoji:'✨',sub:'Type a name'});
+showPicker('📅 Suggest a Spot','Where should the crew go this weekend?',venueOpts,(idx)=>{
+let name,desc;
+if(idx===venueOpts.length-1){
+name=prompt('Name this spot:','');
+if(!name||!name.trim())return;
+name=name.trim();
+}else{
+name=venueOpts[idx].label;
+}
+desc=prompt('What\'s happening? (optional)','');
+const emojiOpts=['📍','🍺','🍸','🎵','🏖','🎉','🏠','⚽'];
+const emoji=emojiOpts[Math.floor(Math.random()*emojiOpts.length)];
+LC.suggestPlan(name,desc||'',emoji).then(()=>{
+if(!knownVenues.includes(name)){knownVenues.push(name);localStorage.setItem('lc_venues',JSON.stringify(knownVenues));}
+renderWeekendPlan();
+showCelebrationToast('📅','Spot Suggested!','Friends can now vote on it');
+}).catch(e=>alert('Error: '+e.message));
+});
 }
 
 function renderBarMap(){
