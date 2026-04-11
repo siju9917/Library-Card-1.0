@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=41;
+var MY_VERSION=42;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -805,7 +805,7 @@ const container=document.getElementById('sessionContent');
 if(!sessionUIBuilt){
 container.innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div id="sessTimer" style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
-'<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCPM">0.000</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
+'<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessDrinks">0</div><div class="label">🍺 Drinks</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
 '<div class="card" id="sessVibeCard" style="margin-bottom:16px;border-left:3px solid var(--green)"></div>'+
 '<h3 id="chartTitle">Your Pace</h3><div class="card" id="barDistChart" style="position:relative;padding:14px;margin-bottom:28px"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
@@ -817,9 +817,8 @@ lastDrinksLen=-1;
 // Always update the live stats (timer, counts, BAC)
 document.getElementById('sessTimer').textContent=formatTimer(elapsed);
 const cheersCountLive=drinks.filter(d=>d.hasPhoto).length;
-const cpmLive=elapsed>0&&cheersCountLive>0?(cheersCountLive/(elapsed/60000)).toFixed(3):'0.000';
+document.getElementById('sessDrinks').textContent=drinks.length;
 document.getElementById('sessCheers').textContent=cheersCountLive;
-document.getElementById('sessCPM').textContent=cpmLive;
 document.getElementById('sessPace').textContent=dph+'/hr';
 // Vibe Check card — color from BAC (alcohol only), commentary from total drinks (NA counts)
 const bacLive=calcBAC(drinks.filter(d=>!d.isNA).length,elapsed);
@@ -3458,11 +3457,19 @@ cloudSessionId=s.id;
 friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
+// Map cloud drinks to local format. Use drink_type OR name as fallback.
 drinks=cloudDrinks.map(function(d){return{
-name:d.name,type:d.drink_type,time:new Date(d.logged_at).getTime(),
-rating:d.rating,hasPhoto:!!d.has_photo,isNA:!!d.is_na,
-photoUrl:d.photo_url,caption:d.caption,cloudId:d.id
+name:d.name||d.drink_type||'Drink',
+type:d.drink_type||d.name||'Other',
+time:new Date(d.logged_at).getTime(),
+rating:d.rating||null,
+hasPhoto:!!(d.has_photo||d.photo_url),
+isNA:!!d.is_na,
+photoUrl:d.photo_url||null,
+caption:d.caption||null,
+cloudId:d.id
 };});
+console.log('[lc] resumed with',drinks.length,'drinks from cloud');
 // Switch to session UI
 const nrm=document.getElementById('homeNormal');
 const sc=document.getElementById('sessionContent');
