@@ -339,10 +339,11 @@
     monday.setHours(0, 0, 0, 0);
     const weekStart = monday.toISOString().split('T')[0];
 
-    const { data } = await sb.from('weekend_plans')
-      .select('*, creator:users!weekend_plans_created_by_fkey(display_name, emoji), weekend_votes(user_id)')
+    const { data, error } = await sb.from('weekend_plans')
+      .select('*, weekend_votes(user_id)')
       .gte('week_start', weekStart)
       .order('created_at');
+    if (error) { console.warn('listWeekendPlans error:', error); return []; }
     return data || [];
   };
 
@@ -354,14 +355,17 @@
     monday.setDate(now.getDate() + mondayOffset);
     monday.setHours(0, 0, 0, 0);
 
+    // created_by defaults to auth.uid() on the server via column default
     const { data, error } = await sb.from('weekend_plans').insert({
-      created_by: LC.userId(),
       name,
       description: description || '',
       emoji: emoji || '📍',
       week_start: monday.toISOString().split('T')[0],
     }).select().single();
-    if (error) throw error;
+    if (error) {
+      console.warn('suggestPlan error:', error);
+      throw error;
+    }
     return data;
   };
 
