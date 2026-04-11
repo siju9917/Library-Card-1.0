@@ -38,6 +38,13 @@
     realtimeChannels: [],
   };
 
+  // Helper: get current user ID from session (always available) or profile
+  LC.userId = function () {
+    if (LC.me) return LC.me.id;
+    if (LC.session) return LC.session.user.id;
+    return null;
+  };
+
   // ---------- AUTH ----------
   LC.signInWithEmail = async function (email) {
     const { error } = await sb.auth.signInWithOtp({
@@ -78,7 +85,7 @@
 
   LC.updateProfile = async function (patch) {
     if (!LC.me) return;
-    const { data, error } = await sb.from('users').update(patch).eq('id', LC.me.id).select().single();
+    const { data, error } = await sb.from('users').update(patch).eq('id', LC.userId()).select().single();
     if (error) throw error;
     LC.me = data;
     return data;
@@ -99,7 +106,7 @@
   // ---------- SESSIONS ----------
   LC.startSession = async function (venueName, venueId) {
     const { data, error } = await sb.from('sessions').insert({
-      user_id: LC.me.id,
+      user_id: LC.userId(),
       venue_id: venueId || null,
       venue_name: venueName || null,
     }).select().single();
@@ -120,7 +127,7 @@
   LC.getMyActiveSession = async function () {
     const { data } = await sb.from('sessions')
       .select('*')
-      .eq('user_id', LC.me.id)
+      .eq('user_id', LC.userId())
       .is('end_time', null)
       .order('start_time', { ascending: false })
       .limit(1);
@@ -130,7 +137,7 @@
   LC.listMySessions = async function (limit = 50) {
     const { data } = await sb.from('sessions')
       .select('*')
-      .eq('user_id', LC.me.id)
+      .eq('user_id', LC.userId())
       .not('end_time', 'is', null)
       .order('start_time', { ascending: false })
       .limit(limit);
@@ -152,7 +159,7 @@
   LC.listFeedSessions = async function (limit = 30) {
     // Recent completed sessions from friends + me
     const friends = await LC.listMyFriends();
-    const ids = [LC.me.id, ...friends.map(f => f.friend_id)];
+    const ids = [LC.userId(), ...friends.map(f => f.friend_id)];
     const { data } = await sb.from('sessions')
       .select('*, users!sessions_user_id_fkey(display_name, emoji), drinks(*), likes(user_id), comments(*)')
       .in('user_id', ids)
@@ -166,7 +173,7 @@
   LC.logDrink = async function (sessionId, payload) {
     const { data, error } = await sb.from('drinks').insert({
       session_id: sessionId,
-      user_id: LC.me.id,
+      user_id: LC.userId(),
       name: payload.name,
       drink_type: payload.type,
       is_na: !!payload.isNA,
@@ -193,7 +200,7 @@
 
   // ---------- PHOTOS ----------
   LC.uploadPhoto = async function (blob, ext = 'jpg') {
-    const path = `${LC.me.id}/${Date.now()}.${ext}`;
+    const path = `${LC.userId()}/${Date.now()}.${ext}`;
     const { error } = await sb.storage.from('cheers-photos').upload(path, blob, {
       contentType: blob.type || 'image/jpeg',
       upsert: false,
@@ -207,7 +214,7 @@
   LC.listMyFriends = async function () {
     const { data } = await sb.from('friendships')
       .select('*, friend:users!friendships_friend_id_fkey(id, display_name, emoji, email)')
-      .eq('user_id', LC.me.id)
+      .eq('user_id', LC.userId())
       .eq('status', 'accepted');
     return data || [];
   };
@@ -219,7 +226,7 @@
 
   LC.addFriend = async function (friendId, tier = 'friends') {
     const { data, error } = await sb.from('friendships').upsert({
-      user_id: LC.me.id, friend_id: friendId, tier, status: 'pending'
+      user_id: LC.userId(), friend_id: friendId, tier, status: 'pending'
     }, { onConflict: 'user_id,friend_id' }).select().single();
     if (error) throw error;
     return data;
@@ -233,7 +240,7 @@
   LC.listPendingRequests = async function () {
     const { data } = await sb.from('friendships')
       .select('*, requester:users!friendships_user_id_fkey(id, display_name, emoji, email)')
-      .eq('friend_id', LC.me.id)
+      .eq('friend_id', LC.userId())
       .eq('status', 'pending');
     return data || [];
   };
@@ -245,26 +252,26 @@
 
   LC.declineFriendRequest = async function (requesterId) {
     await sb.from('friendships').update({ status: 'declined' })
-      .match({ user_id: requesterId, friend_id: LC.me.id });
+      .match({ user_id: requesterId, friend_id: LC.userId() });
   };
 
   LC.moveFriendTier = async function (friendId, tier) {
     if (tier === null) {
-      await sb.from('friendships').delete().match({ user_id: LC.me.id, friend_id: friendId });
+      await sb.from('friendships').delete().match({ user_id: LC.userId(), friend_id: friendId });
       return;
     }
-    await sb.from('friendships').update({ tier }).match({ user_id: LC.me.id, friend_id: friendId });
+    await sb.from('friendships').update({ tier }).match({ user_id: LC.userId(), friend_id: friendId });
   };
 
   // ---------- LIKES (🔥) ----------
   LC.toggleLike = async function (sessionId) {
     const { data: existing } = await sb.from('likes')
-      .select('*').match({ session_id: sessionId, user_id: LC.me.id });
+      .select('*').match({ session_id: sessionId, user_id: LC.userId() });
     if (existing && existing.length > 0) {
-      await sb.from('likes').delete().match({ session_id: sessionId, user_id: LC.me.id });
+      await sb.from('likes').delete().match({ session_id: sessionId, user_id: LC.userId() });
       return false;
     } else {
-      await sb.from('likes').insert({ session_id: sessionId, user_id: LC.me.id });
+      await sb.from('likes').insert({ session_id: sessionId, user_id: LC.userId() });
       return true;
     }
   };
@@ -277,7 +284,7 @@
   // ---------- COMMENTS ----------
   LC.addComment = async function (sessionId, text, emoji = '💬') {
     const { data, error } = await sb.from('comments').insert({
-      session_id: sessionId, user_id: LC.me.id, text, emoji
+      session_id: sessionId, user_id: LC.userId(), text, emoji
     }).select().single();
     if (error) throw error;
     return data;
@@ -294,7 +301,7 @@
   // ---------- DRINK GIFTS ----------
   LC.sendDrinkGift = async function (toUserId, drinkName, occasion) {
     const { data, error } = await sb.from('drink_gifts').insert({
-      from_user: LC.me.id, to_user: toUserId, drink_name: drinkName, occasion
+      from_user: LC.userId(), to_user: toUserId, drink_name: drinkName, occasion
     }).select().single();
     if (error) throw error;
     return data;
@@ -303,7 +310,7 @@
   LC.listMyGifts = async function () {
     const { data } = await sb.from('drink_gifts')
       .select('*, from_user:users!drink_gifts_from_user_fkey(display_name, emoji)')
-      .eq('to_user', LC.me.id)
+      .eq('to_user', LC.userId())
       .eq('status', 'pending');
     return data || [];
   };
@@ -315,7 +322,7 @@
   // ---------- SOS ----------
   LC.sendSOS = async function (venueName, lat, lng) {
     const { data, error } = await sb.from('sos_alerts').insert({
-      user_id: LC.me.id, venue_name: venueName, lat, lng
+      user_id: LC.userId(), venue_name: venueName, lat, lng
     }).select().single();
     if (error) throw error;
     return data;
@@ -348,7 +355,7 @@
     monday.setHours(0, 0, 0, 0);
 
     const { data, error } = await sb.from('weekend_plans').insert({
-      created_by: LC.me.id,
+      created_by: LC.userId(),
       name,
       description: description || '',
       emoji: emoji || '📍',
@@ -360,12 +367,12 @@
 
   LC.toggleVote = async function (planId) {
     const { data: existing } = await sb.from('weekend_votes')
-      .select('*').match({ plan_id: planId, user_id: LC.me.id });
+      .select('*').match({ plan_id: planId, user_id: LC.userId() });
     if (existing && existing.length > 0) {
-      await sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: LC.me.id });
+      await sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: LC.userId() });
       return false;
     } else {
-      await sb.from('weekend_votes').insert({ plan_id: planId, user_id: LC.me.id });
+      await sb.from('weekend_votes').insert({ plan_id: planId, user_id: LC.userId() });
       return true;
     }
   };
