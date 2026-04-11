@@ -2,7 +2,7 @@
   "name": "Library Card",
   "short_name": "Library",
   "description": "Track your nights out with friends.",
-  "start_url": "./index.html",
+  "start_url": "./app.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0A0A0A",
