@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=38;
+var MY_VERSION=39;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -807,7 +807,7 @@ container.innerHTML=
 '<div style="text-align:center;margin-bottom:20px"><div id="sessTimer" style="font-size:44px;font-weight:300;font-variant-numeric:tabular-nums;color:var(--primary)">'+formatTimer(elapsed)+'</div></div>'+
 '<div class="card-row" style="margin-bottom:16px"><div class="card stat-card" style="text-align:center"><div class="value" id="sessCheers">0</div><div class="label">📸 Cheers</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessCPM">0.000</div><div class="label">CPM</div></div><div class="card stat-card" style="text-align:center"><div class="value" id="sessPace">0.0/hr</div><div class="label">Pace</div></div></div>'+
 '<div class="card" id="sessVibeCard" style="margin-bottom:16px;border-left:3px solid var(--green)"></div>'+
-'<h3>You vs. Friends</h3><div class="card" id="barDistChart" style="position:relative;padding:14px;margin-bottom:28px"></div>'+
+'<h3 id="chartTitle">Your Pace</h3><div class="card" id="barDistChart" style="position:relative;padding:14px;margin-bottom:28px"></div>'+
 '<h3>Quick Add</h3><div id="favDrinks"></div><div id="drinkGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>'+
 '<h3>Cheers Log</h3><div id="drinksLog" style="margin-bottom:16px"></div>'+
 '<button class="btn btn-danger" onclick="endSession()">End Session</button>';
@@ -878,16 +878,28 @@ let friendInhabitants=null;
 function getFriendInhabitants(){
 if(friendInhabitants)return friendInhabitants;
 if(!LC_DEMO){
-// Real mode: pull from actual Circles (die hards + besties). If empty, return [].
-const palette=['#3B82F6','#EC4899','#10B981','#F59E0B','#8B5CF6','#F97316','#06B6D4','#EF4444'];
-const realFriends=[...(circles.diehards||[]),...(circles.besties||[])];
-friendInhabitants=realFriends.map((f,i)=>({
-name:f.name,
-emoji:f.emoji||'👤',
+// Real mode: only show friends who are ACTUALLY in active sessions.
+// We don't have their real-time drink data, so return empty.
+// The chart shows a solo pace view when no friends are active.
+friendInhabitants=[];
+// Try to load real active friend sessions in the background
+if(window.LC&&LC.cloud&&LC.userId()){
+LC.listFriendsActiveSessions().then(function(rows){
+if(!rows||rows.length===0)return;
+const palette=['#3B82F6','#EC4899','#10B981','#F59E0B','#8B5CF6','#F97316'];
+friendInhabitants=rows.map(function(r,i){
+const startT=new Date(r.start_time).getTime();
+const headStart=Math.max(0,(sessionStart-startT)/60000);
+return{
+name:r.users?.display_name||'Friend',
+emoji:r.users?.emoji||'🍻',
 color:palette[i%palette.length],
-pace:1.5+Math.random()*2.0,
-headStart:30+Math.floor(Math.random()*90),
-}));
+pace:r.total_drinks>0&&headStart>0?(r.total_drinks/(headStart/60)):2.0,
+headStart:headStart,
+};
+});
+}).catch(function(){});
+}
 return friendInhabitants;
 }
 const seedFriends=[
@@ -917,9 +929,16 @@ if(!chart||!chart.clientWidth)return;
 const friends=getFriendInhabitants();
 // Empty state: real user with no friends in their Circles yet
 if(friends.length===0){
-chart.innerHTML='<div style="text-align:center;padding:18px 12px;color:var(--text3);font-size:12px">No friends in your Circles yet.<br><span style="font-size:11px">Add friends in <b>Social → Circles</b> to race them during sessions.</span></div>';
+// Solo mode: just show your own pace
+const youNow=drinks.length;
+const primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+chart.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">Solo session</div><div style="font-size:12px;color:'+primary+';font-weight:700">'+youNow+' drinks</div></div>'+
+'<div style="text-align:center;padding:8px 0;font-size:11px;color:var(--text3)">When friends start sessions, they\'ll appear here for you to race.</div>';
 return;
 }
+// Update title based on whether friends are racing
+var ct=document.getElementById('chartTitle');
+if(ct)ct.textContent=friends.length>0?'You vs. Friends':'Your Pace';
 const nowMin=Math.max(elapsed/60000,0.5);
 // Build points every ~5% of elapsed time
 const numPts=Math.max(Math.ceil(nowMin/2),2);
