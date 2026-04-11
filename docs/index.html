@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=24;
+var MY_VERSION=25;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2084,7 +2084,7 @@ listEl.innerHTML=plans.map((p,i)=>{
 const votes=p.weekend_votes||[];
 const myVote=LC.userId()&&votes.some(v=>v.user_id===LC.userId());
 const pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
-const creator=p.creator?.display_name||'Someone';
+const creator='a friend';
 return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<plans.length-1?'border-bottom:0.5px solid #333':'')+'">'+
 '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+p.name+'</span>'+(myVote?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.description||'Suggested by '+creator)+'</div></div><span style="font-size:13px;font-weight:700">'+votes.length+'</span></div>'+
 '<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(myVote?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
