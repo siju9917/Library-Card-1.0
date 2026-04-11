@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=23;
+var MY_VERSION=24;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -2008,7 +2008,7 @@ if(!LC_DEMO&&window.LC&&LC.cloud){
 // Show suggest button immediately, load plans async
 const fri=getFridayDate();
 el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-weight:600">What\'s the move?</div><div style="font-size:11px;color:var(--text2)">Plan for this weekend</div></div><div style="font-size:11px;color:var(--primary);font-weight:600">FRI '+fri+'</div></div>'+
-'<div id="weekendPlansList" style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0">Loading...</div>'+
+'<div id="weekendPlansList" style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0"></div>'+
 '<div style="padding-top:8px"><button onclick="suggestRealPlan()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:14px;cursor:pointer">+ Suggest a Spot</button></div>';
 // Load plans in background — retry if LC.me not ready
 loadWeekendPlans();
@@ -2067,13 +2067,14 @@ return fri.toLocaleDateString([],{month:'short',day:'numeric'});
 async function loadWeekendPlans(){
 const listEl=document.getElementById('weekendPlansList');
 if(!listEl)return;
-// Wait for session if not ready yet
 if(!LC.userId()){
 try{await LC.getSession();}catch(e){}
 }
-if(!LC.userId()){listEl.innerHTML='<div style="color:var(--text3);font-size:12px">Sign in to see plans.</div>';return;}
+if(!LC.userId()){return;}
 try{
-const plans=await LC.listWeekendPlans();
+// 5-second timeout so Loading never gets stuck
+const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
+const plans=await Promise.race([LC.listWeekendPlans(),timeout]);
 const totalVotes=plans.reduce((a,p)=>a+(p.weekend_votes?p.weekend_votes.length:0),0);
 if(plans.length===0){
 listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">No suggestions yet — be the first!</div>';
@@ -2655,8 +2656,10 @@ const el=document.getElementById('liveBarMap');
 if(!el)return;
 // Cloud mode: pull real friend active sessions
 if(window.LC&&LC.cloud&&LC.userId()){
-el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">Loading…</div>';
-LC.listFriendsActiveSessions().then(rows=>{
+el.innerHTML='';
+// 5-second timeout
+const timeout=new Promise(r=>setTimeout(()=>r([]),5000));
+Promise.race([LC.listFriendsActiveSessions(),timeout]).then(rows=>{
 if(!rows||rows.length===0){
 el.innerHTML='<div style="font-size:12px;color:var(--text2);text-align:center;padding:18px">No friends out right now.<br><span style="color:var(--text3);font-size:11px">When a friend starts a session you\'ll see them here.</span></div>';
 return;
