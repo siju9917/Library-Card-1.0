@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=18;
+var MY_VERSION=19;
 try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
@@ -3313,8 +3313,8 @@ dismissSplash();
 }
 function dismissSplash(){
 const splash=document.getElementById('splashScreen');
-if(!splash)return;
-// Hold for at least 1.2s from page load so it feels intentional
+if(!splash||splash._dismissed)return;
+splash._dismissed=true;
 const elapsed=Date.now()-window._splashStart;
 const remaining=Math.max(0,1200-elapsed);
 setTimeout(()=>{
@@ -3323,6 +3323,8 @@ setTimeout(()=>{splash.remove();},400);
 },remaining);
 }
 window._splashStart=Date.now();
+// Hard limit: splash ALWAYS dies after 4 seconds no matter what
+setTimeout(dismissSplash,4000);
 
 bootApp();
 </script>
