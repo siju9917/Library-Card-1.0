@@ -339,13 +339,33 @@
     monday.setHours(0, 0, 0, 0);
     const weekStart = monday.toISOString().split('T')[0];
 
-    const { data, error } = await sb.from('weekend_plans')
+    // Get plans the user is invited to (or created)
+    const uid = LC.userId();
+    // First get plan IDs this user is invited to
+    const { data: myInvites } = await sb.from('plan_invites').select('plan_id').eq('user_id', uid);
+    const invitedPlanIds = (myInvites || []).map(i => i.plan_id);
+    // Also get plans this user created (always visible to creator)
+    let plans = [];
+    if (invitedPlanIds.length > 0) {
+      const { data, error } = await sb.from('weekend_plans')
+        .select('*')
+        .gte('week_start', weekStart)
+        .in('id', invitedPlanIds)
+        .order('created_at');
+      if (error) { console.warn('listWeekendPlans error:', error); return []; }
+      plans = data || [];
+    }
+    // Also fetch plans this user created (in case they didn't invite themselves)
+    const { data: myPlans } = await sb.from('weekend_plans')
       .select('*')
       .gte('week_start', weekStart)
-      .order('created_at');
-    if (error) { console.warn('listWeekendPlans error:', error); return []; }
-    // Fetch votes separately (the join was breaking the query)
-    const plans = data || [];
+      .eq('created_by', uid);
+    if (myPlans) {
+      const existingIds = new Set(plans.map(p => p.id));
+      myPlans.forEach(p => { if (!existingIds.has(p.id)) plans.push(p); });
+    }
+    plans.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // Fetch votes per plan
     for (const p of plans) {
       const { data: votes } = await sb.from('weekend_votes').select('user_id').eq('plan_id', p.id);
       p.weekend_votes = votes || [];
@@ -353,7 +373,7 @@
     return plans;
   };
 
-  LC.suggestPlan = async function (name, description, emoji) {
+  LC.suggestPlan = async function (name, description, emoji, invitedFriendIds) {
     const now = new Date();
     const dayOfWeek = now.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -361,7 +381,6 @@
     monday.setDate(now.getDate() + mondayOffset);
     monday.setHours(0, 0, 0, 0);
 
-    // created_by defaults to auth.uid() on the server via column default
     const { data, error } = await sb.from('weekend_plans').insert({
       name,
       description: description || '',
@@ -371,6 +390,18 @@
     if (error) {
       console.warn('suggestPlan error:', error);
       throw error;
+    }
+    // Insert invited friends (creator is always implicitly invited)
+    if (data && invitedFriendIds && invitedFriendIds.length > 0) {
+      const rows = invitedFriendIds.map(fid => ({ plan_id: data.id, user_id: fid }));
+      // Also add the creator
+      const uid = LC.userId();
+      if (uid) rows.push({ plan_id: data.id, user_id: uid });
+      await sb.from('plan_invites').insert(rows).catch(e => console.warn('plan_invites insert', e));
+    } else if (data) {
+      // No friends selected — just add creator
+      const uid = LC.userId();
+      if (uid) await sb.from('plan_invites').insert({ plan_id: data.id, user_id: uid }).catch(e => console.warn('plan_invites insert', e));
     }
     return data;
   };
