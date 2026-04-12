@@ -206,7 +206,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 47</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 48</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=47;
+var MY_VERSION=48;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -697,11 +697,13 @@ return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).p
 // Session functions
 let cloudSessionId=null;
 let pendingVenueName=null;
-let knownVenues=JSON.parse(localStorage.getItem('lc_venues')||'[]');
+let knownVenues=[];
+try{knownVenues=JSON.parse(localStorage.getItem('lc_venues')||'[]')||[];}catch(e){knownVenues=[];}
 
 function promptStartSession(){
+try{
 // If already in an active session with drinks, go to session view
-if(sessionActive&&drinks.length>0){
+if(sessionActive&&drinks&&drinks.length>0){
 const nrm=document.getElementById('homeNormal');
 const sc=document.getElementById('sessionContent');
 if(nrm)nrm.style.display='none';
@@ -715,15 +717,14 @@ sessionActive=false;
 if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
 if(!LC_DEMO&&window.LC&&LC.cloud){
 // Real mode: let user pick or create a venue
-const venueOpts=knownVenues.map(v=>({label:v,emoji:'📍',sub:''}));
+const venueOpts=(knownVenues||[]).map(function(v){return{label:v,emoji:'📍',sub:''};});
 venueOpts.push({label:'+ New venue',emoji:'➕',sub:'Name a bar or spot'});
 venueOpts.push({label:'Skip — no venue',emoji:'🌙',sub:'Start without a location'});
-showPicker('📍 Where are you?','Pick a bar or add a new one',venueOpts,(idx)=>{
+showPicker('📍 Where are you?','Pick a bar or add a new one',venueOpts,function(idx){
+try{
 if(idx===venueOpts.length-1){
-// Skip
 startSession(null);
 }else if(idx===venueOpts.length-2){
-// New venue
 const name=prompt('Name this spot (e.g. "Rooftop Bar"):','');
 if(!name||!name.trim()){startSession(null);return;}
 const trimmed=name.trim();
@@ -735,11 +736,15 @@ startSession(trimmed);
 }else{
 startSession(venueOpts[idx].label);
 }
+}catch(e){alert('Error starting session: '+(e.message||e));}
 });
 return;
 }
 // Demo mode: start immediately
 startSession(null);
+}catch(e){
+alert('Could not start session: '+(e.message||e)+'\n\nTry reloading the app.');
+}
 }
 
 async function startSession(venueName){
