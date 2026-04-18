@@ -10,18 +10,53 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=66">
+<link rel="manifest" href="manifest.json?v=67">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <title>The Library</title>
+<!-- GLOBAL ERROR SURFACING — any uncaught JS error or unhandled promise
+     rejection shows a visible banner the user can actually act on, instead
+     of silently leaving them in a broken UI. This runs BEFORE anything
+     else so even CDN-script errors are caught. -->
+<script>
+(function(){
+  var seen=0;
+  function show(msg,detail){
+    seen++;
+    try{
+      var el=document.getElementById('lcGlobalErr');
+      if(!el){
+        el=document.createElement('div');
+        el.id='lcGlobalErr';
+        el.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#B91C1C;color:#fff;padding:12px 14px;border-radius:10px;font:600 12px/1.35 -apple-system,system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5);max-height:40vh;overflow:auto;-webkit-user-select:text;user-select:text';
+        document.body&&document.body.appendChild(el);
+      }
+      el.innerHTML='';
+      var h=document.createElement('div');h.style.cssText='font-size:13px;margin-bottom:4px';h.textContent='⚠️ Something broke ('+seen+'× this session)';el.appendChild(h);
+      var d=document.createElement('div');d.style.cssText='font-weight:400;white-space:pre-wrap;word-break:break-word;margin-bottom:8px';d.textContent=String(msg||'Unknown error')+(detail?'\n'+detail:'');el.appendChild(d);
+      var row=document.createElement('div');row.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+      var b1=document.createElement('button');b1.textContent='Dismiss';b1.style.cssText='flex:1;padding:8px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer';b1.onclick=function(){el.remove();};
+      var b2=document.createElement('button');b2.textContent='Force Refresh';b2.style.cssText='flex:1;padding:8px;background:#fff;color:#B91C1C;border:none;border-radius:6px;font-weight:700;cursor:pointer';b2.onclick=function(){window._lcForceRefresh?window._lcForceRefresh():location.reload();};
+      row.appendChild(b1);row.appendChild(b2);el.appendChild(row);
+    }catch(_){ /* last-resort: nothing more we can do */ }
+  }
+  window.addEventListener('error',function(e){
+    try{show((e&&e.message)||'JS error',(e&&e.filename?e.filename+':'+e.lineno:'')+(e&&e.error&&e.error.stack?'\n'+String(e.error.stack).split('\n').slice(0,4).join('\n'):''));}catch(_){}
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    try{var r=e&&e.reason;var m=r&&(r.message||r.error_description||String(r))||'promise rejected';show(m,r&&r.stack?String(r.stack).split('\n').slice(0,4).join('\n'):'');}catch(_){}
+  });
+  window._lcReportError=show;
+})();
+</script>
 <!-- BULLETPROOF VERSION GATE — runs BEFORE any CDN script so a hung CDN
      can't block us from picking up a new build. If the deployed version
      is newer than this HTML, we clear every cache/SW/old-build artifact
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=66;
+  var MY_VERSION=67;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -72,8 +107,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=66"></script>
-<script src="supabase/db.js?v=66"></script>
+<script src="supabase/config.js?v=67"></script>
+<script src="supabase/db.js?v=67"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -265,7 +300,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 66</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 67</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -362,6 +397,29 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div id="cameraModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#000;flex-direction:column"></div>
 <div id="pickerModal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,.7);align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)"></div>
 <div id="demoModal" style="display:none;position:fixed;inset:0;z-index:1002;background:var(--bg);flex-direction:column"></div>
+<!-- MODAL ESCAPE HATCH — if ANY modal is display:flex but not clearly
+     dismissable, a long-press or Escape key hides them all. Prevents the
+     "can't click Health Check" class of bug where a stray modal z-index
+     is trapping the user. -->
+<script>
+(function(){
+  function hideAll(){
+    ['cameraModal','pickerModal','demoModal'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&el.style.display!=='none'){el.style.display='none';el.innerHTML='';console.warn('[lc] force-hid modal',id);}
+    });
+  }
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')hideAll();});
+  // Double-tap on the status bar area closes all modals too (iOS users often
+  // can't press Escape).
+  var lastTap=0;
+  document.addEventListener('click',function(e){
+    if(e.clientY>40)return;// status-bar zone only
+    var now=Date.now();if(now-lastTap<400)hideAll();lastTap=now;
+  });
+  window._lcCloseAllModals=hideAll;
+})();
+</script>
 
 <!-- TAB BAR -->
 <div class="tab-bar">
@@ -1150,15 +1208,15 @@ sessionTimer=setInterval(function(){updateSessionUI();},1000);
 updateHome();
 switchTab('home');
 document.getElementById('screenContainer').scrollTop=0;
-// Create cloud session with retries. If it keeps failing, drainPendingOps
-// keeps trying in the background and the shadow on localStorage means we
-// can recover on next load. We never "lose" the session.
+// Create cloud session with retries. Uses a client-generated idempotency
+// key so a retry that succeeded-but-looked-failed can't dupe the row.
 if(window.LC&&LC.cloud&&LC.userId()){
+var opId=(LC.newOpId&&LC.newOpId())||(Date.now()+'-'+Math.random().toString(36).slice(2,10));
 var attempts=0;var maxAttempts=3;
 while(attempts<maxAttempts&&!cloudSessionId){
 attempts++;
 try{
-var s=await LC.startSession(venueName||null,null);
+var s=await LC.startSession(venueName||null,null,opId);
 cloudSessionId=s.id;
 saveLiveSessionShadow();
 console.log('[lc] cloud session started:',cloudSessionId);
@@ -1168,14 +1226,14 @@ break;
 }catch(e){
 console.error('[lc] cloud startSession attempt '+attempts+' FAILED',e);
 if(attempts>=maxAttempts){
-// Show the error instead of failing silently. The session is still
-// active locally (shadow persisted), and on next reload we'll try
-// recovery — but the user deserves to know now.
 updateSyncIndicator();
-try{alert('Heads up: your session started but couldn\'t sync to the cloud yet ('+((e&&e.message)||e)+'). We\'ll keep retrying — your drinks are safe on this device and will sync automatically.');}catch(_){}
+// Surface the actual reason so the user/we can diagnose — NOT a
+// vague "couldn't sync". Session state is still safe in the shadow.
+try{alert('Couldn\'t sync this session to the cloud:\n\n'+((e&&e.message)||e)+'\n\nYour drinks are saved on this device and will auto-retry. If this keeps happening, tap Profile → Health Check.');}catch(_){}
 break;
 }
-await new Promise(function(r){setTimeout(r,1000*attempts);});
+// Jittered exponential backoff — avoids cascading herd retries
+await new Promise(function(r){setTimeout(r,(800*attempts)+Math.floor(Math.random()*400));});
 }
 }
 }
@@ -1454,19 +1512,20 @@ chart.innerHTML=
 }
 
 async function addDrink(type,isNA){
+// Input validation — a typo upstream used to silently log a "[object]" drink.
+if(typeof type!=='string'||!type.trim()){console.error('[lc] addDrink: invalid type',type);return;}
+if(!sessionActive){console.error('[lc] addDrink: no active session');return;}
 if(!isNA&&drinkCap>0&&drinks.filter(d=>!d.isNA).length>=drinkCap){
 alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. Soft drinks still count as Cheers — keep the photos coming!');
 return;
 }
-// Skip the naming prompt — just use the type. Users can rename via rating later.
 const name=type;
-const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA};
+const opId=(window.LC&&LC.newOpId&&LC.newOpId())||(Date.now()+'-'+Math.random().toString(36).slice(2,10));
+const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA,clientOpId:opId};
 drinks.push(drink);
-// Persist shadow before we touch the network so a failure can't lose it
 saveLiveSessionShadow();
-// Cloud: log to drinks table with queue fallback
 if(window.LC&&LC.cloud){
-var payload={name:name,type:type,isNA:!!isNA,_localTime:drink.time};
+var payload={name:name,type:type,isNA:!!isNA,_localTime:drink.time,clientOpId:opId};
 if(cloudSessionId){
 try{
 var d=await LC.logDrink(cloudSessionId,payload);
@@ -1477,7 +1536,6 @@ console.error('[lc] cloud logDrink failed — queueing',e);
 enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
 }
 }else{
-// cloudSessionId not set yet (startSession still retrying). Queue and drain later.
 enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
 }
 }
@@ -2649,8 +2707,14 @@ var iVoted=myId&&votes.some(function(v){return v.user_id===myId;});
 var pct=totalVotes>0?Math.round(votes.length/totalVotes*100):0;
 var isMine=p.created_by===myId;
 var deleteBtn=isMine?'<span onclick="event.stopPropagation();deleteWeekendPlan(\''+p.id+'\')" style="font-size:11px;color:var(--red);cursor:pointer;padding:2px 6px" title="Delete">✕</span>':'';
+// Escape every user-supplied field before embedding it in HTML — a plan
+// name or description with "<script>" or "<img onerror>" would otherwise
+// execute in every friend's browser.
+var safeName=escapeHtml(p.name);
+var safeDesc=escapeHtml(p.description||'');
+var safeEmoji=escapeHtml(p.emoji||'📍');
 return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cursor:pointer;'+(i<visible.length-1?'border-bottom:0.5px solid #333':'')+'">'+
-'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+(p.emoji||'📍')+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+p.name+'</span>'+(iVoted?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div>'+(p.description?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+p.description+'</div>':'')+'</div><span style="font-size:13px;font-weight:700">'+votes.length+'</span>'+deleteBtn+'</div>'+
+'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:18px">'+safeEmoji+'</span><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;font-size:14px">'+safeName+'</span>'+(iVoted?'<span style="font-size:9px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:700">YOUR VOTE</span>':'')+'</div>'+(safeDesc?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+safeDesc+'</div>':'')+'</div><span style="font-size:13px;font-weight:700">'+votes.length+'</span>'+deleteBtn+'</div>'+
 '<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(iVoted?'var(--primary)':'var(--text3)')+';border-radius:2px;transition:width .3s"></div></div>'+
 '</div>';
 }).join('');
@@ -2659,12 +2723,17 @@ return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cur
 async function loadWeekendPlans(){
 var listEl=document.getElementById('weekendPlansList');
 if(!listEl)return;
+// Show an explicit loading state so an empty result never masquerades as
+// "everything loaded fine, you have no plans" when actually we're still
+// fetching or the call failed.
+if(_weekendPlansCache.length===0){
+listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">Loading weekend plans…</div>';
+}
 try{
 await LC.getSession();
 var plans=await LC.listWeekendPlans();
 _weekendPlansCache=plans;
 renderWeekendPlansList(plans);
-// Auth might not be ready — if 0 results, retry once after 2s
 if(plans.length===0&&!loadWeekendPlans._retried){
 loadWeekendPlans._retried=true;
 setTimeout(loadWeekendPlans,2000);
@@ -2672,13 +2741,28 @@ setTimeout(loadWeekendPlans,2000);
 loadWeekendPlans._retried=false;
 }
 }catch(e){
-// On error, also retry once
+console.error('[lc] loadWeekendPlans failed',e);
+// Surface the error with a Retry so the user isn't looking at a blank list.
+var msg=(e&&e.message)||'Network error';
+listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:12px 0;text-align:center">Couldn\'t load plans: '+escapeHtml(msg)+'<br><a href="javascript:loadWeekendPlans()" style="color:var(--primary);text-decoration:underline;font-weight:600">Tap to retry</a></div>';
 if(!loadWeekendPlans._retried){
 loadWeekendPlans._retried=true;
-setTimeout(loadWeekendPlans,2000);
+setTimeout(loadWeekendPlans,3000);
 }
-console.warn('loadWeekendPlans',e);
 }
+}
+
+// HTML-escape a string before inserting it into an innerHTML template.
+// Prevents user content (venue names, plan titles, display names, captions,
+// error messages) from being parsed as markup — standard XSS defense.
+function escapeHtml(s){
+  if(s===null||s===undefined)return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
 async function renderRealWeekendPlan(el){
@@ -4339,16 +4423,27 @@ function dismissSplash(){
 const splash=document.getElementById('splashScreen');
 if(!splash||splash._dismissed)return;
 splash._dismissed=true;
+// CRITICAL: disable pointer events immediately so the splash can't swallow
+// taps during its fade-out even if the .remove() step stalls.
+splash.style.pointerEvents='none';
 const elapsed=Date.now()-window._splashStart;
 const remaining=Math.max(0,1200-elapsed);
-setTimeout(()=>{
+setTimeout(function(){
 splash.style.opacity='0';
-setTimeout(()=>{splash.remove();},400);
+setTimeout(function(){try{splash.remove();}catch(e){console.error('[lc] splash.remove',e);}},400);
 },remaining);
 }
 window._splashStart=Date.now();
-// Hard limit: splash ALWAYS dies after 4 seconds no matter what
-setTimeout(dismissSplash,4000);
+// Hard limit: splash ALWAYS dies after 2.5 seconds no matter what.
+// (Dropped from 4s — if we can't boot in that time, something is wrong and
+// the user needs to see the actual app or an error, not the splash.)
+setTimeout(dismissSplash,2500);
+// TRUE last resort: if splash is still in the DOM after 6s, yank it out
+// by force — something is very broken, but we must not block clicks.
+setTimeout(function(){
+  var s=document.getElementById('splashScreen');
+  if(s){console.error('[lc] splash force-removed — boot may have stalled');try{s.remove();}catch(e){}}
+},6000);
 
 bootApp();
 </script>

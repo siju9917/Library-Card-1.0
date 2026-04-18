@@ -51,6 +51,47 @@
     return null;
   };
 
+  // ---------- TIMEOUT WRAPPER ----------
+  // Every network call is deadline-capped. A Supabase query that hangs
+  // (server overloaded, WebSocket stalled, flaky cell) used to block the
+  // entire app silently; now it rejects at 15s and the caller can surface
+  // a real error to the user.
+  const DEFAULT_TIMEOUT_MS = 15000;
+  LC.withTimeout = function (promiseOrBuilder, ms, label) {
+    ms = ms || DEFAULT_TIMEOUT_MS;
+    label = label || 'supabase call';
+    return new Promise(function (resolve, reject) {
+      let settled = false;
+      const t = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        const err = new Error(label + ' timed out after ' + ms + 'ms');
+        err.code = 'LC_TIMEOUT';
+        reject(err);
+      }, ms);
+      const p = (typeof promiseOrBuilder === 'function') ? promiseOrBuilder() : promiseOrBuilder;
+      Promise.resolve(p).then(function (v) {
+        if (settled) return;
+        settled = true; clearTimeout(t); resolve(v);
+      }, function (e) {
+        if (settled) return;
+        settled = true; clearTimeout(t); reject(e);
+      });
+    });
+  };
+
+  // Client-generated idempotency key. Every write attaches one; the DB has
+  // a unique index so a retry that accidentally succeeded twice never
+  // creates a duplicate row.
+  LC.newOpId = function () {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    // RFC4122-ish fallback for ancient browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   // ---------- AUTH ----------
   LC.signInWithEmail = async function (email) {
     const { error } = await sb.auth.signInWithOtp({
@@ -76,17 +117,22 @@
   LC.loadMe = async function () {
     // Get session if we don't have one cached
     if (!LC.session) {
-      const { data } = await sb.auth.getSession();
+      const { data } = await LC.withTimeout(sb.auth.getSession(), 10000, 'auth.getSession');
       LC.session = data.session;
     }
-    if (!LC.session) { console.warn('loadMe: no session'); return null; }
-    const { data, error } = await sb.from('users').select('*').eq('id', LC.session.user.id).single();
-    if (error) {
-      console.warn('loadMe error', error);
-      return null;
-    }
-    LC.me = data;
-    return data;
+    if (!LC.session) { console.warn('[lc] loadMe: no session'); return null; }
+    // Use maybeSingle(): .single() throws on 0 rows which would cascade
+    // through afterSignedIn and hide the rest of the app. 0 rows is a
+    // real state (user trigger failed) that should fall through to the
+    // upsert recovery path in afterSignedIn.
+    const { data, error } = await LC.withTimeout(
+      sb.from('users').select('*').eq('id', LC.session.user.id).maybeSingle(),
+      DEFAULT_TIMEOUT_MS,
+      'loadMe'
+    );
+    if (error) { console.error('[lc] loadMe error', error); return null; }
+    LC.me = data || null;
+    return LC.me;
   };
 
   LC.updateProfile = async function (patch) {
@@ -110,22 +156,42 @@
   };
 
   // ---------- SESSIONS ----------
-  LC.startSession = async function (venueName, venueId) {
-    const { data, error } = await sb.from('sessions').insert({
+  LC.startSession = async function (venueName, venueId, clientOpId) {
+    if (!LC.userId()) throw new Error('startSession: not signed in');
+    const payload = {
       user_id: LC.userId(),
       venue_id: venueId || null,
       venue_name: venueName || null,
-    }).select().single();
-    if (error) throw error;
-    return data;
+    };
+    // client_op_id is optional (column may not exist yet on older schemas).
+    // If the column is missing, the INSERT will error and we retry without it.
+    if (clientOpId) payload.client_op_id = clientOpId;
+    const run = async function (obj) {
+      return await sb.from('sessions').insert(obj).select().single();
+    };
+    let res = await LC.withTimeout(run(payload), DEFAULT_TIMEOUT_MS, 'startSession');
+    if (res.error && /client_op_id/.test(String(res.error.message || ''))) {
+      // Schema doesn't have the column yet — retry without it. Idempotency
+      // fallback is the client-side _running guard.
+      console.warn('[lc] client_op_id column missing — retrying without');
+      delete payload.client_op_id;
+      res = await LC.withTimeout(run(payload), DEFAULT_TIMEOUT_MS, 'startSession');
+    }
+    if (res.error) throw res.error;
+    return res.data;
   };
 
   LC.endSession = async function (sessionId, totals) {
-    const { data, error } = await sb.from('sessions').update({
-      end_time: new Date().toISOString(),
-      total_drinks: totals.totalDrinks,
-      total_cheers: totals.totalCheers,
-    }).eq('id', sessionId).select().single();
+    if (!sessionId) throw new Error('endSession: sessionId required');
+    const { data, error } = await LC.withTimeout(
+      sb.from('sessions').update({
+        end_time: new Date().toISOString(),
+        total_drinks: totals.totalDrinks,
+        total_cheers: totals.totalCheers,
+      }).eq('id', sessionId).select().single(),
+      DEFAULT_TIMEOUT_MS,
+      'endSession'
+    );
     if (error) throw error;
     return data;
   };
@@ -155,11 +221,15 @@
     const friends = await LC.listMyFriends();
     if (friends.length === 0) return [];
     const ids = friends.map(f => f.friend_id);
-    const { data, error } = await sb.from('sessions')
-      .select('*, users!sessions_user_id_fkey(display_name, emoji)')
-      .in('user_id', ids)
-      .is('end_time', null);
-    if (error) { console.error('[lc] listFriendsActiveSessions error', error); return []; }
+    const { data, error } = await LC.withTimeout(
+      sb.from('sessions')
+        .select('*, users!sessions_user_id_fkey(display_name, emoji)')
+        .in('user_id', ids)
+        .is('end_time', null),
+      DEFAULT_TIMEOUT_MS,
+      'listFriendsActiveSessions'
+    );
+    if (error) { console.error('[lc] listFriendsActiveSessions error', error); throw error; }
     return data || [];
   };
 
@@ -178,19 +248,32 @@
 
   // ---------- DRINKS ----------
   LC.logDrink = async function (sessionId, payload) {
-    const { data, error } = await sb.from('drinks').insert({
+    if (!sessionId) throw new Error('logDrink: sessionId required');
+    if (!payload || typeof payload.name !== 'string' || !payload.name.trim()) {
+      throw new Error('logDrink: payload.name required');
+    }
+    if (!LC.userId()) throw new Error('logDrink: not signed in');
+    const obj = {
       session_id: sessionId,
       user_id: LC.userId(),
       name: payload.name,
-      drink_type: payload.type,
+      drink_type: payload.type || 'Other',
       is_na: !!payload.isNA,
       rating: payload.rating || null,
       has_photo: !!payload.hasPhoto,
       photo_url: payload.photoUrl || null,
       caption: payload.caption || null,
-    }).select().single();
-    if (error) throw error;
-    return data;
+    };
+    if (payload.clientOpId) obj.client_op_id = payload.clientOpId;
+    const run = async function (o) { return await sb.from('drinks').insert(o).select().single(); };
+    let res = await LC.withTimeout(run(obj), DEFAULT_TIMEOUT_MS, 'logDrink');
+    if (res.error && /client_op_id/.test(String(res.error.message || ''))) {
+      console.warn('[lc] drinks.client_op_id column missing — retrying without');
+      delete obj.client_op_id;
+      res = await LC.withTimeout(run(obj), DEFAULT_TIMEOUT_MS, 'logDrink');
+    }
+    if (res.error) throw res.error;
+    return res.data;
   };
 
   LC.listSessionDrinks = async function (sessionId) {
@@ -394,23 +477,33 @@
     const weekStart = _localDateStr(monday);
 
     try {
-      const { data, error } = await sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at');
-      if (error) { console.error('[lc] listWeekendPlans error:', error); return []; }
+      const { data, error } = await LC.withTimeout(
+        sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at'),
+        DEFAULT_TIMEOUT_MS,
+        'listWeekendPlans'
+      );
+      if (error) { console.error('[lc] listWeekendPlans error:', error); throw error; }
       const plans = data || [];
       // Fetch votes for all plans in one query
       const planIds = plans.map(function(p){ return p.id; });
       if (planIds.length > 0) {
-        const { data: allVotes, error: vErr } = await sb.from('weekend_votes').select('plan_id,user_id').in('plan_id', planIds);
+        const { data: allVotes, error: vErr } = await LC.withTimeout(
+          sb.from('weekend_votes').select('plan_id,user_id').in('plan_id', planIds),
+          DEFAULT_TIMEOUT_MS,
+          'listWeekendVotes'
+        );
         if (!vErr) {
           var votesByPlan = {};
           (allVotes || []).forEach(function(v){ if (!votesByPlan[v.plan_id]) votesByPlan[v.plan_id] = []; votesByPlan[v.plan_id].push(v); });
           plans.forEach(function(p){ p.weekend_votes = votesByPlan[p.id] || []; });
+        } else {
+          console.error('[lc] listWeekendVotes error', vErr);
         }
       }
       return plans;
     } catch (e) {
       console.error('[lc] listWeekendPlans exception:', e);
-      return [];
+      throw e;
     }
   };
 
