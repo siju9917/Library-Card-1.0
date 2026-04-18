@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 54</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 55</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=54;
+var MY_VERSION=55;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -1138,10 +1138,15 @@ const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA
 drinks.push(drink);
 // Cloud: log to drinks table
 if(cloudSessionId&&window.LC&&LC.cloud){
-try{const d=await LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA});drink.cloudId=d.id;}catch(e){console.warn('cloud logDrink',e);}
-}else if(window.LC&&LC.cloud&&!addDrink._warnedOffline){
-addDrink._warnedOffline=true;
-console.warn('[lc] drinks not syncing to cloud — cloudSessionId is null');
+try{var d=await LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA});drink.cloudId=d.id;}catch(e){console.warn('cloud logDrink',e);}
+}else if(window.LC&&LC.cloud){
+// cloudSessionId might still be loading (background call from startSession)
+// Retry once after 2 seconds
+setTimeout(function(){
+if(cloudSessionId&&!drink.cloudId){
+(async function(){try{var d=await LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA});drink.cloudId=d.id;}catch(e){}})();
+}
+},2000);
 }
 recordDrinkHistory(name);
 updateSessionUI();
@@ -1488,7 +1493,7 @@ if(countResult.count!=null&&countResult.count>0)cloudDrinkCount=Math.max(cloudDr
 }catch(_){}
 console.log('[lc] endSession cloud: local='+drinks.length+' cloudDrinks='+cloudDrinkCount+' cheers='+cloudCheersCount);
 await LC.endSession(cloudSessionId,{totalDrinks:cloudDrinkCount,totalCheers:cloudCheersCount});
-}catch(e){console.warn('cloud endSession FAILED',e);}
+}catch(e){console.warn('cloud endSession FAILED',e);alert('Session saved locally but cloud sync failed. It will sync next time you open the app.');}
 }else{
 console.warn('[lc] endSession — cloudSessionId is null, saving locally only. drinks.length='+drinks.length);
 }
