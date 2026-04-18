@@ -206,7 +206,8 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 51</div>
+<div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 52</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -335,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=51;
+var MY_VERSION=52;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -3191,6 +3192,110 @@ const b=document.getElementById('displayNameBtn');
 if(b)b.textContent=next.trim();
 }
 }
+async function runHealthCheck(){
+var results=[];
+function pass(t){results.push('✅ '+t);}
+function fail(t){results.push('❌ '+t);}
+function warn(t){results.push('⚠️ '+t);}
+try{
+// 1. Build info
+results.push('📱 Build: '+(window.MY_VERSION||'unknown'));
+results.push('🌐 URL: '+window.location.href);
+results.push('💾 localStorage keys: '+localStorage.length);
+// 2. Auth
+if(!window.LC||!LC.cloud){fail('Cloud not configured');showDemo('🩺 Health Check','',results.join('\n'));return;}
+pass('Supabase SDK loaded');
+var sess=await LC.getSession();
+if(sess){pass('Auth session active: '+sess.user.email);}else{fail('No auth session — not signed in');showDemo('🩺 Health Check','',results.join('\n'));return;}
+var uid=LC.userId();
+if(uid){pass('User ID: '+uid.substring(0,8)+'...');}else{fail('LC.userId() returned null');}
+// 3. User profile
+await LC.loadMe();
+if(LC.me){pass('Profile loaded: '+LC.me.display_name);}else{warn('LC.me is null — profile row may be missing');}
+// 4. Sessions table
+try{
+var sr=await LC.sb.from('sessions').select('id',{count:'exact',head:true}).eq('user_id',uid);
+if(sr.error){fail('Sessions query failed: '+sr.error.message);}
+else{pass('Sessions table: '+sr.count+' total sessions');}
+}catch(e){fail('Sessions table error: '+e.message);}
+// 5. Active sessions
+try{
+var ar=await LC.sb.from('sessions').select('id,start_time').eq('user_id',uid).is('end_time',null);
+if(ar.error){fail('Active sessions query failed: '+ar.error.message);}
+else if(ar.data.length>0){warn('Active sessions: '+ar.data.length+' (started '+new Date(ar.data[0].start_time).toLocaleString()+')');}
+else{pass('No orphaned active sessions');}
+}catch(e){fail('Active sessions error: '+e.message);}
+// 6. Drinks table
+try{
+var dr=await LC.sb.from('drinks').select('id',{count:'exact',head:true}).eq('user_id',uid);
+if(dr.error){fail('Drinks query failed: '+dr.error.message);}
+else{pass('Drinks table: '+dr.count+' total drinks logged');}
+}catch(e){fail('Drinks table error: '+e.message);}
+// 7. Friendships
+try{
+var fr=await LC.sb.from('friendships').select('friend_id,tier,status').eq('user_id',uid);
+if(fr.error){fail('Friendships query failed: '+fr.error.message);}
+else{
+var accepted=fr.data.filter(function(f){return f.status==='accepted';}).length;
+var pending=fr.data.filter(function(f){return f.status==='pending';}).length;
+pass('Friendships: '+accepted+' accepted, '+pending+' pending');
+}
+}catch(e){fail('Friendships error: '+e.message);}
+// 8. Pending requests TO me
+try{
+var pr=await LC.sb.from('friendships').select('user_id,status').eq('friend_id',uid).eq('status','pending');
+if(pr.error){fail('Pending requests query failed: '+pr.error.message);}
+else{if(pr.data.length>0){warn(pr.data.length+' pending friend request(s) waiting for you');}else{pass('No pending friend requests');}}
+}catch(e){fail('Pending requests error: '+e.message);}
+// 9. Weekend plans
+try{
+var wp=await LC.sb.from('weekend_plans').select('id',{count:'exact',head:true});
+if(wp.error){fail('Weekend plans query failed: '+wp.error.message);}
+else{pass('Weekend plans table: '+wp.count+' plans');}
+}catch(e){fail('Weekend plans error: '+e.message);}
+// 10. Weekend votes
+try{
+var wv=await LC.sb.from('weekend_votes').select('plan_id',{count:'exact',head:true});
+if(wv.error){fail('Weekend votes query failed: '+wv.error.message);}
+else{pass('Weekend votes table: '+wv.count+' votes');}
+}catch(e){fail('Weekend votes error: '+e.message);}
+// 11. Status column on friendships
+try{
+var sc=await LC.sb.from('friendships').select('status').limit(1);
+if(sc.error&&sc.error.message.includes('status')){fail('Friendships table missing "status" column — run migration SQL');}
+else{pass('Friendships.status column exists');}
+}catch(e){fail('Status column check error: '+e.message);}
+// 12. invited_ids column on weekend_plans
+try{
+var ic=await LC.sb.from('weekend_plans').select('invited_ids').limit(1);
+if(ic.error&&ic.error.message.includes('invited_ids')){fail('Weekend plans missing "invited_ids" column — run migration SQL');}
+else{pass('Weekend plans.invited_ids column exists');}
+}catch(e){fail('invited_ids column check error: '+e.message);}
+// 13. RPC functions
+try{
+// We can't call accept_invite without side effects, so just check the weekend votes table is readable
+pass('RPC check skipped (would cause side effects)');
+}catch(e){}
+// 14. Storage
+try{
+var sl=await LC.sb.storage.from('cheers-photos').list(uid+'/');
+if(!sl.error){pass('Photo storage accessible: '+(sl.data?sl.data.length:0)+' files');}
+else{warn('Photo storage: '+sl.error.message);}
+}catch(e){warn('Photo storage check error: '+e.message);}
+// 15. Local state
+pass('Local sessions: '+allSessions.length);
+pass('Local circles: '+(circles.diehards||[]).length+' DH, '+(circles.besties||[]).length+' B, '+(circles.friends||[]).length+' F');
+pass('Session active: '+sessionActive);
+if(sessionActive){pass('Cloud session ID: '+(cloudSessionId||'NULL — drinks NOT syncing!'));}
+pass('Known venues: '+(knownVenues||[]).length);
+}catch(e){
+fail('Health check crashed: '+e.message);
+}
+// Show results
+var body=results.map(function(r){return '<div style="padding:4px 0;font-size:13px;line-height:1.4">'+r+'</div>';}).join('');
+showDemo('🩺 Health Check','',body);
+}
+
 function signOutFromCloud(){
 if(!window.LC||!LC.cloud){alert('Sign-out only available in cloud mode (config.js not set).');return;}
 if(!confirm('Sign out?'))return;
