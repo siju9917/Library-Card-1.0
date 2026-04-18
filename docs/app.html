@@ -206,7 +206,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 49</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 50</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -335,7 +335,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=49;
+var MY_VERSION=50;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -389,7 +389,7 @@ let sessionActive=false;
 let sessionStart=null;
 let sessionTimer=null;
 let drinks=[];
-let allSessions=JSON.parse(localStorage.getItem('lc_sessions')||'[]');
+let allSessions=[];try{allSessions=JSON.parse(localStorage.getItem('lc_sessions')||'[]')||[];}catch(e){allSessions=[];}
 let allTimeDrinks=parseInt(localStorage.getItem('lc_alltime')||'0');
 let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
 let userWeight=parseFloat(localStorage.getItem('lc_weight')||'180'); // lbs
@@ -411,8 +411,8 @@ if(leveledUp&&typeof triggerLevelUp==='function'){
 setTimeout(()=>triggerLevelUp(userLevel),600);
 }
 }
-let drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}'); // {name: count}
-let drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]'); // [{name,id}]
+let drinkHistory={};try{drinkHistory=JSON.parse(localStorage.getItem('lc_drink_history')||'{}')||{};}catch(e){drinkHistory={};}
+let drinkPartners=[];try{drinkPartners=JSON.parse(localStorage.getItem('lc_partners')||'[]')||[];}catch(e){drinkPartners=[];}
 
 // ========== SEED DEMO DATA ==========
 // Only seeds if we're in demo mode. Real users start completely blank and
@@ -702,14 +702,9 @@ try{knownVenues=JSON.parse(localStorage.getItem('lc_venues')||'[]')||[];}catch(e
 
 function promptStartSession(){
 try{
-// DEBUG: confirm function is reached
-var dbg=document.getElementById('appVersionLabel');
-if(dbg)dbg.textContent='START tapped — sessionActive='+sessionActive+' LC_DEMO='+LC_DEMO+' cloud='+(window.LC&&LC.cloud);
-
 if(sessionActive&&drinks&&drinks.length>0){
-if(dbg)dbg.textContent='Resuming active session ('+drinks.length+' drinks)';
-const nrm=document.getElementById('homeNormal');
-const sc=document.getElementById('sessionContent');
+var nrm=document.getElementById('homeNormal');
+var sc=document.getElementById('sessionContent');
 if(nrm)nrm.style.display='none';
 if(sc)sc.style.display='block';
 switchTab('home');
@@ -719,19 +714,17 @@ return;
 sessionActive=false;
 if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
 if(!LC_DEMO&&window.LC&&LC.cloud){
-if(dbg)dbg.textContent='Opening venue picker...';
-const venueOpts=(knownVenues||[]).map(function(v){return{label:v,emoji:'📍',sub:''};});
+var venueOpts=(knownVenues||[]).map(function(v){return{label:v,emoji:'📍',sub:''};});
 venueOpts.push({label:'+ New venue',emoji:'➕',sub:'Name a bar or spot'});
 venueOpts.push({label:'Skip — no venue',emoji:'🌙',sub:'Start without a location'});
 showPicker('📍 Where are you?','Pick a bar or add a new one',venueOpts,function(idx){
 try{
-if(dbg)dbg.textContent='Venue picked: '+idx;
 if(idx===venueOpts.length-1){
 startSession(null);
 }else if(idx===venueOpts.length-2){
-const name=prompt('Name this spot (e.g. "Rooftop Bar"):','');
+var name=prompt('Name this spot (e.g. "Rooftop Bar"):','');
 if(!name||!name.trim()){startSession(null);return;}
-const trimmed=name.trim();
+var trimmed=name.trim();
 if(!knownVenues.includes(trimmed)){
 knownVenues.push(trimmed);
 localStorage.setItem('lc_venues',JSON.stringify(knownVenues));
@@ -744,7 +737,6 @@ startSession(venueOpts[idx].label);
 });
 return;
 }
-if(dbg)dbg.textContent='Demo mode — starting directly';
 startSession(null);
 }catch(e){
 alert('START SESSION ERROR: '+(e.message||e));
@@ -1217,8 +1209,10 @@ if(navigator.vibrate)navigator.vibrate(20);
 }
 
 function handleCheersFileSelected(e){
-const file=e.target.files&&e.target.files[0];
+var file=e.target.files&&e.target.files[0];
 if(!file)return;
+if(!file.type.startsWith('image/')){alert('Please select an image');return;}
+if(file.size>10*1024*1024){alert('Image too large (max 10MB)');return;}
 pendingPhotoBlob=file;
 const reader=new FileReader();
 reader.onload=function(ev){
@@ -1391,20 +1385,22 @@ allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
 // Cloud: close out the session row — AWAITED so it actually commits.
-if(cloudSessionId&&window.LC&&LC.cloud){
+if(window.LC&&LC.cloud){
+if(cloudSessionId){
 try{
 // Use local drink count, but also verify against the drinks table
-let cloudDrinkCount=drinks.length;
-let cloudCheersCount=cheersCount;
+var cloudDrinkCount=drinks.length;
+var cloudCheersCount=cheersCount;
 try{
-const {count}=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',cloudSessionId);
-if(count!=null&&count>0)cloudDrinkCount=Math.max(cloudDrinkCount,count);
+var countResult=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',cloudSessionId);
+if(countResult.count!=null&&countResult.count>0)cloudDrinkCount=Math.max(cloudDrinkCount,countResult.count);
 }catch(_){}
 console.log('[lc] endSession cloud: local='+drinks.length+' cloudDrinks='+cloudDrinkCount+' cheers='+cloudCheersCount);
 await LC.endSession(cloudSessionId,{totalDrinks:cloudDrinkCount,totalCheers:cloudCheersCount});
 }catch(e){console.warn('cloud endSession FAILED',e);}
-}else if(window.LC&&LC.cloud){
-console.warn('[lc] endSession skipped — cloudSessionId is null! drinks.length='+drinks.length);
+}else{
+console.warn('[lc] endSession — cloudSessionId is null, saving locally only. drinks.length='+drinks.length);
+}
 }
 cloudSessionId=null;
 sessionActive=false;
@@ -2424,7 +2420,7 @@ return '<div style="padding:10px 0;border-bottom:0.5px solid #333">'+
 }
 
 // ========== GHOST MODE & VISIBILITY ==========
-let visibility=JSON.parse(localStorage.getItem('lc_visibility')||'null')||{
+let visibility;try{visibility=JSON.parse(localStorage.getItem('lc_visibility')||'null');}catch(e){visibility=null;}visibility=visibility||{
 ghostMode:true, // Default to private for new users (gender-safe default)
 showOnBarMap:'diehards', // everyone | friends | besties | diehards | off
 allowStrangerDMs:false,
@@ -2456,7 +2452,7 @@ function toggleGhostMode(){visibility.ghostMode=!visibility.ghostMode;saveVisibi
 function toggleStrangerDMs(){visibility.allowStrangerDMs=!visibility.allowStrangerDMs;saveVisibility();renderGhostMode();}
 
 // ========== CIRCLES (Trust Tiers) ==========
-let circles=JSON.parse(localStorage.getItem('lc_circles')||'null')||(LC_DEMO?{
+let circles;try{circles=JSON.parse(localStorage.getItem('lc_circles')||'null');}catch(e){circles=null;}circles=circles||(LC_DEMO?{
 diehards:[{name:'Jake M.',emoji:'😎'},{name:'Sarah K.',emoji:'🎉'}],
 besties:[{name:'Mike R.',emoji:'🍻'},{name:'Emma L.',emoji:'💃'},{name:'Chris P.',emoji:'🤙'}],
 friends:[{name:'Rachel T.',emoji:'✨'},{name:'Alex T.',emoji:'👤'},{name:'Bella R.',emoji:'💅'}]
@@ -3440,8 +3436,9 @@ await LC.loadMe();
 // Subscribe to friend activity for live updates
 try{
 LC.subscribeFriendActivity((payload)=>{
-// Friendship changes: re-hydrate circles from cloud
+// Friendship changes: re-hydrate circles from cloud + clear friend cache
 if(payload&&payload.table==='friendships'){
+friendInhabitants=null;
 hydrateFromCloud();
 }
 // Refresh whichever tab is currently visible
@@ -3498,18 +3495,27 @@ await LC.sb.from('sessions').update({end_time:new Date(endT).toISOString(),total
 }
 if(!toResume){/* all were old, none to resume */}
 else{
-const s=toResume;
-console.log('[lc] resuming active session',s.id);
+var resumeS=toResume;
+var startTimeStr=new Date(resumeS.start_time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+var shouldResume=confirm('You have an active session from '+startTimeStr+'. Continue it?');
+if(!shouldResume){
+// Close the session in the DB
+var closeDc=resumeS.total_drinks||0;
+try{var closeCr=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',resumeS.id);if(closeCr.count>0)closeDc=closeCr.count;}catch(_){}
+await LC.sb.from('sessions').update({end_time:new Date().toISOString(),total_drinks:closeDc}).eq('id',resumeS.id);
+console.log('[lc] user declined to resume session',resumeS.id);
+}else{
+console.log('[lc] resuming active session',resumeS.id);
 // Load drinks for this session from cloud
-let cloudDrinks=[];
+var cloudDrinks=[];
 try{
-const {data:drinksData}=await LC.sb.from('drinks').select('*').eq('session_id',s.id).order('logged_at');
-cloudDrinks=drinksData||[];
+var drinksResult=await LC.sb.from('drinks').select('*').eq('session_id',resumeS.id).order('logged_at');
+cloudDrinks=drinksResult.data||[];
 }catch(_){}
 // Restore session state
 sessionActive=true;
-sessionStart=new Date(s.start_time).getTime();
-cloudSessionId=s.id;
+sessionStart=new Date(resumeS.start_time).getTime();
+cloudSessionId=resumeS.id;
 friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
@@ -3527,8 +3533,8 @@ cloudId:d.id
 };});
 console.log('[lc] resumed with',drinks.length,'drinks from cloud');
 // Switch to session UI
-const nrm=document.getElementById('homeNormal');
-const sc=document.getElementById('sessionContent');
+var nrm=document.getElementById('homeNormal');
+var sc=document.getElementById('sessionContent');
 if(nrm)nrm.style.display='none';
 if(sc){sc.style.display='block';sc.innerHTML='';}
 // Small delay so DOM is laid out before first render
@@ -3538,6 +3544,7 @@ updateSessionUI();
 updateHome();
 switchTab('home');
 },200);
+}// end shouldResume
 }// end else(toResume)
 }// end if(active.data)
 }catch(e){console.warn('resume active session',e);}

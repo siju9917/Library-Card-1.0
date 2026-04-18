@@ -375,3 +375,222 @@ alter publication supabase_realtime add table public.weekend_votes;
 
 -- ---------- DONE ----------
 -- After this runs successfully, head back to your app and sign in.
+
+-- ========== MASTER MIGRATION v50 ==========
+-- Run this entire block to ensure all tables, columns, policies, and
+-- functions exist. Safe to re-run on any database state.
+
+-- === Column additions (safe to re-run) ===
+ALTER TABLE public.friendships ADD COLUMN IF NOT EXISTS status text DEFAULT 'accepted';
+ALTER TABLE public.weekend_plans ADD COLUMN IF NOT EXISTS invited_ids text[] DEFAULT '{}';
+
+-- === USERS policies ===
+DROP POLICY IF EXISTS "users_select_all_signed_in" ON public.users;
+CREATE POLICY "users_select_all_signed_in" ON public.users
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "users_insert_self" ON public.users;
+CREATE POLICY "users_insert_self" ON public.users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "users_update_self" ON public.users;
+CREATE POLICY "users_update_self" ON public.users
+  FOR UPDATE USING (auth.uid() = id);
+
+-- === VENUES policies ===
+DROP POLICY IF EXISTS "venues_select_all" ON public.venues;
+CREATE POLICY "venues_select_all" ON public.venues
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- === SESSIONS policies ===
+DROP POLICY IF EXISTS "sessions_select_all" ON public.sessions;
+CREATE POLICY "sessions_select_all" ON public.sessions
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "sessions_insert_own" ON public.sessions;
+CREATE POLICY "sessions_insert_own" ON public.sessions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "sessions_update_own" ON public.sessions;
+CREATE POLICY "sessions_update_own" ON public.sessions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "sessions_delete_own" ON public.sessions;
+CREATE POLICY "sessions_delete_own" ON public.sessions
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- === DRINKS policies ===
+DROP POLICY IF EXISTS "drinks_select_all" ON public.drinks;
+CREATE POLICY "drinks_select_all" ON public.drinks
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "drinks_insert_own" ON public.drinks;
+CREATE POLICY "drinks_insert_own" ON public.drinks
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "drinks_update_own" ON public.drinks;
+CREATE POLICY "drinks_update_own" ON public.drinks
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "drinks_delete_own" ON public.drinks;
+CREATE POLICY "drinks_delete_own" ON public.drinks
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- === FRIENDSHIPS policies ===
+DROP POLICY IF EXISTS "friendships_select_own" ON public.friendships;
+CREATE POLICY "friendships_select_own" ON public.friendships
+  FOR SELECT USING (auth.uid() = user_id OR auth.uid() = friend_id);
+
+DROP POLICY IF EXISTS "friendships_insert_own" ON public.friendships;
+CREATE POLICY "friendships_insert_own" ON public.friendships
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "friendships_update_own" ON public.friendships;
+CREATE POLICY "friendships_update_own" ON public.friendships
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "friendships_delete_own" ON public.friendships;
+CREATE POLICY "friendships_delete_own" ON public.friendships
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- === LIKES policies ===
+DROP POLICY IF EXISTS "likes_select_all" ON public.likes;
+CREATE POLICY "likes_select_all" ON public.likes
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "likes_insert_own" ON public.likes;
+CREATE POLICY "likes_insert_own" ON public.likes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "likes_delete_own" ON public.likes;
+CREATE POLICY "likes_delete_own" ON public.likes
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- === COMMENTS policies ===
+DROP POLICY IF EXISTS "comments_select_all" ON public.comments;
+CREATE POLICY "comments_select_all" ON public.comments
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "comments_insert_own" ON public.comments;
+CREATE POLICY "comments_insert_own" ON public.comments
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "comments_delete_own" ON public.comments;
+CREATE POLICY "comments_delete_own" ON public.comments
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- === DRINK GIFTS policies ===
+DROP POLICY IF EXISTS "gifts_select_involved" ON public.drink_gifts;
+CREATE POLICY "gifts_select_involved" ON public.drink_gifts
+  FOR SELECT USING (auth.uid() = from_user OR auth.uid() = to_user);
+
+DROP POLICY IF EXISTS "gifts_insert_own" ON public.drink_gifts;
+CREATE POLICY "gifts_insert_own" ON public.drink_gifts
+  FOR INSERT WITH CHECK (auth.uid() = from_user);
+
+DROP POLICY IF EXISTS "gifts_update_recipient" ON public.drink_gifts;
+CREATE POLICY "gifts_update_recipient" ON public.drink_gifts
+  FOR UPDATE USING (auth.uid() = to_user);
+
+-- === SOS ALERTS policies ===
+DROP POLICY IF EXISTS "sos_select_all" ON public.sos_alerts;
+CREATE POLICY "sos_select_all" ON public.sos_alerts
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "sos_insert_own" ON public.sos_alerts;
+CREATE POLICY "sos_insert_own" ON public.sos_alerts
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "sos_update_all" ON public.sos_alerts;
+CREATE POLICY "sos_update_all" ON public.sos_alerts
+  FOR UPDATE USING (auth.uid() IS NOT NULL);
+
+-- === WEEKEND PLANS policies ===
+DROP POLICY IF EXISTS "plans_select_all" ON public.weekend_plans;
+CREATE POLICY "plans_select_all" ON public.weekend_plans
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "plans_insert_own" ON public.weekend_plans;
+CREATE POLICY "plans_insert_own" ON public.weekend_plans
+  FOR INSERT WITH CHECK (auth.uid() = created_by);
+
+DROP POLICY IF EXISTS "plans_delete_own" ON public.weekend_plans;
+CREATE POLICY "plans_delete_own" ON public.weekend_plans
+  FOR DELETE USING (auth.uid() = created_by);
+
+-- === WEEKEND VOTES policies ===
+DROP POLICY IF EXISTS "votes_select_all" ON public.weekend_votes;
+CREATE POLICY "votes_select_all" ON public.weekend_votes
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "votes_insert_own" ON public.weekend_votes;
+CREATE POLICY "votes_insert_own" ON public.weekend_votes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "votes_delete_own" ON public.weekend_votes;
+CREATE POLICY "votes_delete_own" ON public.weekend_votes
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- === PLAN INVITES policies ===
+DROP POLICY IF EXISTS "plan_invites_select" ON public.plan_invites;
+CREATE POLICY "plan_invites_select" ON public.plan_invites
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "plan_invites_insert" ON public.plan_invites;
+CREATE POLICY "plan_invites_insert" ON public.plan_invites
+  FOR INSERT WITH CHECK (true);
+
+-- === STORAGE policies ===
+DROP POLICY IF EXISTS "cheers_upload_own" ON storage.objects;
+CREATE POLICY "cheers_upload_own" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'cheers-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "cheers_select_all" ON storage.objects;
+CREATE POLICY "cheers_select_all" ON storage.objects
+  FOR SELECT USING (bucket_id = 'cheers-photos');
+
+DROP POLICY IF EXISTS "cheers_delete_own" ON storage.objects;
+CREATE POLICY "cheers_delete_own" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'cheers-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- === RPC functions ===
+CREATE OR REPLACE FUNCTION public.accept_invite(inviter_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO friendships (user_id, friend_id, tier, status)
+  VALUES (auth.uid(), inviter_id, 'friends', 'accepted')
+  ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted';
+  INSERT INTO friendships (user_id, friend_id, tier, status)
+  VALUES (inviter_id, auth.uid(), 'friends', 'accepted')
+  ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.accept_friend_request(requester_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE friendships SET status = 'accepted'
+  WHERE user_id = requester_id AND friend_id = auth.uid();
+  INSERT INTO friendships (user_id, friend_id, tier, status)
+  VALUES (auth.uid(), requester_id, 'friends', 'accepted')
+  ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted';
+END;
+$$;
+
+-- === Realtime publication (safe to re-run — errors on already-added are OK) ===
+DO $$
+BEGIN
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.sessions; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.drinks; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.likes; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.comments; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.drink_gifts; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.sos_alerts; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.friendships; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.weekend_plans; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.weekend_votes; EXCEPTION WHEN OTHERS THEN NULL; END;
+END $$;
+
+-- ========== END MASTER MIGRATION v50 ==========
