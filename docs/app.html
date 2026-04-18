@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 57</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 58</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=57;
+var MY_VERSION=58;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -358,19 +358,14 @@ window.location.replace(window.location.pathname+'?_v='+d.v+'&t='+Date.now());
 // LC_DEMO is true when:
 //   - Cloud mode isn't configured (no Supabase creds), OR
 //   - User is in cloud mode but explicitly tapped "Try Demo" on the sign-in screen
-const LC_DEMO = !window.LC_CLOUD_ENABLED || localStorage.getItem('lc_demo_mode')==='true';
+// Determine demo mode. CRITICAL: also check for Supabase session in localStorage
+// to prevent false demo-mode detection when config.js loads slowly.
+var _hasSbSession=false;
+try{for(var _i=0;_i<localStorage.length;_i++){var _k=localStorage.key(_i);if(_k&&_k.startsWith('sb-')&&_k.endsWith('-auth-token')){_hasSbSession=true;break;}}}catch(_){}
+const LC_DEMO = (!window.LC_CLOUD_ENABLED && !_hasSbSession) || localStorage.getItem('lc_demo_mode')==='true';
 
-// In demo mode, always start fresh: wipe any previous demo state so the experience
-// is predictable on every load. In cloud mode, NEVER touch localStorage — that would
-// wipe the Supabase session and force re-authentication on every app open.
-if (LC_DEMO) {
-  const demoKeys = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith('lc_') && k !== 'lc_demo_mode') demoKeys.push(k);
-  }
-  demoKeys.forEach(k => localStorage.removeItem(k));
-}
+// NEVER wipe localStorage. Demo data is seeded fresh inside if(LC_DEMO) blocks.
+// The old wipe code was destroying real user data when config.js loaded slowly.
 
 // Tab switching
 function switchTab(tab){
