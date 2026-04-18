@@ -10,7 +10,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=74">
+<link rel="manifest" href="manifest.json?v=75">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -74,7 +74,7 @@
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=74;
+  var MY_VERSION=75;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -125,8 +125,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=74"></script>
-<script src="supabase/db.js?v=74"></script>
+<script src="supabase/config.js?v=75"></script>
+<script src="supabase/db.js?v=75"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -318,7 +318,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 74</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 75</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -1118,6 +1118,8 @@ return{url:d.photoDataUrl||d.photoUrl,caption:d.caption||'',name:d.name||'',time
 try{
   showInvariantToast('Loading '+(story.name||'friend')+'\'s Cheers…');
   var friendDrinks=await LC.listSessionDrinks(story.sessionId);
+  // Dedupe against retry-duplicates, same as live counts.
+  if(LC._dedupeDrinks)friendDrinks=LC._dedupeDrinks(friendDrinks||[]);
   photos=(friendDrinks||[]).filter(function(d){return d.photo_url;}).map(function(d){
     return{
       url:d.photo_url,
@@ -1140,12 +1142,30 @@ return;
 }
 _storyViewerIdx=storyIdx;
 _storyPhotoIdx=0;
+// Stash the photos array so advanceStory / renderStoryFrame can reuse
+// it without re-fetching from cloud on every tap. Friend stories were
+// closing after the first photo because advanceStory re-computed
+// photos only for the You-path (empty for friends) → end-of-array →
+// closeStoryViewer.
+window._storyPhotos=photos;
 renderStoryFrame(story,photos);
 }
 function renderStoryFrame(story,photos){
+try{
 var p=photos[_storyPhotoIdx];
+if(!p){closeStoryViewer();return;}
 var modal=document.getElementById('demoModal');
+if(!modal){console.error('[lc] renderStoryFrame: demoModal not found');return;}
 modal.style.display='flex';
+// Escape every user-supplied field before embedding in HTML.
+var safeStoryName=escapeHtml(story.name||'');
+var safeStoryEmoji=escapeHtml(story.emoji||'📸');
+var safeTime=escapeHtml(p.time||'');
+var safePname=escapeHtml(p.name||'');
+var safeCap=escapeHtml(p.caption||'');
+// URI-escape quotes in the photo URL so a weird filename can't break out
+// of the src attribute.
+var safeUrl=(p.url||'').replace(/"/g,'%22').replace(/'/g,'%27');
 modal.innerHTML=
 '<div style="position:fixed;inset:0;background:#000;display:flex;flex-direction:column;z-index:9999" onclick="advanceStory()" id="storyFrame">'+
 // Progress bars at top
@@ -1154,41 +1174,60 @@ photos.map(function(x,i){return '<div style="flex:1;height:2px;background:rgba(2
 '</div>'+
 // Header
 '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px">'+
-'<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px">'+(story.emoji||'📸')+'</div>'+
-'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#fff">'+story.name+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">'+p.time+'</div></div>'+
-'<button onclick="event.stopPropagation();closeStoryViewer()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px 8px">✕</button>'+
+'<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px">'+safeStoryEmoji+'</div>'+
+'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#fff">'+safeStoryName+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">'+safeTime+'</div></div>'+
+'<button onclick="event.stopPropagation();closeStoryViewer()" style="background:none;border:none;color:#fff;font-size:28px;cursor:pointer;padding:8px 12px;min-width:44px;min-height:44px">✕</button>'+
 '</div>'+
-// Photo
+// Photo — onerror hides the img so a broken URL doesn't leave a
+// broken-image icon on top of a black screen.
 '<div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 8px">'+
-'<img src="'+p.url+'" style="max-width:100%;max-height:100%;border-radius:16px;object-fit:contain"/>'+
+'<img src="'+safeUrl+'" style="max-width:100%;max-height:100%;border-radius:16px;object-fit:contain" onerror="this.style.display=&quot;none&quot;"/>'+
 '</div>'+
 // Caption + drink name
 '<div style="padding:16px;padding-bottom:calc(16px + var(--safe-bottom));text-align:center">'+
-(p.name?'<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px">'+p.name+'</div>':'')+
-(p.caption?'<div style="font-size:13px;color:rgba(255,255,255,.8);font-style:italic">"'+p.caption+'"</div>':'')+
+(safePname?'<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px">'+safePname+'</div>':'')+
+(safeCap?'<div style="font-size:13px;color:rgba(255,255,255,.8);font-style:italic">"'+safeCap+'"</div>':'')+
 '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px">'+(_storyPhotoIdx+1)+' of '+photos.length+' · tap to advance</div>'+
 '</div>'+
 '</div>';
+}catch(e){console.error('[lc] renderStoryFrame',e);closeStoryViewer();}
 }
 function advanceStory(){
+try{
 var story=window._storyData[_storyViewerIdx];
-if(!story)return;
-var photos=[];
+if(!story){closeStoryViewer();return;}
+// Reuse the photos array that openStoryViewer stashed. For the "You"
+// live-session case we re-derive because drinks may have changed since
+// the viewer opened. For friend stories we CANNOT re-derive here (the
+// fetch is async) — so we depend on the stashed copy. This bug is what
+// caused friends' stories to close after the first photo: the old code
+// only populated photos for story.isYou, so every tap advanced into
+// photos.length === 0 and closed.
+var photos;
 if(story.isYou&&sessionActive){
 photos=drinks.filter(function(d){return d.hasPhoto&&(d.photoDataUrl||d.photoUrl);}).map(function(d){
 return{url:d.photoDataUrl||d.photoUrl,caption:d.caption||'',name:d.name||'',time:d.time?new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''};
 });
+// keep stash in sync
+window._storyPhotos=photos;
+}else{
+photos=window._storyPhotos||[];
 }
+if(!Array.isArray(photos)||photos.length===0){closeStoryViewer();return;}
 _storyPhotoIdx++;
 if(_storyPhotoIdx>=photos.length){
-// Try next story with photos
+// End of this friend's story — close the viewer.
 closeStoryViewer();
 return;
 }
 renderStoryFrame(story,photos);
+}catch(e){console.error('[lc] advanceStory',e);closeStoryViewer();}
 }
 function closeStoryViewer(){
-document.getElementById('demoModal').style.display='none';
+try{document.getElementById('demoModal').style.display='none';}catch(e){console.error('[lc] closeStoryViewer',e);}
+// Reset stash so the next openStoryViewer starts clean.
+window._storyPhotos=null;
+_storyPhotoIdx=0;
 }
 
 function updateHome(){
