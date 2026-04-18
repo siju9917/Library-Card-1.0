@@ -10,7 +10,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=69">
+<link rel="manifest" href="manifest.json?v=70">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -74,7 +74,7 @@
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=69;
+  var MY_VERSION=70;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -125,8 +125,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=69"></script>
-<script src="supabase/db.js?v=69"></script>
+<script src="supabase/config.js?v=70"></script>
+<script src="supabase/db.js?v=70"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -318,7 +318,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 69</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 70</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -948,18 +948,24 @@ function finishStoryRing(el,stories){
 window._storyData=stories;
 el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">'+
 stories.map(function(s,idx){
-// Show photo thumbnail if available, otherwise emoji/+
-var hasThumb=s.thumb&&s.thumb.length>10;
-var innerStyle=hasThumb?'width:100%;height:100%;background:url('+s.thumb+') center/cover;border-radius:50%':'width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px';
-var innerContent=hasThumb?'':(s.isYou&&!sessionActive?'＋':(s.photo||s.emoji));
+// Trusted fields (thumb URL from Supabase Storage, gradient from our palette): still URI-escape the thumb for attribute safety.
+var thumbSrc=(s.thumb||'').replace(/"/g,'%22').replace(/'/g,'%27');
+var hasThumb=thumbSrc&&thumbSrc.length>10;
+var innerStyle=hasThumb?'width:100%;height:100%;background:url(\''+thumbSrc+'\') center/cover;border-radius:50%':'width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px';
+// User-content fields: escape for HTML.
+var safeName=escapeHtml(s.name||'');
+var safeStatus=escapeHtml(s.status||'');
+var safePhoto=escapeHtml(s.photo||s.emoji||'');
+var safeEmoji=escapeHtml(s.emoji||'');
+var innerContent=hasThumb?'':(s.isYou&&!sessionActive?'＋':safePhoto);
 var action=s.isYou&&!sessionActive?'promptStartSession()':'openStoryViewer('+idx+')';
 return '<div onclick="'+action+'" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
 '<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="'+innerStyle+'">'+innerContent+'</div></div>'+
 (s.cheers?'<div style="position:absolute;bottom:-2px;right:-2px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:2px 6px;border:2px solid var(--bg)">'+s.cheers+'</div>':'')+
 (s.live?'<div style="position:absolute;top:-1px;right:-1px;width:14px;height:14px;background:var(--green);border-radius:50%;border:2.5px solid var(--bg);animation:livePulse 2s ease-in-out infinite"></div>':'')+
 '</div>'+
-'<div style="font-size:11px;font-weight:'+(s.isYou?'700':'500')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">'+s.name+'</div>'+
-'<div style="font-size:9px;color:'+(s.live?'var(--green)':'var(--text3)')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px;font-weight:'+(s.live?'600':'400')+'">'+(s.live?'● ':'')+s.status+'</div>'+
+'<div style="font-size:11px;font-weight:'+(s.isYou?'700':'500')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">'+safeName+'</div>'+
+'<div style="font-size:9px;color:'+(s.live?'var(--green)':'var(--text3)')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px;font-weight:'+(s.live?'600':'400')+'">'+(s.live?'● ':'')+safeStatus+'</div>'+
 '</div>';
 }).join('')+'</div>';
 }
@@ -1455,7 +1461,21 @@ gridEl.dataset.built='1';
 // Cheers log — only rebuild when drinks changed
 const log=document.getElementById('drinksLog');
 if(drinks.length===0){log.innerHTML='<p style="color:var(--text3);font-size:13px;text-align:center;padding:12px">Tap a category above to log your first Cheers.</p>';}
-else{log.innerHTML=drinks.slice().reverse().map((d,ri)=>{const i=drinks.length-1-ri;const stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';const photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';const thumb=(d.photoDataUrl||d.photoUrl)?'<img src="'+(d.photoDataUrl||d.photoUrl)+'" style="width:48px;height:48px;object-fit:cover;border-radius:8px;margin-right:10px;flex-shrink:0" loading="lazy"/>':'';const cap=d.caption?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+d.caption+'"</div>':'';return'<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="display:flex;align-items:flex-start;flex:1;min-width:0">'+thumb+'<div style="flex:1;min-width:0"><div><span style="font-weight:500">'+d.name+'</span>'+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';}).join('');}
+else{log.innerHTML=drinks.slice().reverse().map(function(d,ri){
+  var i=drinks.length-1-ri;
+  var stars=d.rating?'⭐'.repeat(d.rating):'<span onclick="rateDrink('+i+')" style="color:var(--primary);cursor:pointer;font-size:12px">Rate</span>';
+  var photoBadge=d.hasPhoto?'<span style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">📸 CHEERS</span>':'';
+  // Photo URLs come from Supabase so we trust them, but they still need
+  // their attribute values URI-escaped so a weird filename can't break out.
+  var photoSrc=(d.photoDataUrl||d.photoUrl||'').replace(/"/g,'&quot;');
+  var thumb=photoSrc?'<img src="'+photoSrc+'" style="width:48px;height:48px;object-fit:cover;border-radius:8px;margin-right:10px;flex-shrink:0" loading="lazy"/>':'';
+  // User-supplied captions and drink names: escape EVERY char so a script tag
+  // or broken HTML in a caption can't execute / break the layout.
+  var safeCap=d.caption?escapeHtml(d.caption):'';
+  var safeName=escapeHtml(d.name||'Drink');
+  var cap=safeCap?'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"'+safeCap+'"</div>':'';
+  return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #333"><div style="display:flex;align-items:flex-start;flex:1;min-width:0">'+thumb+'<div style="flex:1;min-width:0"><div><span style="font-weight:500">'+safeName+'</span>'+photoBadge+'</div>'+cap+'<div style="font-size:11px;margin-top:2px">'+stars+'</div></div></div><div style="color:var(--text2);font-size:13px;flex-shrink:0;margin-left:8px">'+new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div></div>';
+}).join('');}
 }
 // Bar distribution chart updates every tick
 renderBarDist(elapsed);
@@ -3720,12 +3740,14 @@ cheers:r.total_cheers||0,
 });
 const venueList=Object.entries(byVenue).sort((a,b)=>b[1].friends.length-a[1].friends.length);
 el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Friends out tonight, by venue.</div>'+
-venueList.map(([venue,data])=>{
-const heatEmoji=data.friends.length>=3?'🔥🔥🔥':data.friends.length>=2?'🔥🔥':'🔥';
-const peopleStr=data.friends.length+' '+(data.friends.length===1?'friend':'friends');
+venueList.map(function(entry){
+var venue=entry[0],data=entry[1];
+var heatEmoji=data.friends.length>=3?'🔥🔥🔥':data.friends.length>=2?'🔥🔥':'🔥';
+var peopleStr=data.friends.length+' '+(data.friends.length===1?'friend':'friends');
+var safeVenue=escapeHtml(venue||'Unknown');
 return '<div style="padding:12px 0;border-bottom:0.5px solid #333">'+
-'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">'+heatEmoji+' '+venue+'</div><div style="font-size:11px;color:var(--primary);font-weight:600">'+peopleStr+'</div></div>'+
-'<div style="display:flex;flex-wrap:wrap;gap:6px">'+data.friends.map(f=>'<span style="font-size:11px;background:var(--card2);padding:4px 8px;border-radius:999px"><span>'+f.emoji+'</span> '+f.name+' · '+f.cheers+' 🔥</span>').join('')+'</div>'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">'+heatEmoji+' '+safeVenue+'</div><div style="font-size:11px;color:var(--primary);font-weight:600">'+peopleStr+'</div></div>'+
+'<div style="display:flex;flex-wrap:wrap;gap:6px">'+data.friends.map(function(f){return '<span style="font-size:11px;background:var(--card2);padding:4px 8px;border-radius:999px"><span>'+escapeHtml(f.emoji||'')+'</span> '+escapeHtml(f.name||'')+' · '+f.cheers+' 🔥</span>';}).join('')+'</div>'+
 '</div>';
 }).join('');
 }).catch(e=>{el.innerHTML='<div style="font-size:12px;color:var(--red);text-align:center;padding:12px">Couldn\'t load friends — '+((e&&e.message)||'network error')+'. <a href="javascript:renderLiveBarMap()" style="color:var(--primary);text-decoration:underline">Retry</a></div>';console.error('[lc] liveBarMap',e);});

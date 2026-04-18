@@ -147,8 +147,12 @@
   };
 
   LC.updateProfile = async function (patch) {
-    if (!LC.me) return;
-    const { data, error } = await sb.from('users').update(patch).eq('id', LC.userId()).select().single();
+    if (!LC.me) throw new Error('updateProfile: not loaded');
+    if (!patch || typeof patch !== 'object') throw new Error('updateProfile: patch required');
+    const { data, error } = await LC.withTimeout(
+      sb.from('users').update(patch).eq('id', LC.userId()).select().single(),
+      DEFAULT_TIMEOUT_MS, 'updateProfile'
+    );
     if (error) throw error;
     LC.me = data;
     return data;
@@ -156,12 +160,20 @@
 
   // ---------- VENUES ----------
   LC.listVenues = async function () {
-    const { data } = await sb.from('venues').select('*').order('name');
+    const { data, error } = await LC.withTimeout(
+      sb.from('venues').select('*').order('name'),
+      DEFAULT_TIMEOUT_MS, 'listVenues'
+    );
+    if (error) { console.error('[lc] listVenues', error); return []; }
     return data || [];
   };
 
   LC.createVenue = async function (name, address) {
-    const { data, error } = await sb.from('venues').insert({ name, address }).select().single();
+    if (!name || typeof name !== 'string') throw new Error('createVenue: name required');
+    const { data, error } = await LC.withTimeout(
+      sb.from('venues').insert({ name, address }).select().single(),
+      DEFAULT_TIMEOUT_MS, 'createVenue'
+    );
     if (error) throw error;
     return data;
   };
@@ -208,22 +220,24 @@
   };
 
   LC.getMyActiveSession = async function () {
-    const { data } = await sb.from('sessions')
-      .select('*')
-      .eq('user_id', LC.userId())
-      .is('end_time', null)
-      .order('start_time', { ascending: false })
-      .limit(1);
+    if (!LC.userId()) return null;
+    const { data, error } = await LC.withTimeout(
+      sb.from('sessions').select('*').eq('user_id', LC.userId())
+        .is('end_time', null).order('start_time', { ascending: false }).limit(1),
+      DEFAULT_TIMEOUT_MS, 'getMyActiveSession'
+    );
+    if (error) { console.error('[lc] getMyActiveSession', error); return null; }
     return (data && data[0]) || null;
   };
 
   LC.listMySessions = async function (limit = 50) {
-    const { data } = await sb.from('sessions')
-      .select('*')
-      .eq('user_id', LC.userId())
-      .not('end_time', 'is', null)
-      .order('start_time', { ascending: false })
-      .limit(limit);
+    if (!LC.userId()) return [];
+    const { data, error } = await LC.withTimeout(
+      sb.from('sessions').select('*').eq('user_id', LC.userId())
+        .not('end_time', 'is', null).order('start_time', { ascending: false }).limit(limit),
+      DEFAULT_TIMEOUT_MS, 'listMySessions'
+    );
+    if (error) { console.error('[lc] listMySessions', error); return []; }
     return data || [];
   };
 
@@ -245,15 +259,17 @@
   };
 
   LC.listFeedSessions = async function (limit = 30) {
-    // Recent completed sessions from friends + me
-    const friends = await LC.listMyFriends();
+    if (!LC.userId()) return [];
+    let friends = [];
+    try { friends = await LC.listMyFriends(); } catch (e) { console.error('[lc] listFeedSessions friends', e); }
     const ids = [LC.userId(), ...friends.map(f => f.friend_id)];
-    const { data } = await sb.from('sessions')
-      .select('*, users!sessions_user_id_fkey(display_name, emoji), drinks(*), likes(user_id), comments(*)')
-      .in('user_id', ids)
-      .not('end_time', 'is', null)
-      .order('start_time', { ascending: false })
-      .limit(limit);
+    const { data, error } = await LC.withTimeout(
+      sb.from('sessions')
+        .select('*, users!sessions_user_id_fkey(display_name, emoji), drinks(*), likes(user_id), comments(*)')
+        .in('user_id', ids).not('end_time', 'is', null).order('start_time', { ascending: false }).limit(limit),
+      DEFAULT_TIMEOUT_MS, 'listFeedSessions'
+    );
+    if (error) { console.error('[lc] listFeedSessions', error); return []; }
     return data || [];
   };
 
@@ -288,25 +304,39 @@
   };
 
   LC.listSessionDrinks = async function (sessionId) {
-    const { data } = await sb.from('drinks')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('logged_at');
+    if (!sessionId) return [];
+    const { data, error } = await LC.withTimeout(
+      sb.from('drinks').select('*').eq('session_id', sessionId).order('logged_at'),
+      DEFAULT_TIMEOUT_MS, 'listSessionDrinks'
+    );
+    if (error) { console.error('[lc] listSessionDrinks', error); return []; }
     return data || [];
   };
 
   LC.rateDrink = async function (drinkId, rating) {
-    const { error } = await sb.from('drinks').update({ rating }).eq('id', drinkId);
+    if (!drinkId) throw new Error('rateDrink: drinkId required');
+    if (typeof rating !== 'number' || rating < 1 || rating > 5) throw new Error('rateDrink: rating must be 1–5');
+    const { error } = await LC.withTimeout(
+      sb.from('drinks').update({ rating }).eq('id', drinkId),
+      DEFAULT_TIMEOUT_MS, 'rateDrink'
+    );
     if (error) throw error;
   };
 
   // ---------- PHOTOS ----------
+  // Longer timeout because photo uploads can legitimately take a few seconds
+  // on cellular. Still bounded so it can't hang forever.
   LC.uploadPhoto = async function (blob, ext = 'jpg') {
+    if (!blob) throw new Error('uploadPhoto: blob required');
+    if (!LC.userId()) throw new Error('uploadPhoto: not signed in');
     const path = `${LC.userId()}/${Date.now()}.${ext}`;
-    const { error } = await sb.storage.from('cheers-photos').upload(path, blob, {
-      contentType: blob.type || 'image/jpeg',
-      upsert: false,
-    });
+    const { error } = await LC.withTimeout(
+      sb.storage.from('cheers-photos').upload(path, blob, {
+        contentType: blob.type || 'image/jpeg',
+        upsert: false,
+      }),
+      30000, 'uploadPhoto'
+    );
     if (error) throw error;
     const { data } = sb.storage.from('cheers-photos').getPublicUrl(path);
     return data.publicUrl;
@@ -322,14 +352,18 @@
     const uid = LC.userId();
     if (!uid) return [];
     const [fwdRes, revRes] = await Promise.all([
-      sb.from('friendships')
-        .select('*, friend:users!friendships_friend_id_fkey(id, display_name, emoji, email)')
-        .eq('user_id', uid)
-        .eq('status', 'accepted'),
-      sb.from('friendships')
-        .select('*, friend:users!friendships_user_id_fkey(id, display_name, emoji, email)')
-        .eq('friend_id', uid)
-        .eq('status', 'accepted'),
+      LC.withTimeout(
+        sb.from('friendships')
+          .select('*, friend:users!friendships_friend_id_fkey(id, display_name, emoji, email)')
+          .eq('user_id', uid).eq('status', 'accepted'),
+        DEFAULT_TIMEOUT_MS, 'listMyFriends fwd'
+      ).catch(e => ({ error: e, data: [] })),
+      LC.withTimeout(
+        sb.from('friendships')
+          .select('*, friend:users!friendships_user_id_fkey(id, display_name, emoji, email)')
+          .eq('friend_id', uid).eq('status', 'accepted'),
+        DEFAULT_TIMEOUT_MS, 'listMyFriends rev'
+      ).catch(e => ({ error: e, data: [] })),
     ]);
     if (fwdRes.error) console.error('[lc] listMyFriends forward', fwdRes.error);
     if (revRes.error) console.error('[lc] listMyFriends reverse', revRes.error);
@@ -354,114 +388,197 @@
   };
 
   LC.findUserByEmail = async function (email) {
-    const { data } = await sb.from('users').select('*').eq('email', email.toLowerCase().trim()).limit(1);
+    if (!email || typeof email !== 'string') return null;
+    const { data, error } = await LC.withTimeout(
+      sb.from('users').select('*').eq('email', email.toLowerCase().trim()).limit(1),
+      DEFAULT_TIMEOUT_MS, 'findUserByEmail'
+    );
+    if (error) { console.error('[lc] findUserByEmail', error); return null; }
     return (data && data[0]) || null;
   };
 
   LC.addFriend = async function (friendId, tier = 'friends') {
-    const { data, error } = await sb.from('friendships').upsert({
-      user_id: LC.userId(), friend_id: friendId, tier, status: 'pending'
-    }, { onConflict: 'user_id,friend_id' }).select().single();
+    if (!friendId) throw new Error('addFriend: friendId required');
+    if (friendId === LC.userId()) throw new Error('addFriend: cannot add yourself');
+    if (!['friends','besties','diehards'].includes(tier)) tier = 'friends';
+    const { data, error } = await LC.withTimeout(
+      sb.from('friendships').upsert({
+        user_id: LC.userId(), friend_id: friendId, tier, status: 'pending'
+      }, { onConflict: 'user_id,friend_id' }).select().single(),
+      DEFAULT_TIMEOUT_MS, 'addFriend'
+    );
     if (error) throw error;
     return data;
   };
 
   LC.acceptInvite = async function (inviterId) {
-    const { error } = await sb.rpc('accept_invite', { inviter_id: inviterId });
+    if (!inviterId) throw new Error('acceptInvite: inviterId required');
+    if (inviterId === LC.userId()) return; // can't invite self
+    const { error } = await LC.withTimeout(
+      sb.rpc('accept_invite', { inviter_id: inviterId }),
+      DEFAULT_TIMEOUT_MS, 'acceptInvite'
+    );
     if (error) throw error;
   };
 
   LC.listPendingRequests = async function () {
-    const { data } = await sb.from('friendships')
-      .select('*, requester:users!friendships_user_id_fkey(id, display_name, emoji, email)')
-      .eq('friend_id', LC.userId())
-      .eq('status', 'pending');
+    if (!LC.userId()) return [];
+    const { data, error } = await LC.withTimeout(
+      sb.from('friendships')
+        .select('*, requester:users!friendships_user_id_fkey(id, display_name, emoji, email)')
+        .eq('friend_id', LC.userId()).eq('status', 'pending'),
+      DEFAULT_TIMEOUT_MS, 'listPendingRequests'
+    );
+    if (error) { console.error('[lc] listPendingRequests', error); return []; }
     return data || [];
   };
 
   LC.acceptFriendRequest = async function (requesterId) {
-    const { error } = await sb.rpc('accept_friend_request', { requester_id: requesterId });
+    if (!requesterId) throw new Error('acceptFriendRequest: requesterId required');
+    const { error } = await LC.withTimeout(
+      sb.rpc('accept_friend_request', { requester_id: requesterId }),
+      DEFAULT_TIMEOUT_MS, 'acceptFriendRequest'
+    );
     if (error) throw error;
   };
 
   LC.declineFriendRequest = async function (requesterId) {
-    const { error } = await sb.from('friendships').update({ status: 'declined' })
-      .match({ user_id: requesterId, friend_id: LC.userId() });
+    if (!requesterId) throw new Error('declineFriendRequest: requesterId required');
+    const { error } = await LC.withTimeout(
+      sb.from('friendships').update({ status: 'declined' })
+        .match({ user_id: requesterId, friend_id: LC.userId() }),
+      DEFAULT_TIMEOUT_MS, 'declineFriendRequest'
+    );
     if (error) throw error;
   };
 
   LC.moveFriendTier = async function (friendId, tier) {
+    if (!friendId) throw new Error('moveFriendTier: friendId required');
     if (tier === null) {
-      const { error } = await sb.from('friendships').delete().match({ user_id: LC.userId(), friend_id: friendId });
+      const { error } = await LC.withTimeout(
+        sb.from('friendships').delete().match({ user_id: LC.userId(), friend_id: friendId }),
+        DEFAULT_TIMEOUT_MS, 'moveFriendTier(delete)'
+      );
       if (error) throw error;
       return;
     }
-    const { error } = await sb.from('friendships').update({ tier }).match({ user_id: LC.userId(), friend_id: friendId });
+    if (!['friends','besties','diehards'].includes(tier)) throw new Error('moveFriendTier: invalid tier');
+    const { error } = await LC.withTimeout(
+      sb.from('friendships').update({ tier }).match({ user_id: LC.userId(), friend_id: friendId }),
+      DEFAULT_TIMEOUT_MS, 'moveFriendTier'
+    );
     if (error) throw error;
   };
 
   // ---------- LIKES (🔥) ----------
   LC.toggleLike = async function (sessionId) {
-    const { data: existing } = await sb.from('likes')
-      .select('*').match({ session_id: sessionId, user_id: LC.userId() });
+    if (!sessionId) throw new Error('toggleLike: sessionId required');
+    if (!LC.userId()) throw new Error('toggleLike: not signed in');
+    const { data: existing, error: selErr } = await LC.withTimeout(
+      sb.from('likes').select('*').match({ session_id: sessionId, user_id: LC.userId() }),
+      DEFAULT_TIMEOUT_MS, 'toggleLike.select'
+    );
+    if (selErr) throw selErr;
     if (existing && existing.length > 0) {
-      await sb.from('likes').delete().match({ session_id: sessionId, user_id: LC.userId() });
+      const { error } = await LC.withTimeout(
+        sb.from('likes').delete().match({ session_id: sessionId, user_id: LC.userId() }),
+        DEFAULT_TIMEOUT_MS, 'toggleLike.delete'
+      );
+      if (error) throw error;
       return false;
-    } else {
-      await sb.from('likes').insert({ session_id: sessionId, user_id: LC.userId() });
-      return true;
     }
+    const { error } = await LC.withTimeout(
+      sb.from('likes').insert({ session_id: sessionId, user_id: LC.userId() }),
+      DEFAULT_TIMEOUT_MS, 'toggleLike.insert'
+    );
+    if (error) throw error;
+    return true;
   };
 
   LC.countLikes = async function (sessionId) {
-    const { count } = await sb.from('likes').select('*', { count: 'exact', head: true }).eq('session_id', sessionId);
+    if (!sessionId) return 0;
+    const { count, error } = await LC.withTimeout(
+      sb.from('likes').select('*', { count: 'exact', head: true }).eq('session_id', sessionId),
+      DEFAULT_TIMEOUT_MS, 'countLikes'
+    );
+    if (error) { console.error('[lc] countLikes', error); return 0; }
     return count || 0;
   };
 
   // ---------- COMMENTS ----------
   LC.addComment = async function (sessionId, text, emoji = '💬') {
-    const { data, error } = await sb.from('comments').insert({
-      session_id: sessionId, user_id: LC.userId(), text, emoji
-    }).select().single();
+    if (!sessionId) throw new Error('addComment: sessionId required');
+    if (typeof text !== 'string' || !text.trim()) throw new Error('addComment: text required');
+    if (text.length > 500) throw new Error('addComment: text too long (max 500)');
+    if (!LC.userId()) throw new Error('addComment: not signed in');
+    const { data, error } = await LC.withTimeout(
+      sb.from('comments').insert({
+        session_id: sessionId, user_id: LC.userId(), text: text.trim(), emoji
+      }).select().single(),
+      DEFAULT_TIMEOUT_MS, 'addComment'
+    );
     if (error) throw error;
     return data;
   };
 
   LC.listComments = async function (sessionId) {
-    const { data } = await sb.from('comments')
-      .select('*, users!comments_user_id_fkey(display_name, emoji)')
-      .eq('session_id', sessionId)
-      .order('created_at');
+    if (!sessionId) return [];
+    const { data, error } = await LC.withTimeout(
+      sb.from('comments')
+        .select('*, users!comments_user_id_fkey(display_name, emoji)')
+        .eq('session_id', sessionId).order('created_at'),
+      DEFAULT_TIMEOUT_MS, 'listComments'
+    );
+    if (error) { console.error('[lc] listComments', error); return []; }
     return data || [];
   };
 
   // ---------- DRINK GIFTS ----------
   LC.sendDrinkGift = async function (toUserId, drinkName, occasion) {
-    const { data, error } = await sb.from('drink_gifts').insert({
-      from_user: LC.userId(), to_user: toUserId, drink_name: drinkName, occasion
-    }).select().single();
+    if (!toUserId) throw new Error('sendDrinkGift: toUserId required');
+    if (!drinkName) throw new Error('sendDrinkGift: drinkName required');
+    if (toUserId === LC.userId()) throw new Error('sendDrinkGift: cannot gift yourself');
+    const { data, error } = await LC.withTimeout(
+      sb.from('drink_gifts').insert({
+        from_user: LC.userId(), to_user: toUserId, drink_name: drinkName, occasion
+      }).select().single(),
+      DEFAULT_TIMEOUT_MS, 'sendDrinkGift'
+    );
     if (error) throw error;
     return data;
   };
 
   LC.listMyGifts = async function () {
-    const { data } = await sb.from('drink_gifts')
-      .select('*, from_user:users!drink_gifts_from_user_fkey(display_name, emoji)')
-      .eq('to_user', LC.userId())
-      .eq('status', 'pending');
+    if (!LC.userId()) return [];
+    const { data, error } = await LC.withTimeout(
+      sb.from('drink_gifts')
+        .select('*, from_user:users!drink_gifts_from_user_fkey(display_name, emoji)')
+        .eq('to_user', LC.userId()).eq('status', 'pending'),
+      DEFAULT_TIMEOUT_MS, 'listMyGifts'
+    );
+    if (error) { console.error('[lc] listMyGifts', error); return []; }
     return data || [];
   };
 
   LC.respondToGift = async function (giftId, status) {
-    const { error } = await sb.from('drink_gifts').update({ status }).eq('id', giftId);
+    if (!giftId) throw new Error('respondToGift: giftId required');
+    if (!['accepted','declined','redeemed'].includes(status)) throw new Error('respondToGift: invalid status');
+    const { error } = await LC.withTimeout(
+      sb.from('drink_gifts').update({ status }).eq('id', giftId),
+      DEFAULT_TIMEOUT_MS, 'respondToGift'
+    );
     if (error) throw error;
   };
 
   // ---------- SOS ----------
   LC.sendSOS = async function (venueName, lat, lng) {
-    const { data, error } = await sb.from('sos_alerts').insert({
-      user_id: LC.userId(), venue_name: venueName, lat, lng
-    }).select().single();
+    if (!LC.userId()) throw new Error('sendSOS: not signed in');
+    const { data, error } = await LC.withTimeout(
+      sb.from('sos_alerts').insert({
+        user_id: LC.userId(), venue_name: venueName || null, lat: lat || null, lng: lng || null
+      }).select().single(),
+      DEFAULT_TIMEOUT_MS, 'sendSOS'
+    );
     if (error) throw error;
     return data;
   };
@@ -519,58 +636,67 @@
   };
 
   LC.suggestPlan = async function (name, description, emoji, invitedIds) {
+    if (typeof name !== 'string' || !name.trim()) throw new Error('suggestPlan: name required');
+    if (name.length > 140) throw new Error('suggestPlan: name too long');
+    if (description && description.length > 500) throw new Error('suggestPlan: description too long');
     await LC.getSession();
+    const uid = LC.userId();
+    if (!uid) throw new Error('suggestPlan: not signed in');
     const now = new Date();
     const dayOfWeek = now.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(now);
     monday.setDate(now.getDate() + mondayOffset);
     monday.setHours(0, 0, 0, 0);
-
-    const uid = LC.userId();
-    if (!uid) throw new Error('Not signed in');
     const insertObj = {
-      name: name,
-      description: description || '',
+      name: name.trim(),
+      description: (description || '').trim(),
       emoji: emoji || '📍',
       week_start: _localDateStr(monday),
       created_by: uid,
-      invited_ids: invitedIds || []
+      invited_ids: Array.isArray(invitedIds) ? invitedIds : []
     };
-    const { data, error } = await sb.from('weekend_plans').insert(insertObj).select().single();
-    if (error) {
-      console.error('[lc] suggestPlan error:', error);
-      throw error;
-    }
+    const { data, error } = await LC.withTimeout(
+      sb.from('weekend_plans').insert(insertObj).select().single(),
+      DEFAULT_TIMEOUT_MS, 'suggestPlan'
+    );
+    if (error) { console.error('[lc] suggestPlan error:', error); throw error; }
     return data;
   };
 
   LC.toggleVote = async function (planId) {
+    if (!planId) throw new Error('toggleVote: planId required');
     await LC.getSession();
     const uid = LC.userId();
-    if (!uid) throw new Error('Not signed in');
-    try {
-      const { data: existing, error: selErr } = await sb.from('weekend_votes')
-        .select('*').match({ plan_id: planId, user_id: uid });
-      if (selErr) throw selErr;
-      if (existing && existing.length > 0) {
-        const { error: delErr } = await sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: uid });
-        if (delErr) throw delErr;
-        return false;
-      } else {
-        const { error: insErr } = await sb.from('weekend_votes').insert({ plan_id: planId, user_id: uid });
-        if (insErr) throw insErr;
-        return true;
-      }
-    } catch (e) {
-      console.warn('toggleVote error:', e);
-      throw e;
+    if (!uid) throw new Error('toggleVote: not signed in');
+    const { data: existing, error: selErr } = await LC.withTimeout(
+      sb.from('weekend_votes').select('*').match({ plan_id: planId, user_id: uid }),
+      DEFAULT_TIMEOUT_MS, 'toggleVote.select'
+    );
+    if (selErr) throw selErr;
+    if (existing && existing.length > 0) {
+      const { error: delErr } = await LC.withTimeout(
+        sb.from('weekend_votes').delete().match({ plan_id: planId, user_id: uid }),
+        DEFAULT_TIMEOUT_MS, 'toggleVote.delete'
+      );
+      if (delErr) throw delErr;
+      return false;
     }
+    const { error: insErr } = await LC.withTimeout(
+      sb.from('weekend_votes').insert({ plan_id: planId, user_id: uid }),
+      DEFAULT_TIMEOUT_MS, 'toggleVote.insert'
+    );
+    if (insErr) throw insErr;
+    return true;
   };
 
   LC.deletePlan = async function (planId) {
+    if (!planId) throw new Error('deletePlan: planId required');
     await LC.getSession();
-    const { error } = await sb.from('weekend_plans').delete().eq('id', planId);
+    const { error } = await LC.withTimeout(
+      sb.from('weekend_plans').delete().eq('id', planId),
+      DEFAULT_TIMEOUT_MS, 'deletePlan'
+    );
     if (error) throw error;
   };
 
