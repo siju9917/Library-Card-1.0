@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 56</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 57</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=56;
+var MY_VERSION=57;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -1359,7 +1359,9 @@ drinks[idx].photoUrl=url;
 if(drinks[idx].cloudId){
 await LC.sb.from('drinks').update({photo_url:url,has_photo:true,caption:caption}).eq('id',drinks[idx].cloudId);
 }
-}catch(e){console.warn('photo upload failed',e);}
+}catch(e){console.warn('photo upload failed',e);alert('Photo upload failed: '+(e.message||e));}
+}else{
+console.warn('[lc] photo not uploaded: cloud='+!!(window.LC&&LC.cloud)+' userId='+!!(LC.userId&&LC.userId())+' blob='+!!pendingPhotoBlob);
 }
 pendingPhotoBlob=null;
 pendingPhotoDataUrl=null;
@@ -3713,15 +3715,8 @@ await LC.sb.from('sessions').update({end_time:new Date(endT).toISOString(),total
 if(!toResume){/* all were old, none to resume */}
 else{
 var resumeS=toResume;
-var startTimeStr=new Date(resumeS.start_time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-var shouldResume=confirm('You have an active session from '+startTimeStr+'. Continue it?');
-if(!shouldResume){
-// Close the session in the DB
-var closeDc=resumeS.total_drinks||0;
-try{var closeCr=await LC.sb.from('drinks').select('*',{count:'exact',head:true}).eq('session_id',resumeS.id);if(closeCr.count>0)closeDc=closeCr.count;}catch(_){}
-await LC.sb.from('sessions').update({end_time:new Date().toISOString(),total_drinks:closeDc}).eq('id',resumeS.id);
-console.log('[lc] user declined to resume session',resumeS.id);
-}else{
+// Auto-resume without asking — the user expects their session to persist
+{
 console.log('[lc] resuming active session',resumeS.id);
 // Load drinks for this session from cloud
 var cloudDrinks=[];
