@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 58</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 59</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=58;
+var MY_VERSION=59;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -927,9 +927,10 @@ let lastDrinksLen=-1;
 function updateSessionUI(){
 if(!sessionActive)return;
 var elapsed=Date.now()-sessionStart;
-// Refresh story ring every 30 seconds to pick up friends' sessions
+// Refresh story ring + friend chart data every 30 seconds
 if(!updateSessionUI._lastRingRefresh||Date.now()-updateSessionUI._lastRingRefresh>30000){
 updateSessionUI._lastRingRefresh=Date.now();
+friendInhabitants=null; // Clear cache so chart picks up new friends
 renderStoryRing();
 }
 var dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
@@ -1009,26 +1010,25 @@ const kahootNames=['Thirsty Penguin','Wobbly Giraffe','Sloppy Flamingo','Tipsy M
 // Friends out tonight — 5 named friends already at venues with head starts
 let friendInhabitants=null;
 function getFriendInhabitants(){
-if(friendInhabitants)return friendInhabitants;
+// Return cached data if we have it AND it's not just an empty placeholder
+if(friendInhabitants&&friendInhabitants.length>0)return friendInhabitants;
 if(!LC_DEMO){
-// Real mode: only show friends who are ACTUALLY in active sessions.
-// We don't have their real-time drink data, so return empty.
-// The chart shows a solo pace view when no friends are active.
+// Real mode: fetch friends with active sessions from cloud
 friendInhabitants=[];
-// Try to load real active friend sessions in the background
 if(window.LC&&LC.cloud&&LC.userId()){
 LC.listFriendsActiveSessions().then(function(rows){
-if(!rows||rows.length===0)return;
-const palette=['#3B82F6','#EC4899','#10B981','#F59E0B','#8B5CF6','#F97316'];
+if(!rows||rows.length===0){friendInhabitants=[];return;}
+var palette=['#3B82F6','#EC4899','#10B981','#F59E0B','#8B5CF6','#F97316'];
 friendInhabitants=rows.map(function(r,i){
-const startT=new Date(r.start_time).getTime();
-const headStart=Math.max(0,(sessionStart-startT)/60000);
+var startT=new Date(r.start_time).getTime();
+var headStart=Math.max(0,(Date.now()-startT)/60000);
 return{
 name:r.users?.display_name||'Friend',
 emoji:r.users?.emoji||'🍻',
 color:palette[i%palette.length],
 pace:r.total_drinks>0&&headStart>0?(r.total_drinks/(headStart/60)):2.0,
 headStart:headStart,
+totalDrinks:r.total_drinks||0,
 };
 });
 }).catch(function(){});
