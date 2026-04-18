@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 61</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 62</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=61;
+var MY_VERSION=62;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -1115,74 +1115,64 @@ return friendInhabitants;
 }
 
 function renderBarDist(elapsed){
-const chart=document.getElementById('barDistChart');
+var chart=document.getElementById('barDistChart');
 if(!chart||!chart.clientWidth)return;
-const friends=getFriendInhabitants();
-// Empty state: real user with no friends in their Circles yet
-if(friends.length===0){
-// Solo mode: just show your own pace
-const youNow=drinks.length;
-const primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-chart.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--text2)">Solo session</div><div style="font-size:12px;color:'+primary+';font-weight:700">'+youNow+' drinks</div></div>'+
-'<div style="text-align:center;padding:8px 0;font-size:11px;color:var(--text3)">When friends start sessions, they\'ll appear here for you to race.</div>';
-return;
-}
-// Update title based on whether friends are racing
+var friends=getFriendInhabitants();
+// Update title
 var ct=document.getElementById('chartTitle');
 if(ct)ct.textContent=friends.length>0?'You vs. Friends':'Your Pace';
-const nowMin=Math.max(elapsed/60000,0.5);
-// Build points every ~5% of elapsed time
-const numPts=Math.max(Math.ceil(nowMin/2),2);
-const points=[];
-for(let i=0;i<=numPts;i++){
-const t=(i/numPts)*nowMin;
-const cutoff=sessionStart+t*60000;
-const you=drinks.filter(d=>d.time<=cutoff).length;
-const friendCheers=friends.map(f=>Math.max(0,Math.floor(((t+f.headStart)/60)*f.pace)));
-const avg=friendCheers.reduce((a,b)=>a+b,0)/friendCheers.length;
-points.push({t,you,avg,friends:friendCheers});
+// Always draw YOUR pace line — friends overlay when present
+var nowMin=Math.max(elapsed/60000,0.5);
+var numPts=Math.max(Math.ceil(nowMin/2),2);
+var points=[];
+for(var pi=0;pi<=numPts;pi++){
+var t=(pi/numPts)*nowMin;
+var cutoff=sessionStart+t*60000;
+var you=drinks.filter(function(d){return d.time<=cutoff;}).length;
+var friendCheers=friends.map(function(f){return Math.max(0,Math.floor(((t+f.headStart)/60)*f.pace));});
+var avg=friendCheers.length>0?friendCheers.reduce(function(a,b){return a+b;},0)/friendCheers.length:0;
+points.push({t:t,you:you,avg:avg,friends:friendCheers});
 }
-const youNow=drinks.length;
-// Compute current standings + find top 3 friends to actually plot
-const friendsNow=friends.map((f,fi)=>({f:f,fi:fi,cheers:points[points.length-1].friends[fi]}));
-const sortedByCheers=[...friendsNow].sort((a,b)=>b.cheers-a.cheers);
-const topThree=sortedByCheers.slice(0,3);
-const ahead=friendsNow.filter(d=>d.cheers>youNow).length;
-const rankLabel=ahead===0?'🏆 Leading':(ahead+1)+' of '+(friends.length+1);
-const avgNow=Math.round(points[points.length-1].avg);
-// Y scale based on top friend + headroom
-const allVals=points.flatMap(p=>[p.you,p.avg,...p.friends]);
-const maxVal=Math.max(...allVals,3)*1.25;
-const padding={top:10,right:10,bottom:18,left:10};
-const w=chart.clientWidth-padding.left-padding.right-28;// subtract card padding
-const h=120;
-const toX=(t)=>padding.left+(t/Math.max(nowMin,0.5))*w;
-const toY=(v)=>padding.top+h-(v/maxVal)*h;
-const mkPath=(arr)=>'M'+points.map((p,i)=>toX(p.t)+','+toY(arr(p,i))).join(' L');
-// Only plot top 3 friends to keep chart clean
-const friendPaths=topThree.map(({f,fi})=>'<path d="'+mkPath((p)=>p.friends[fi])+'" fill="none" stroke="'+f.color+'" stroke-width="1.8" opacity="0.7"/>').join('');
-const primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-// Legend: 2-column grid so it never overflows
-const legendItems=[
-'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:'+primary+';flex-shrink:0"></span><span style="font-weight:700;color:'+primary+';font-size:11px">You</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+youNow+'</span></div>',
-'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:#999;flex-shrink:0"></span><span style="font-size:11px;color:var(--text2)">Avg</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+avgNow+'</span></div>',
-].concat(topThree.map(({f,cheers})=>'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:'+f.color+';flex-shrink:0"></span><span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.emoji+' '+f.name.split(' ')[0]+'</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+cheers+'</span></div>'));
-// Other friends (not plotted) shown as a compact footer line
-const others=sortedByCheers.slice(3);
-const othersStr=others.length?'<div style="font-size:10px;color:var(--text3);margin-top:8px;text-align:center">+ '+others.map(o=>o.f.emoji+' '+o.f.name.split(' ')[0]+' ('+o.cheers+')').join(' · ')+'</div>':'';
+var youNow=drinks.length;
+var hasFriends=friends.length>0;
+var friendsNow=hasFriends?friends.map(function(f,fi){return{f:f,fi:fi,cheers:points[points.length-1].friends[fi]};}):[];
+var sortedByCheers=friendsNow.slice().sort(function(a,b){return b.cheers-a.cheers;});
+var topThree=sortedByCheers.slice(0,3);
+var ahead=friendsNow.filter(function(d){return d.cheers>youNow;}).length;
+var rankLabel=hasFriends?(ahead===0?'🏆 Leading':(ahead+1)+' of '+(friends.length+1)):(youNow+' drinks');
+var avgNow=hasFriends?Math.round(points[points.length-1].avg):0;
+var allVals=points.map(function(p){return p.you;});
+if(hasFriends)points.forEach(function(p){p.friends.forEach(function(v){allVals.push(v);});allVals.push(p.avg);});
+var maxVal=Math.max.apply(null,allVals.concat([3]))*1.25;
+var padding={top:10,right:10,bottom:18,left:10};
+var w=chart.clientWidth-padding.left-padding.right-28;
+var h=120;
+var toX=function(t){return padding.left+(t/Math.max(nowMin,0.5))*w;};
+var toY=function(v){return padding.top+h-(v/maxVal)*h;};
+var mkPath=function(fn){return 'M'+points.map(function(p,i){return toX(p.t)+','+toY(fn(p,i));}).join(' L');};
+var friendPaths=topThree.map(function(item){return '<path d="'+mkPath(function(p){return p.friends[item.fi];})+'" fill="none" stroke="'+item.f.color+'" stroke-width="1.8" opacity="0.7"/>';}).join('');
+var primary=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+var legendItems=[
+'<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:'+primary+';flex-shrink:0"></span><span style="font-weight:700;color:'+primary+';font-size:11px">You</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+youNow+'</span></div>'
+];
+if(hasFriends){
+legendItems.push('<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:#999;flex-shrink:0"></span><span style="font-size:11px;color:var(--text2)">Avg</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+avgNow+'</span></div>');
+topThree.forEach(function(item){legendItems.push('<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:14px;height:2px;background:'+item.f.color+';flex-shrink:0"></span><span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+item.f.emoji+' '+item.f.name.split(' ')[0]+'</span><span style="font-size:11px;color:var(--text2);margin-left:auto">'+item.cheers+'</span></div>');});
+}
+var headerText=hasFriends?friends.length+' friend'+(friends.length>1?'s':'')+' out tonight':'Solo session';
 chart.innerHTML=
 '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-'<div style="font-size:12px;color:var(--text2)">'+friends.length+' friends out tonight</div>'+
+'<div style="font-size:12px;color:var(--text2)">'+headerText+'</div>'+
 '<div style="font-size:12px;color:'+primary+';font-weight:700">'+rankLabel+'</div>'+
 '</div>'+
 '<svg width="100%" height="'+(h+padding.top+padding.bottom)+'" viewBox="0 0 '+(w+padding.left+padding.right)+' '+(h+padding.top+padding.bottom)+'" preserveAspectRatio="none" style="display:block">'+
-friendPaths+
-'<path d="'+mkPath((p)=>p.avg)+'" fill="none" stroke="#999" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>'+
-'<path d="'+mkPath((p)=>p.you)+'" fill="none" stroke="'+primary+'" stroke-width="3"/>'+
+(hasFriends?friendPaths:'')+
+(hasFriends?'<path d="'+mkPath(function(p){return p.avg;})+'" fill="none" stroke="#999" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>':'')+
+'<path d="'+mkPath(function(p){return p.you;})+'" fill="none" stroke="'+primary+'" stroke-width="3"/>'+
 '<circle cx="'+toX(nowMin)+'" cy="'+toY(youNow)+'" r="4.5" fill="'+primary+'"/>'+
 '</svg>'+
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px">'+legendItems.join('')+'</div>'+
-othersStr;
+(hasFriends&&sortedByCheers.length>3?'<div style="font-size:10px;color:var(--text3);margin-top:8px;text-align:center">+ '+sortedByCheers.slice(3).map(function(o){return o.f.emoji+' '+o.f.name.split(' ')[0]+' ('+o.cheers+')';}).join(' · ')+'</div>':'');
 }
 
 async function addDrink(type,isNA){
