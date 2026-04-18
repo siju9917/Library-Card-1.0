@@ -1,30 +1,27 @@
 # Library Card — Working with this repo
 
-## MANDATORY: push to BOTH `main` AND the feature branch
+## MANDATORY: push to `main` AND the feature branch AND the Pages branch
 
-This repo intentionally keeps feature branches around (we don't delete them
-after merge), but we don't want confusion about which branch is "current".
-Every push therefore needs to land in two places:
+This repo has an UNUSUAL setup that has bitten us hard before:
 
-1. The feature branch for the current session (e.g. `claude/review-session-bugs-VflTp`)
-2. `main`
+1. The feature branch for the current session (e.g. `claude/review-session-bugs-VflTp`).
+2. `main` — kept in sync so it reflects the current tip.
+3. **`claude/wallet-tracking-app-plan-48P2f`** — THIS is what GitHub Pages
+   actually deploys from (Settings → Pages → Source). If you push to
+   `main` but not this branch, the live site stays on the OLD build
+   forever and every user stays stuck.
 
-Do this by updating the local `main` to match the feature tip and pushing
-both refs in one command:
+**Just run `./push.sh` from the repo root.** It handles all three. If
+you're pushing manually, the three commands are:
 
 ```bash
 git push -u origin <feature-branch>
-git push origin <feature-branch>:main
+git push origin HEAD:main
+git push origin HEAD:claude/wallet-tracking-app-plan-48P2f
 ```
 
-Or, equivalently, after committing on the feature branch:
-
-```bash
-git push origin HEAD:<feature-branch> HEAD:main
-```
-
-Never push to just one of them. If `main` push is rejected (fast-forward
-failure), pull/rebase `main` first, then push both again.
+If the Pages source branch ever changes in the GitHub UI, update
+`PAGES_BRANCH` in `push.sh` or the live site will silently stop updating.
 
 ## Web app layout
 
