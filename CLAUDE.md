@@ -34,6 +34,14 @@ failure), pull/rebase `main` first, then push both again.
 - `docs/supabase/schema.sql` is the full Postgres schema including RLS + realtime + RPCs. Safe to re-run.
 - `docs/version.json` stores the current build number; `index.html` mirrors it in `#appVersionLabel`.
 
+## Version bumps — use `./bump.sh NN`
+
+Run `./bump.sh 67` (or whatever the next number is) from the repo root.
+It updates all the places listed below in one go, then mirrors
+`index.html` to `app.html`, then verifies they're all in sync.
+
+If you absolutely need to edit by hand, these are ALL the places:
+
 ## Bump the version on every release — ALL FIVE places
 
 Missing any ONE of these breaks the auto-update path and users get stuck
