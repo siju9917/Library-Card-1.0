@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 53</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 54</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=53;
+var MY_VERSION=54;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -837,26 +837,25 @@ friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
 pendingVenueName=venueName||null;
-// Cloud: create a real session row — AWAITED so cloudSessionId is
-// guaranteed to be set before the user can log any drinks or end.
 cloudSessionId=null;
+// Show session UI IMMEDIATELY — don't wait for cloud
+var nrm=document.getElementById('homeNormal');
+var sc=document.getElementById('sessionContent');
+if(nrm)nrm.style.display='none';
+if(sc){sc.style.display='block';sc.innerHTML='';}
+updateSessionUI();
+sessionTimer=setInterval(function(){updateSessionUI();},1000);
+updateHome();
+switchTab('home');
+document.getElementById('screenContainer').scrollTop=0;
+// Create cloud session in background (non-blocking)
 if(window.LC&&LC.cloud&&LC.userId()){
 try{
-const s=await LC.startSession(venueName||null,null);
+var s=await LC.startSession(venueName||null,null);
 cloudSessionId=s.id;
 console.log('[lc] cloud session started:',cloudSessionId);
 }catch(e){console.warn('cloud startSession FAILED',e);}
 }
-// Swap Home from normal view to live session view
-const nrm=document.getElementById('homeNormal');
-const sc=document.getElementById('sessionContent');
-if(nrm)nrm.style.display='none';
-if(sc){sc.style.display='block';sc.innerHTML='';}
-updateSessionUI();
-sessionTimer=setInterval(()=>{updateSessionUI()},1000);
-updateHome();
-switchTab('home');
-document.getElementById('screenContainer').scrollTop=0;
 }finally{startSession._running=false;}
 }
 
