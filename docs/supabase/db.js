@@ -246,15 +246,26 @@
     const friends = await LC.listMyFriends();
     if (friends.length === 0) return [];
     const ids = friends.map(f => f.friend_id);
+    // We join drinks(id, has_photo, photo_url) so we can count live drinks
+    // AND cheers photos. sessions.total_drinks / total_cheers are only
+    // populated at end-of-session, so during a live session those columns
+    // are 0 — which is why every live friend showed "0 drinks" on everyone's
+    // phone. The join + client-side count fixes it without a schema change.
     const { data, error } = await LC.withTimeout(
       sb.from('sessions')
-        .select('*, users!sessions_user_id_fkey(display_name, emoji)')
+        .select('*, users!sessions_user_id_fkey(display_name, emoji), drinks(id, has_photo, photo_url)')
         .in('user_id', ids)
         .is('end_time', null),
       DEFAULT_TIMEOUT_MS,
       'listFriendsActiveSessions'
     );
     if (error) { console.error('[lc] listFriendsActiveSessions error', error); throw error; }
+    // Attach unified counts so callers don't have to understand the join.
+    (data || []).forEach(function (row) {
+      var rd = row.drinks || [];
+      row.live_drink_count = rd.length;
+      row.live_cheers_count = rd.filter(function (d) { return d.has_photo || d.photo_url; }).length;
+    });
     return data || [];
   };
 

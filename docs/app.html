@@ -10,7 +10,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=72">
+<link rel="manifest" href="manifest.json?v=73">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -74,7 +74,7 @@
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=72;
+  var MY_VERSION=73;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -125,8 +125,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=72"></script>
-<script src="supabase/db.js?v=72"></script>
+<script src="supabase/config.js?v=73"></script>
+<script src="supabase/db.js?v=73"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -318,7 +318,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 72</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 73</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -1034,12 +1034,17 @@ if(window.LC&&LC.cloud&&LC.userId()){
 LC.listFriendsActiveSessions().then(function(rows){
 if(!rows||rows.length===0){finishStoryRing(el,stories);return;}
 rows.forEach(function(r){
+// Prefer live counts (joined from drinks rows) because sessions.total_drinks
+// is 0 until end-of-session. Fall back to total_drinks/total_cheers if the
+// join shape is missing (older db.js in the browser cache, etc).
+var liveDrinks=(typeof r.live_drink_count==='number')?r.live_drink_count:(r.total_drinks||0);
+var liveCheers=(typeof r.live_cheers_count==='number')?r.live_cheers_count:(r.total_cheers||0);
 stories.push({
 name:r.users?.display_name||'Friend',
 emoji:r.users?.emoji||'🍻',
 gradient:'linear-gradient(135deg,#a29bfe,#6c5ce7)',
-status:(r.total_drinks||0)+' drinks',
-cheers:r.total_cheers||0,
+status:liveDrinks+' drinks',
+cheers:liveCheers,
 live:true,
 photo:r.users?.emoji||'🍻',
 isYou:false,
@@ -1660,13 +1665,15 @@ var palette=['#3B82F6','#EC4899','#10B981','#F59E0B','#8B5CF6','#F97316'];
 friendInhabitants=rows.map(function(r,i){
 var startT=new Date(r.start_time).getTime();
 var headStart=Math.max(0,(Date.now()-startT)/60000);
+// Use live counts — total_drinks is 0 mid-session.
+var liveDrinks=(typeof r.live_drink_count==='number')?r.live_drink_count:(r.total_drinks||0);
 return{
 name:r.users?.display_name||'Friend',
 emoji:r.users?.emoji||'🍻',
 color:palette[i%palette.length],
-pace:r.total_drinks>0&&headStart>0?(r.total_drinks/(headStart/60)):2.0,
+pace:liveDrinks>0&&headStart>0?(liveDrinks/(headStart/60)):2.0,
 headStart:headStart,
-totalDrinks:r.total_drinks||0,
+totalDrinks:liveDrinks,
 };
 });
 }).catch(function(err){console.error('[lc] getFriendInhabitants: listFriendsActiveSessions failed',err);});
@@ -4148,7 +4155,8 @@ byVenue[v].friends.push({
 name:r.users?.display_name||'Friend',
 emoji:r.users?.emoji||'🍻',
 since:new Date(r.start_time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-cheers:r.total_cheers||0,
+// Use live cheers count — total_cheers is 0 mid-session.
+cheers:(typeof r.live_cheers_count==='number')?r.live_cheers_count:(r.total_cheers||0),
 });
 });
 const venueList=Object.entries(byVenue).sort((a,b)=>b[1].friends.length-a[1].friends.length);
@@ -4494,7 +4502,7 @@ else{if(pr.data.length>0){warn(pr.data.length+' pending friend request(s) waitin
 // 8b. Friends with active sessions RIGHT NOW
 try{
 var fas=await LC.listFriendsActiveSessions();
-if(fas.length>0){pass('Friends with active sessions: '+fas.length+' — '+fas.map(function(s){return (s.users?.display_name||'?')+' ('+s.total_drinks+' drinks)';}).join(', '));}
+if(fas.length>0){pass('Friends with active sessions: '+fas.length+' — '+fas.map(function(s){var n=(typeof s.live_drink_count==='number')?s.live_drink_count:(s.total_drinks||0);return (s.users?.display_name||'?')+' ('+n+' drinks)';}).join(', '));}
 else{pass('No friends in active sessions right now');}
 }catch(e){warn('Friends active sessions check: '+e.message);}
 }catch(e){fail('Pending requests error: '+e.message);}
