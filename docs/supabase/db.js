@@ -109,9 +109,17 @@
   };
 
   LC.getSession = async function () {
-    const { data } = await sb.auth.getSession();
-    LC.session = data.session;
-    return data.session;
+    // Wrapped in a 10s timeout because sb.auth.getSession() has been
+    // observed to hang indefinitely when refresh-token state is weird.
+    // A hanging auth call used to block weekend-plans loading forever.
+    try {
+      const { data } = await LC.withTimeout(sb.auth.getSession(), 10000, 'auth.getSession');
+      LC.session = data.session;
+      return data.session;
+    } catch (e) {
+      console.error('[lc] getSession timed out / failed', e);
+      return LC.session;// fall back to whatever we have cached
+    }
   };
 
   LC.loadMe = async function () {

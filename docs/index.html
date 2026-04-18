@@ -10,7 +10,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=67">
+<link rel="manifest" href="manifest.json?v=68">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -22,23 +22,41 @@
 <script>
 (function(){
   var seen=0;
+  var lastShown=0;
+  var MIN_INTERVAL=2000;// throttle so a repeating error can't pulse the banner every 100ms
   function show(msg,detail){
-    seen++;
+    var now=Date.now();
+    if(now-lastShown<MIN_INTERVAL){return;}
+    lastShown=now;seen++;
     try{
-      var el=document.getElementById('lcGlobalErr');
+      // Dedicated positioned-at-TOP banner that's wrapped in a wrapper with
+      // pointer-events:none so only the banner's own buttons are clickable.
+      // Bottom of the viewport is reserved for the app (drink buttons, tab
+      // bar, end-session) and MUST NEVER be obscured.
+      var wrap=document.getElementById('lcGlobalErrWrap');
+      if(!wrap){
+        wrap=document.createElement('div');
+        wrap.id='lcGlobalErrWrap';
+        wrap.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,20px) + 4px);left:8px;right:8px;z-index:2147483647;pointer-events:none';
+        document.body&&document.body.appendChild(wrap);
+      }
+      var el=wrap.firstChild;
       if(!el){
         el=document.createElement('div');
-        el.id='lcGlobalErr';
-        el.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#B91C1C;color:#fff;padding:12px 14px;border-radius:10px;font:600 12px/1.35 -apple-system,system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5);max-height:40vh;overflow:auto;-webkit-user-select:text;user-select:text';
-        document.body&&document.body.appendChild(el);
+        el.style.cssText='background:#B91C1C;color:#fff;padding:10px 12px;border-radius:10px;font:600 12px/1.3 -apple-system,system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5);max-height:30vh;overflow:auto;pointer-events:auto;-webkit-user-select:text;user-select:text';
+        wrap.appendChild(el);
       }
       el.innerHTML='';
-      var h=document.createElement('div');h.style.cssText='font-size:13px;margin-bottom:4px';h.textContent='⚠️ Something broke ('+seen+'× this session)';el.appendChild(h);
-      var d=document.createElement('div');d.style.cssText='font-weight:400;white-space:pre-wrap;word-break:break-word;margin-bottom:8px';d.textContent=String(msg||'Unknown error')+(detail?'\n'+detail:'');el.appendChild(d);
-      var row=document.createElement('div');row.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
-      var b1=document.createElement('button');b1.textContent='Dismiss';b1.style.cssText='flex:1;padding:8px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer';b1.onclick=function(){el.remove();};
-      var b2=document.createElement('button');b2.textContent='Force Refresh';b2.style.cssText='flex:1;padding:8px;background:#fff;color:#B91C1C;border:none;border-radius:6px;font-weight:700;cursor:pointer';b2.onclick=function(){window._lcForceRefresh?window._lcForceRefresh():location.reload();};
+      var h=document.createElement('div');h.style.cssText='font-size:13px;margin-bottom:4px';h.textContent='⚠️ Error ('+seen+'×) — tap to dismiss';h.onclick=function(){wrap.remove();};el.appendChild(h);
+      var d=document.createElement('div');d.style.cssText='font-weight:400;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;font-size:11px';d.textContent=String(msg||'Unknown error')+(detail?'\n'+detail:'');el.appendChild(d);
+      var row=document.createElement('div');row.style.cssText='display:flex;gap:6px';
+      var b1=document.createElement('button');b1.textContent='Dismiss';b1.style.cssText='flex:1;padding:6px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer';b1.onclick=function(){wrap.remove();};
+      var b2=document.createElement('button');b2.textContent='Force Refresh';b2.style.cssText='flex:1;padding:6px;background:#fff;color:#B91C1C;border:none;border-radius:6px;font-weight:700;cursor:pointer';b2.onclick=function(){window._lcForceRefresh?window._lcForceRefresh():location.reload();};
       row.appendChild(b1);row.appendChild(b2);el.appendChild(row);
+      // Auto-dismiss after 8s so a transient blip doesn't permanently cover
+      // any of the UI. Repeating errors will re-show but also re-dismiss.
+      clearTimeout(show._t);
+      show._t=setTimeout(function(){try{wrap.remove();}catch(_){}},8000);
     }catch(_){ /* last-resort: nothing more we can do */ }
   }
   window.addEventListener('error',function(e){
@@ -56,7 +74,7 @@
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=67;
+  var MY_VERSION=68;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -107,8 +125,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=67"></script>
-<script src="supabase/db.js?v=67"></script>
+<script src="supabase/config.js?v=68"></script>
+<script src="supabase/db.js?v=68"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -300,7 +318,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 67</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 68</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -398,9 +416,9 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div id="pickerModal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,.7);align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)"></div>
 <div id="demoModal" style="display:none;position:fixed;inset:0;z-index:1002;background:var(--bg);flex-direction:column"></div>
 <!-- MODAL ESCAPE HATCH — if ANY modal is display:flex but not clearly
-     dismissable, a long-press or Escape key hides them all. Prevents the
-     "can't click Health Check" class of bug where a stray modal z-index
-     is trapping the user. -->
+     dismissable, Escape key or double-tap the status-bar zone hides them
+     all. Prevents the "can't click Health Check" class of bug where a
+     stray modal z-index is trapping the user. -->
 <script>
 (function(){
   function hideAll(){
@@ -408,16 +426,47 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
       var el=document.getElementById(id);
       if(el&&el.style.display!=='none'){el.style.display='none';el.innerHTML='';console.warn('[lc] force-hid modal',id);}
     });
+    // Also yank the splash and error banner if they're sticking around.
+    var sp=document.getElementById('splashScreen');if(sp)try{sp.remove();}catch(_){}
+    var eb=document.getElementById('lcGlobalErrWrap');if(eb)try{eb.remove();}catch(_){}
+    // Release the per-drink photo gate (a top-level var becomes a window
+    // property), otherwise a force-closed camera would leave addDrink()
+    // refusing forever.
+    try{window._photoInFlight=false;}catch(_){}
   }
   document.addEventListener('keydown',function(e){if(e.key==='Escape')hideAll();});
-  // Double-tap on the status bar area closes all modals too (iOS users often
-  // can't press Escape).
   var lastTap=0;
   document.addEventListener('click',function(e){
     if(e.clientY>40)return;// status-bar zone only
     var now=Date.now();if(now-lastTap<400)hideAll();lastTap=now;
   });
   window._lcCloseAllModals=hideAll;
+  // PERSISTENT EMERGENCY RESET — tiny button in the top-right corner
+  // that's ALWAYS visible. Gives the user a guaranteed way out of any
+  // frozen state without waiting for a banner to decide to appear.
+  // Tap once: closes modals/banners. Tap twice in 600ms: force-refresh.
+  function mountEmergencyButton(){
+    if(document.getElementById('lcEmergencyBtn'))return;
+    var b=document.createElement('button');
+    b.id='lcEmergencyBtn';
+    b.textContent='⟳';
+    b.setAttribute('aria-label','Emergency reset');
+    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,20px) + 6px);right:6px;width:32px;height:32px;border-radius:16px;border:none;background:rgba(30,30,30,.55);color:#E8A317;font-size:16px;font-weight:700;cursor:pointer;z-index:2147483646;opacity:.35;transition:opacity .2s';
+    b.onmouseenter=function(){b.style.opacity='1';};
+    b.onmouseleave=function(){b.style.opacity='.35';};
+    var lastT=0;
+    b.onclick=function(ev){
+      ev.stopPropagation();
+      var now=Date.now();
+      if(now-lastT<600){if(window._lcForceRefresh)window._lcForceRefresh();else location.reload();return;}
+      lastT=now;
+      hideAll();
+      b.textContent='✓';b.style.opacity='1';
+      setTimeout(function(){b.textContent='⟳';b.style.opacity='.35';},800);
+    };
+    document.body.appendChild(b);
+  }
+  if(document.body)mountEmergencyButton();else document.addEventListener('DOMContentLoaded',mountEmergencyButton);
 })();
 </script>
 
@@ -690,7 +739,7 @@ function resumeFromShadowImmediately(){
   if(sc){sc.style.display='block';sc.innerHTML='';}
   if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
   try{updateSessionUI();}catch(e){console.error('[lc] shadow updateSessionUI',e);}
-  sessionTimer=setInterval(function(){updateSessionUI();},1000);
+  sessionTimer=setInterval(function(){try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI tick',e);}},1000);
   try{switchTab('home');}catch(e){console.error('[lc] shadow switchTab',e);}
   return true;
 }
@@ -1204,7 +1253,7 @@ var sc=document.getElementById('sessionContent');
 if(nrm)nrm.style.display='none';
 if(sc){sc.style.display='block';sc.innerHTML='';}
 updateSessionUI();
-sessionTimer=setInterval(function(){updateSessionUI();},1000);
+sessionTimer=setInterval(function(){try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI tick',e);}},1000);
 updateHome();
 switchTab('home');
 document.getElementById('screenContainer').scrollTop=0;
@@ -1512,9 +1561,15 @@ chart.innerHTML=
 }
 
 async function addDrink(type,isNA){
-// Input validation — a typo upstream used to silently log a "[object]" drink.
 if(typeof type!=='string'||!type.trim()){console.error('[lc] addDrink: invalid type',type);return;}
 if(!sessionActive){console.error('[lc] addDrink: no active session');return;}
+// Invariant: one drink → one Cheers → next drink. If a photo prompt is
+// open (user hasn't tapped Post/Skip yet) we refuse new drinks, otherwise
+// rapid taps can queue up 9 drinks with only 1 Cheers ever shown.
+if(_photoInFlight){
+  try{showInvariantToast('Finish your Cheers first — tap Post or Skip.');}catch(_){}
+  return;
+}
 if(!isNA&&drinkCap>0&&drinks.filter(d=>!d.isNA).length>=drinkCap){
 alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. Soft drinks still count as Cheers — keep the photos coming!');
 return;
@@ -1545,6 +1600,12 @@ if(navigator.vibrate)navigator.vibrate(50);
 promptForCheersPhoto(drinks.length-1);
 }
 async function addDrinkDirect(name){
+if(typeof name!=='string'||!name.trim()){console.error('[lc] addDrinkDirect: invalid name',name);return;}
+if(!sessionActive){console.error('[lc] addDrinkDirect: no active session');return;}
+if(_photoInFlight){
+  try{showInvariantToast('Finish your Cheers first — tap Post or Skip.');}catch(_){}
+  return;
+}
 if(drinkCap>0&&drinks.filter(function(d){return !d.isNA;}).length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
 const drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false};
 drinks.push(drink);
@@ -1569,8 +1630,36 @@ updateSessionUI();
 if(navigator.vibrate)navigator.vibrate(50);
 promptForCheersPhoto(drinks.length-1);
 }
+// Set true the moment a Cheers photo prompt is about to appear, cleared
+// when the camera modal is closed (either by Post or Skip). addDrink()
+// refuses while this is true — prevents the "tap Beer 9 times, get 1
+// photo prompt at the end" class of bug where rapid taps bypass the
+// one-drink-one-Cheers flow entirely.
+var _photoInFlight=false;
+// Small non-blocking toast for invariant violations ("do X first"). Shows
+// why the user's tap was ignored so the UI never feels silently broken.
+function showInvariantToast(msg){
+  try{
+    var t=document.getElementById('lcInvToast');
+    if(!t){
+      t=document.createElement('div');
+      t.id='lcInvToast';
+      t.style.cssText='position:fixed;left:50%;top:calc(env(safe-area-inset-top,20px) + 48px);transform:translateX(-50%);background:rgba(0,0,0,.88);color:#fff;padding:10px 16px;border-radius:999px;font:600 12px/1.3 -apple-system,system-ui,sans-serif;z-index:2147483645;max-width:90vw;text-align:center;pointer-events:none;opacity:0;transition:opacity .18s';
+      document.body.appendChild(t);
+    }
+    t.textContent=msg;
+    t.style.opacity='1';
+    clearTimeout(showInvariantToast._t);
+    showInvariantToast._t=setTimeout(function(){t.style.opacity='0';},2500);
+    if(navigator.vibrate)navigator.vibrate(30);
+  }catch(e){console.error('[lc] showInvariantToast',e);}
+}
 function promptForCheersPhoto(idx){
-setTimeout(()=>openCheersCamera(idx),100);
+_photoInFlight=true;
+setTimeout(function(){
+  try{openCheersCamera(idx);}
+  catch(e){console.error('[lc] openCheersCamera',e);_photoInFlight=false;}
+},100);
 }
 // ========== TAPPABLE PICKER MODAL ==========
 let pickerCallback=null;
@@ -1817,6 +1906,8 @@ document.getElementById('cameraModal').style.display='none';
 pendingPhotoIdx=null;
 pendingPhotoDataUrl=null;
 pendingPhotoBlob=null;
+// Release the per-drink photo gate so the user can log the next drink.
+_photoInFlight=false;
 }
 function captureCheersPhoto(idx){
 const captionInput=document.getElementById('captionInput');
@@ -1891,6 +1982,13 @@ showPicker('⭐ Rate this drink','How was it?',[
 }
 
 async function endSession(){
+// Can't end while a Cheers photo flow is in flight — the in-memory drink
+// hasn't been finalised yet, and the camera modal is covering the end
+// button visually anyway.
+if(_photoInFlight){
+  try{showInvariantToast('Finish your Cheers first — then tap End Session again.');}catch(_){}
+  return;
+}
 // Concurrency guard: prevents double-tap from creating duplicate rows in
 // allSessions or racing on sessionTimer cleanup.
 if(endSession._running)return;
@@ -4295,7 +4393,7 @@ if(sc){sc.style.display='block';sc.innerHTML='';}
 if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
 setTimeout(function(){
 if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
-sessionTimer=setInterval(function(){updateSessionUI();},1000);
+sessionTimer=setInterval(function(){try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI tick',e);}},1000);
 updateSessionUI();
 updateHome();
 switchTab('home');
@@ -4339,7 +4437,7 @@ if(sc2){sc2.style.display='block';sc2.innerHTML='';}
 if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
 setTimeout(function(){
 if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
-sessionTimer=setInterval(function(){updateSessionUI();},1000);
+sessionTimer=setInterval(function(){try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI tick',e);}},1000);
 updateSessionUI();
 updateHome();
 switchTab('home');
