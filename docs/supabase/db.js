@@ -195,7 +195,8 @@
   };
 
   LC.rateDrink = async function (drinkId, rating) {
-    await sb.from('drinks').update({ rating }).eq('id', drinkId);
+    const { error } = await sb.from('drinks').update({ rating }).eq('id', drinkId);
+    if (error) throw error;
   };
 
   // ---------- PHOTOS ----------

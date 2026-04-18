@@ -342,7 +342,7 @@ try{
 fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
 if(d&&d.v&&d.v>MY_VERSION){
 // Redirect to cache-busted URL with new version
-window.location.replace('app.html?_v='+d.v+'&t='+Date.now());
+window.location.replace(window.location.pathname+'?_v='+d.v+'&t='+Date.now());
 }
 }).catch(function(){});
 }catch(e){}
@@ -397,7 +397,7 @@ let userHeight=parseFloat(localStorage.getItem('lc_height')||'70'); // inches
 let userSex=localStorage.getItem('lc_sex')||'male'; // male/female
 let userXP=parseInt(localStorage.getItem('lc_xp')||'0');
 let userLevel=parseInt(localStorage.getItem('lc_level')||'1');
-function xpForLevel(lvl){return lvl*500;}
+function xpForLevel(lvl){return lvl<=1?0:lvl*500;}
 function addXP(amount,reason){
 userXP+=amount;
 localStorage.setItem('lc_xp',String(userXP));
@@ -744,6 +744,9 @@ alert('START SESSION ERROR: '+(e.message||e));
 }
 
 async function startSession(venueName){
+if(startSession._running)return;
+startSession._running=true;
+try{
 sessionActive=true;
 sessionStart=Date.now();
 drinks=[];
@@ -771,6 +774,7 @@ sessionTimer=setInterval(()=>{updateSessionUI()},1000);
 updateHome();
 switchTab('home');
 document.getElementById('screenContainer').scrollTop=0;
+}finally{startSession._running=false;}
 }
 
 function calcBAC(numDrinks,elapsedMs){
@@ -1060,7 +1064,7 @@ if(navigator.vibrate)navigator.vibrate(50);
 promptForCheersPhoto(drinks.length-1);
 }
 async function addDrinkDirect(name){
-if(drinkCap>0&&drinks.length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
+if(drinkCap>0&&drinks.filter(function(d){return !d.isNA;}).length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
 const drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false};
 drinks.push(drink);
 if(cloudSessionId&&window.LC&&LC.cloud){
@@ -1366,11 +1370,12 @@ showPicker('⭐ Rate this drink','How was it?',[
 {label:'⭐⭐⭐',emoji:'3',sub:'Good'},
 {label:'⭐⭐⭐⭐',emoji:'4',sub:'Really good'},
 {label:'⭐⭐⭐⭐⭐',emoji:'5',sub:'Amazing'},
-],(idx)=>{drinks[index].rating=idx+1;updateSessionUI();if(drinks[index].cloudId&&window.LC&&LC.cloud){try{LC.rateDrink(drinks[index].cloudId,idx+1);}catch(e){}}});
+],(idx)=>{drinks[index].rating=idx+1;updateSessionUI();if(drinks[index].cloudId&&window.LC&&LC.cloud){(async function(){try{await LC.rateDrink(drinks[index].cloudId,idx+1);}catch(e){console.warn('rateDrink',e);}})();}});
 }
 
 async function endSession(){
 if(!sessionActive)return;
+sessionActive=false;
 clearInterval(sessionTimer);
 const elapsed=Date.now()-sessionStart;
 // Detect PR before adding the new session
@@ -1379,7 +1384,8 @@ const isDrinksPR=drinks.length>prevMaxDrinks&&drinks.length>=3;
 const cheersCount=drinks.filter(d=>d.hasPhoto).length;
 const prevMaxCheers=allSessions.reduce((m,s)=>{const c=(s.drinkList||[]).filter(d=>d.hasPhoto).length;return Math.max(m,c);},0);
 const isCheersPR=cheersCount>prevMaxCheers&&cheersCount>=3;
-const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:pendingVenueName||null,drinkList:drinks,cloudId:cloudSessionId};
+const cleanDrinks=drinks.map(function(d){var c={};for(var k in d){if(k!=='photoDataUrl')c[k]=d[k];}return c;});
+const session={time:sessionStart,drinks:drinks.length,duration:elapsed,venue:pendingVenueName||null,drinkList:cleanDrinks,cloudId:cloudSessionId};
 allSessions.push(session);
 allTimeDrinks+=drinks.length;
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
@@ -1403,7 +1409,6 @@ console.warn('[lc] endSession — cloudSessionId is null, saving locally only. d
 }
 }
 cloudSessionId=null;
-sessionActive=false;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
 friendInhabitants=null;
@@ -2147,7 +2152,8 @@ renderWeekendPlan();
 function getFridayDate(){
 var d=new Date();
 var day=d.getDay();
-var daysUntilFri=(5-day+7)%7||7;
+var daysUntilFri=(5-day+7)%7;
+if(daysUntilFri===0){return d.toLocaleDateString([],{month:'short',day:'numeric'});}
 var fri=new Date(d.getTime()+daysUntilFri*86400000);
 return fri.toLocaleDateString([],{month:'short',day:'numeric'});
 }
@@ -3480,7 +3486,7 @@ if(!LC.userId())return;
 // the most recent one instead of closing it. This lets users start a
 // session, close the app, come back hours later, and pick up where they left off.
 try{
-const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers').eq('user_id',LC.userId()).is('end_time',null).order('start_time',{ascending:false});
+const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers,venue_name').eq('user_id',LC.userId()).is('end_time',null).order('start_time',{ascending:false});
 if(active.data&&active.data.length>0){
 // Only resume sessions from the last 12 hours. Auto-close older ones.
 const cutoff=Date.now()-12*3600000;
@@ -3516,6 +3522,7 @@ cloudDrinks=drinksResult.data||[];
 sessionActive=true;
 sessionStart=new Date(resumeS.start_time).getTime();
 cloudSessionId=resumeS.id;
+pendingVenueName=resumeS.venue_name||null;
 friendInhabitants=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
@@ -3568,7 +3575,7 @@ cloudId:s.id,
 // matching cloudId, but local-only sessions are preserved.
 const cloudIds=new Set(cloud.map(s=>s.cloudId));
 const localOnly=(allSessions||[]).filter(s=>!s.cloudId||!cloudIds.has(s.cloudId));
-allSessions=[...cloud,...localOnly].sort((a,b)=>b.time-a.time);
+allSessions=[...cloud,...localOnly].sort((a,b)=>a.time-b.time);
 allTimeDrinks=allSessions.reduce((a,s)=>a+s.drinks,0);
 localStorage.setItem('lc_sessions',JSON.stringify(allSessions));
 localStorage.setItem('lc_alltime',String(allTimeDrinks));
