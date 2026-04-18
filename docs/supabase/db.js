@@ -12,6 +12,12 @@
     return;
   }
 
+  if (!window.supabase || !window.supabase.createClient) {
+    console.error('Supabase SDK not loaded');
+    window.LC = { cloud: false };
+    return;
+  }
+
   // Init Supabase client (loaded from CDN <script> tag in index.html)
   const sb = window.supabase.createClient(
     window.LC_CONFIG.SUPABASE_URL,
@@ -252,16 +258,19 @@
   };
 
   LC.declineFriendRequest = async function (requesterId) {
-    await sb.from('friendships').update({ status: 'declined' })
+    const { error } = await sb.from('friendships').update({ status: 'declined' })
       .match({ user_id: requesterId, friend_id: LC.userId() });
+    if (error) throw error;
   };
 
   LC.moveFriendTier = async function (friendId, tier) {
     if (tier === null) {
-      await sb.from('friendships').delete().match({ user_id: LC.userId(), friend_id: friendId });
+      const { error } = await sb.from('friendships').delete().match({ user_id: LC.userId(), friend_id: friendId });
+      if (error) throw error;
       return;
     }
-    await sb.from('friendships').update({ tier }).match({ user_id: LC.userId(), friend_id: friendId });
+    const { error } = await sb.from('friendships').update({ tier }).match({ user_id: LC.userId(), friend_id: friendId });
+    if (error) throw error;
   };
 
   // ---------- LIKES (🔥) ----------
@@ -317,7 +326,8 @@
   };
 
   LC.respondToGift = async function (giftId, status) {
-    await sb.from('drink_gifts').update({ status }).eq('id', giftId);
+    const { error } = await sb.from('drink_gifts').update({ status }).eq('id', giftId);
+    if (error) throw error;
   };
 
   // ---------- SOS ----------

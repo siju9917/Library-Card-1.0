@@ -206,7 +206,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <h2>Legal</h2>
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 50</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 51</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -335,7 +335,8 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=50;
+var MY_VERSION=51;
+window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
 try{
@@ -1057,6 +1058,9 @@ drinks.push(drink);
 // Cloud: log to drinks table
 if(cloudSessionId&&window.LC&&LC.cloud){
 try{const d=await LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA});drink.cloudId=d.id;}catch(e){console.warn('cloud logDrink',e);}
+}else if(window.LC&&LC.cloud&&!addDrink._warnedOffline){
+addDrink._warnedOffline=true;
+console.warn('[lc] drinks not syncing to cloud — cloudSessionId is null');
 }
 recordDrinkHistory(name);
 updateSessionUI();
@@ -1986,7 +1990,7 @@ if(vl)vl.textContent='The Library v1.0 · build '+MY_VERSION;
 const resetBtn=document.getElementById('resetDemoBtn');
 if(resetBtn){
 if(LC_DEMO){
-resetBtn.innerHTML='<div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm(\'Reset all demo data?\')){const toDel=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(\'lc_\'))toDel.push(k);}toDel.forEach(k=>localStorage.removeItem(k));location.reload();}">Reset Demo Data</button></div>';
+resetBtn.innerHTML='<div style="text-align:center;padding-bottom:12px"><button class="btn btn-secondary" style="font-size:14px;padding:12px;color:var(--red)" onclick="if(confirm(\'Reset all demo data?\')){const toDel=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(\'lc_\'))toDel.push(k);}toDel.forEach(k=>localStorage.removeItem(k));location.reload();}">Exit Demo Mode</button></div>';
 }else{
 resetBtn.innerHTML='';
 }
