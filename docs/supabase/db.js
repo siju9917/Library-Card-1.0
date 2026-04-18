@@ -95,6 +95,51 @@
     });
   };
 
+  // Dedupe a list of drink rows returned from the DB. Retries created
+  // duplicates before the schema had a unique index on client_op_id:
+  //   - Dedupe by client_op_id when present (exact match = same logical drink)
+  //   - Fallback: same (session_id, user_id, name, drink_type) within 2 s of
+  //     an already-kept drink is treated as a duplicate (the v69 drink gate
+  //     prevents a human from logging the same drink twice that fast, so
+  //     this window only catches retry-duplicates in practice).
+  // Returns a NEW sorted array; does not mutate input.
+  LC._dedupeDrinks = function (rows) {
+    if (!Array.isArray(rows)) return [];
+    var sorted = rows.slice().sort(function (a, b) {
+      var at = a.logged_at ? new Date(a.logged_at).getTime() : 0;
+      var bt = b.logged_at ? new Date(b.logged_at).getTime() : 0;
+      return at - bt;
+    });
+    var seenOpIds = {};
+    var out = [];
+    for (var i = 0; i < sorted.length; i++) {
+      var d = sorted[i];
+      if (d.client_op_id) {
+        if (seenOpIds[d.client_op_id]) continue;
+        seenOpIds[d.client_op_id] = true;
+      } else {
+        // Fallback heuristic for pre-migration rows
+        var t = d.logged_at ? new Date(d.logged_at).getTime() : 0;
+        var dupe = false;
+        for (var j = out.length - 1; j >= 0; j--) {
+          var prev = out[j];
+          var pt = prev.logged_at ? new Date(prev.logged_at).getTime() : 0;
+          if (t && pt && (t - pt) > 2000) break;// outside window, stop scanning
+          if (prev.client_op_id) continue;// was matched by op id, not a fallback peer
+          if (prev.user_id !== d.user_id) continue;
+          if (prev.session_id !== d.session_id) continue;
+          if ((prev.name || '') !== (d.name || '')) continue;
+          if ((prev.drink_type || '') !== (d.drink_type || '')) continue;
+          if (!!prev.is_na !== !!d.is_na) continue;
+          dupe = true; break;
+        }
+        if (dupe) continue;
+      }
+      out.push(d);
+    }
+    return out;
+  };
+
   // ---------- AUTH ----------
   LC.signInWithEmail = async function (email) {
     const { error } = await sb.auth.signInWithOtp({
@@ -246,23 +291,31 @@
     const friends = await LC.listMyFriends();
     if (friends.length === 0) return [];
     const ids = friends.map(f => f.friend_id);
-    // We join drinks(id, has_photo, photo_url) so we can count live drinks
-    // AND cheers photos. sessions.total_drinks / total_cheers are only
-    // populated at end-of-session, so during a live session those columns
-    // are 0 — which is why every live friend showed "0 drinks" on everyone's
-    // phone. The join + client-side count fixes it without a schema change.
-    const { data, error } = await LC.withTimeout(
-      sb.from('sessions')
-        .select('*, users!sessions_user_id_fkey(display_name, emoji), drinks(id, has_photo, photo_url)')
+    // Join drinks with every field the dedupe helper needs. We deliberately
+    // do NOT select client_op_id because the column may not exist in the
+    // schema yet (it's in the recommended migration but users who haven't
+    // run it would get a 400 from PostgREST). The _dedupeDrinks heuristic
+    // (same user+session+name within 2 s) is enough given v69's one-drink-
+    // one-Cheers gate prevents legitimate sub-second repeats.
+    async function run(withOpId) {
+      var drinksCols = 'id, session_id, user_id, name, drink_type, is_na, has_photo, photo_url, logged_at' + (withOpId ? ', client_op_id' : '');
+      return await sb.from('sessions')
+        .select('*, users!sessions_user_id_fkey(display_name, emoji), drinks(' + drinksCols + ')')
         .in('user_id', ids)
-        .is('end_time', null),
-      DEFAULT_TIMEOUT_MS,
-      'listFriendsActiveSessions'
-    );
-    if (error) { console.error('[lc] listFriendsActiveSessions error', error); throw error; }
-    // Attach unified counts so callers don't have to understand the join.
+        .is('end_time', null);
+    }
+    let res = await LC.withTimeout(run(true), DEFAULT_TIMEOUT_MS, 'listFriendsActiveSessions');
+    if (res.error && /client_op_id/.test(String(res.error.message || ''))) {
+      // Column missing — retry without it. Dedupe fallback is the time
+      // heuristic, which is still safe with the drink gate.
+      console.warn('[lc] drinks.client_op_id column missing — dedupe fallback only');
+      res = await LC.withTimeout(run(false), DEFAULT_TIMEOUT_MS, 'listFriendsActiveSessions');
+    }
+    if (res.error) { console.error('[lc] listFriendsActiveSessions error', res.error); throw res.error; }
+    var data = res.data;
     (data || []).forEach(function (row) {
-      var rd = row.drinks || [];
+      var rd = LC._dedupeDrinks(row.drinks || []);
+      row.drinks = rd;// overwrite so downstream (photo strips etc) also see deduped
       row.live_drink_count = rd.length;
       row.live_cheers_count = rd.filter(function (d) { return d.has_photo || d.photo_url; }).length;
     });

@@ -594,3 +594,23 @@ BEGIN
 END $$;
 
 -- ========== END MASTER MIGRATION v50 ==========
+
+-- ========== MIGRATION v74: IDEMPOTENCY KEYS ON WRITES ==========
+-- Adds a client-generated op-id column + unique index on drinks and
+-- sessions. The app sends a UUID in every write; the unique index means
+-- a retry that accidentally succeeded twice is rejected at the DB,
+-- preventing the "friends have more drinks than they actually had"
+-- duplicate-row bug.
+--
+-- Safe to re-run. Partial indexes (WHERE ... IS NOT NULL) so existing
+-- rows with NULL op-ids don't all collide.
+
+ALTER TABLE public.drinks ADD COLUMN IF NOT EXISTS client_op_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS drinks_client_op_id_uniq
+  ON public.drinks(client_op_id) WHERE client_op_id IS NOT NULL;
+
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS client_op_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS sessions_client_op_id_uniq
+  ON public.sessions(client_op_id) WHERE client_op_id IS NOT NULL;
+
+-- ========== END MIGRATION v74 ==========
