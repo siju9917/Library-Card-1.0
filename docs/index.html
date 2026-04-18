@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 55</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 56</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=55;
+var MY_VERSION=56;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -931,8 +931,13 @@ let sessionUIBuilt=false;
 let lastDrinksLen=-1;
 function updateSessionUI(){
 if(!sessionActive)return;
-const elapsed=Date.now()-sessionStart;
-const dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
+var elapsed=Date.now()-sessionStart;
+// Refresh story ring every 30 seconds to pick up friends' sessions
+if(!updateSessionUI._lastRingRefresh||Date.now()-updateSessionUI._lastRingRefresh>30000){
+updateSessionUI._lastRingRefresh=Date.now();
+renderStoryRing();
+}
+var dph=drinks.length>0?(drinks.length/(elapsed/3600000)).toFixed(1):'0.0';
 const dpm=drinks.length>0?(drinks.length/(elapsed/60000)).toFixed(3):'0.000';
 const container=document.getElementById('sessionContent');
 // Only rebuild the structure on first render
@@ -1413,6 +1418,7 @@ triggerCheersCelebration();
 function triggerCheersCelebration(){
 showCelebrationToast('🎉','Cheers!','+15 XP');
 spawnConfetti(20);
+renderStoryRing();
 }
 
 // ========== CELEBRATIONS ==========
@@ -3323,7 +3329,12 @@ if(fr.error){fail('Friendships query failed: '+fr.error.message);}
 else{
 var accepted=fr.data.filter(function(f){return f.status==='accepted';}).length;
 var pending=fr.data.filter(function(f){return f.status==='pending';}).length;
-pass('Friendships: '+accepted+' accepted, '+pending+' pending');
+var noStatus=fr.data.filter(function(f){return !f.status;}).length;
+pass('Friendships: '+accepted+' accepted, '+pending+' pending'+(noStatus>0?', '+noStatus+' NO STATUS (run migration!)':''));
+if(accepted>0){
+var names=fr.data.filter(function(f){return f.status==='accepted';}).map(function(f){return f.friend_id.substring(0,8);}).join(', ');
+pass('Accepted friend IDs: '+names);
+}
 }
 }catch(e){fail('Friendships error: '+e.message);}
 // 8. Pending requests TO me
@@ -3331,6 +3342,12 @@ try{
 var pr=await LC.sb.from('friendships').select('user_id,status').eq('friend_id',uid).eq('status','pending');
 if(pr.error){fail('Pending requests query failed: '+pr.error.message);}
 else{if(pr.data.length>0){warn(pr.data.length+' pending friend request(s) waiting for you');}else{pass('No pending friend requests');}}
+// 8b. Friends with active sessions RIGHT NOW
+try{
+var fas=await LC.listFriendsActiveSessions();
+if(fas.length>0){pass('Friends with active sessions: '+fas.length+' — '+fas.map(function(s){return (s.users?.display_name||'?')+' ('+s.total_drinks+' drinks)';}).join(', '));}
+else{pass('No friends in active sessions right now');}
+}catch(e){warn('Friends active sessions check: '+e.message);}
 }catch(e){fail('Pending requests error: '+e.message);}
 // 9. Weekend plans
 try{
