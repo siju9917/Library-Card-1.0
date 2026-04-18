@@ -34,9 +34,34 @@ failure), pull/rebase `main` first, then push both again.
 - `docs/supabase/schema.sql` is the full Postgres schema including RLS + realtime + RPCs. Safe to re-run.
 - `docs/version.json` stores the current build number; `index.html` mirrors it in `#appVersionLabel`.
 
-## Bump the version on every release
+## Bump the version on every release — ALL FIVE places
 
-When shipping a change, bump the `v` in `docs/version.json` AND the `build NN` string in `docs/index.html` (the `#appVersionLabel` div).
+Missing any ONE of these breaks the auto-update path and users get stuck
+on the old build. Every release, bump the number in ALL of:
+
+1. `docs/version.json` — the `v` field.
+2. `docs/index.html` — `var MY_VERSION=NN;` in the `<head>` version gate script.
+3. `docs/index.html` — the `build NN` string in `#appVersionLabel` (Profile screen).
+4. `docs/index.html` — `manifest.json?v=NN` on the `<link rel="manifest">` tag.
+5. `docs/index.html` — `supabase/config.js?v=NN` and `supabase/db.js?v=NN` on the two `<script>` tags.
+
+Then `cp docs/index.html docs/app.html` so the two served routes stay identical.
+
+**Why it matters:** The gate at the top of `<head>` compares `MY_VERSION`
+against `version.json`. If they don't match after a reload, users get
+stuck in a redirect loop OR never see the new build at all. The `?v=NN`
+cache-busts on sub-resources so the browser actually re-fetches them.
+
+## Self-healing update path
+
+`docs/index.html`'s `<head>` has a bulletproof version gate that runs
+BEFORE any CDN script. When a new version is detected it:
+- Unregisters every service worker
+- Deletes every Cache Storage cache
+- Hard-reloads with `?_v=NN&t=NOW`
+
+A manual "Force Refresh" button lives in Profile so users can pull
+the latest build even if the auto-check is confused.
 
 ## Session / data safety
 
