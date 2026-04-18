@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 52</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 53</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=52;
+var MY_VERSION=53;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -518,7 +518,10 @@ const youCheers=sessionActive?drinks.filter(d=>d.hasPhoto).length:0;
 const youDrinks=sessionActive?drinks.length:0;
 const youStatus=sessionActive?(youDrinks+' drinks'):'Start';
 const youGrad=sessionActive?'linear-gradient(135deg,#22C55E,#10B981)':'linear-gradient(135deg,#E8A317,#FF6B2B)';
-stories.push({name:'You',emoji:'🏆',gradient:youGrad,status:youStatus,isYou:true,cheers:youCheers,live:sessionActive,photo:'＋'});
+// Get latest photo for the story thumbnail
+const youPhotos=sessionActive?drinks.filter(function(d){return d.hasPhoto&&(d.photoDataUrl||d.photoUrl);}):[];
+const youThumb=youPhotos.length>0?(youPhotos[youPhotos.length-1].photoDataUrl||youPhotos[youPhotos.length-1].photoUrl):null;
+stories.push({name:'You',emoji:'🏆',gradient:youGrad,status:youStatus,isYou:true,cheers:youCheers,live:sessionActive,photo:'＋',thumb:youThumb,photos:youPhotos});
 // Friends with active sessions
 if(window.LC&&LC.cloud&&LC.userId()){
 LC.listFriendsActiveSessions().then(function(rows){
@@ -555,13 +558,19 @@ const s=friendStories[i];
 if(s.isYou){promptStartSession();return;}
 alert('📸 '+s.emoji+' '+s.name+'\n\n'+s.status+'\n\nLatest Cheers: '+s.cheers+'\n\n[Full-screen story view would show their most recent photo, drink, and venue here — tap to advance, swipe to next friend]');
 }
+// Store stories globally so the viewer can access them
+window._storyData=[];
 function finishStoryRing(el,stories){
+window._storyData=stories;
 el.innerHTML='<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">'+
-stories.map(function(s){
-var inner=s.isYou&&!sessionActive?'＋':(s.photo||s.emoji);
-var action=s.isYou?'promptStartSession()':'void(0)';
+stories.map(function(s,idx){
+// Show photo thumbnail if available, otherwise emoji/+
+var hasThumb=s.thumb&&s.thumb.length>10;
+var innerStyle=hasThumb?'width:100%;height:100%;background:url('+s.thumb+') center/cover;border-radius:50%':'width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px';
+var innerContent=hasThumb?'':(s.isYou&&!sessionActive?'＋':(s.photo||s.emoji));
+var action=s.isYou&&!sessionActive?'promptStartSession()':'openStoryViewer('+idx+')';
 return '<div onclick="'+action+'" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:70px">'+
-'<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="width:100%;height:100%;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px">'+inner+'</div></div>'+
+'<div style="position:relative;width:64px;height:64px"><div style="position:absolute;inset:0;background:'+s.gradient+';border-radius:50%;padding:2.5px"><div style="'+innerStyle+'">'+innerContent+'</div></div>'+
 (s.cheers?'<div style="position:absolute;bottom:-2px;right:-2px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;border-radius:999px;padding:2px 6px;border:2px solid var(--bg)">'+s.cheers+'</div>':'')+
 (s.live?'<div style="position:absolute;top:-1px;right:-1px;width:14px;height:14px;background:var(--green);border-radius:50%;border:2.5px solid var(--bg);animation:livePulse 2s ease-in-out infinite"></div>':'')+
 '</div>'+
@@ -569,6 +578,78 @@ return '<div onclick="'+action+'" style="flex-shrink:0;display:flex;flex-directi
 '<div style="font-size:9px;color:'+(s.live?'var(--green)':'var(--text3)')+';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px;font-weight:'+(s.live?'600':'400')+'">'+(s.live?'● ':'')+s.status+'</div>'+
 '</div>';
 }).join('')+'</div>';
+}
+
+// Full-screen story viewer — Instagram-style tap-to-advance
+var _storyViewerIdx=0;
+var _storyPhotoIdx=0;
+function openStoryViewer(storyIdx){
+var story=window._storyData[storyIdx];
+if(!story)return;
+// Get photos for this story
+var photos=[];
+if(story.isYou&&sessionActive){
+photos=drinks.filter(function(d){return d.hasPhoto&&(d.photoDataUrl||d.photoUrl);}).map(function(d){
+return{url:d.photoDataUrl||d.photoUrl,caption:d.caption||'',name:d.name||'',time:d.time?new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''};
+});
+}
+if(photos.length===0){
+if(story.isYou&&sessionActive){alert('No photos yet — take a Cheers to see it here!');}
+else if(story.isYou){promptStartSession();}
+else{alert(story.name+' · '+(story.status||'out tonight')+'\n\n'+story.cheers+' Cheers so far');}
+return;
+}
+_storyViewerIdx=storyIdx;
+_storyPhotoIdx=0;
+renderStoryFrame(story,photos);
+}
+function renderStoryFrame(story,photos){
+var p=photos[_storyPhotoIdx];
+var modal=document.getElementById('demoModal');
+modal.style.display='flex';
+modal.innerHTML=
+'<div style="position:fixed;inset:0;background:#000;display:flex;flex-direction:column;z-index:9999" onclick="advanceStory()" id="storyFrame">'+
+// Progress bars at top
+'<div style="display:flex;gap:3px;padding:12px 12px 0;padding-top:calc(12px + var(--safe-top))">'+
+photos.map(function(x,i){return '<div style="flex:1;height:2px;background:rgba(255,255,255,'+(i<=_storyPhotoIdx?'0.9':'0.3')+');border-radius:1px"></div>';}).join('')+
+'</div>'+
+// Header
+'<div style="display:flex;align-items:center;gap:10px;padding:12px 16px">'+
+'<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px">'+(story.emoji||'📸')+'</div>'+
+'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#fff">'+story.name+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">'+p.time+'</div></div>'+
+'<button onclick="event.stopPropagation();closeStoryViewer()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px 8px">✕</button>'+
+'</div>'+
+// Photo
+'<div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 8px">'+
+'<img src="'+p.url+'" style="max-width:100%;max-height:100%;border-radius:16px;object-fit:contain"/>'+
+'</div>'+
+// Caption + drink name
+'<div style="padding:16px;padding-bottom:calc(16px + var(--safe-bottom));text-align:center">'+
+(p.name?'<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px">'+p.name+'</div>':'')+
+(p.caption?'<div style="font-size:13px;color:rgba(255,255,255,.8);font-style:italic">"'+p.caption+'"</div>':'')+
+'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px">'+(_storyPhotoIdx+1)+' of '+photos.length+' · tap to advance</div>'+
+'</div>'+
+'</div>';
+}
+function advanceStory(){
+var story=window._storyData[_storyViewerIdx];
+if(!story)return;
+var photos=[];
+if(story.isYou&&sessionActive){
+photos=drinks.filter(function(d){return d.hasPhoto&&(d.photoDataUrl||d.photoUrl);}).map(function(d){
+return{url:d.photoDataUrl||d.photoUrl,caption:d.caption||'',name:d.name||'',time:d.time?new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''};
+});
+}
+_storyPhotoIdx++;
+if(_storyPhotoIdx>=photos.length){
+// Try next story with photos
+closeStoryViewer();
+return;
+}
+renderStoryFrame(story,photos);
+}
+function closeStoryViewer(){
+document.getElementById('demoModal').style.display='none';
 }
 
 function updateHome(){
