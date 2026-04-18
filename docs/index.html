@@ -10,7 +10,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=68">
+<link rel="manifest" href="manifest.json?v=69">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -74,7 +74,7 @@
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=68;
+  var MY_VERSION=69;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -125,8 +125,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=68"></script>
-<script src="supabase/db.js?v=68"></script>
+<script src="supabase/config.js?v=69"></script>
+<script src="supabase/db.js?v=69"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -318,7 +318,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 68</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 69</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -597,8 +597,23 @@ function saveLiveSessionShadow(){
 }
 function clearLiveSessionShadow(){try{localStorage.removeItem(LC_LIVE_KEY);}catch(e){}}
 function loadLiveSessionShadow(){
-  try{var s=localStorage.getItem(LC_LIVE_KEY);return s?JSON.parse(s):null;}
-  catch(e){console.error('[lc] loadLiveSessionShadow',e);return null;}
+  try{
+    var s=localStorage.getItem(LC_LIVE_KEY);
+    if(!s)return null;
+    var obj=JSON.parse(s);
+    // Validate shape — a corrupt shadow from an old build should be
+    // discarded, not used to paint a broken session.
+    if(!obj||typeof obj!=='object')return null;
+    if(obj.active!==true)return null;
+    if(typeof obj.startedAt!=='number'||!isFinite(obj.startedAt))return null;
+    if(obj.startedAt>Date.now()+3600000)return null;// future timestamp → clock skew, discard
+    if(!Array.isArray(obj.drinks))obj.drinks=[];
+    return obj;
+  }catch(e){
+    console.error('[lc] loadLiveSessionShadow (discarding corrupt shadow)',e);
+    try{localStorage.removeItem(LC_LIVE_KEY);}catch(_){}
+    return null;
+  }
 }
 function getPendingOps(){
   try{var s=localStorage.getItem(LC_PENDING_OPS_KEY);return s?JSON.parse(s):[];}
@@ -701,9 +716,25 @@ function updateSyncIndicator(){
   else{el.style.display='none';}
 }
 // Drain on focus/online — catches the case where the user backgrounded the
-// app mid-sync and comes back with working network.
-window.addEventListener('online',function(){console.log('[lc] online — draining');drainPendingOps();});
-window.addEventListener('focus',function(){drainPendingOps();});
+// app mid-sync and comes back with working network. Also refreshes live
+// friend data so "who's out tonight" updates the moment you reopen.
+function _refreshOnForeground(){
+  try{drainPendingOps();}catch(e){console.error('[lc] drain on foreground',e);}
+  try{friendInhabitants=null;}catch(_){}
+  try{if(typeof renderStoryRing==='function')renderStoryRing();}catch(e){console.error('[lc] renderStoryRing refresh',e);}
+  var active=document.querySelector('.screen.active');
+  if(active){
+    try{
+      if(active.id==='screen-home'&&typeof updateHome==='function')updateHome();
+      if(active.id==='screen-social'&&typeof initSocial==='function')initSocial();
+    }catch(e){console.error('[lc] refresh visible tab',e);}
+  }
+}
+window.addEventListener('online',function(){console.log('[lc] online — refreshing');_refreshOnForeground();});
+window.addEventListener('focus',function(){_refreshOnForeground();});
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'){_refreshOnForeground();}
+});
 // Save shadow on page hide so an abrupt close still has the latest state.
 // iOS Safari often does NOT fire beforeunload reliably — pagehide is more
 // trusted, and visibilitychange fires in all other tab-close paths.
@@ -1560,75 +1591,74 @@ chart.innerHTML=
 (hasFriends&&sortedByCheers.length>3?'<div style="font-size:10px;color:var(--text3);margin-top:8px;text-align:center">+ '+sortedByCheers.slice(3).map(function(o){return o.f.emoji+' '+o.f.name.split(' ')[0]+' ('+o.cheers+')';}).join(' · ')+'</div>':'');
 }
 
-async function addDrink(type,isNA){
+// addDrink — SYNCHRONOUS gate at the very top ensures rapid taps (e.g. 20
+// Beer button mashes) can only get ONE drink through before the Cheers
+// photo flow finishes. Cloud write runs in the background so the photo
+// prompt opens immediately.
+function addDrink(type,isNA){
 if(typeof type!=='string'||!type.trim()){console.error('[lc] addDrink: invalid type',type);return;}
 if(!sessionActive){console.error('[lc] addDrink: no active session');return;}
-// Invariant: one drink → one Cheers → next drink. If a photo prompt is
-// open (user hasn't tapped Post/Skip yet) we refuse new drinks, otherwise
-// rapid taps can queue up 9 drinks with only 1 Cheers ever shown.
-if(_photoInFlight){
-  try{showInvariantToast('Finish your Cheers first — tap Post or Skip.');}catch(_){}
-  return;
-}
-if(!isNA&&drinkCap>0&&drinks.filter(d=>!d.isNA).length>=drinkCap){
+// INVARIANT GATE — checked and set SYNCHRONOUSLY. No await between.
+if(_photoInFlight){try{showInvariantToast('Finish your Cheers first — tap Post or Skip.');}catch(_){}return;}
+if(!isNA&&drinkCap>0&&drinks.filter(function(d){return !d.isNA;}).length>=drinkCap){
 alert('You hit your '+drinkCap+'-drink cap for tonight! 🛑\n\nYou set this limit to pace yourself. Soft drinks still count as Cheers — keep the photos coming!');
 return;
 }
-const name=type;
-const opId=(window.LC&&LC.newOpId&&LC.newOpId())||(Date.now()+'-'+Math.random().toString(36).slice(2,10));
-const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA,clientOpId:opId};
+window._photoInFlight=true;_photoInFlight=true;setDrinkButtonsDisabled(true);
+var name=type;
+var opId=(window.LC&&LC.newOpId&&LC.newOpId())||(Date.now()+'-'+Math.random().toString(36).slice(2,10));
+var drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA,clientOpId:opId};
 drinks.push(drink);
 saveLiveSessionShadow();
-if(window.LC&&LC.cloud){
-var payload={name:name,type:type,isNA:!!isNA,_localTime:drink.time,clientOpId:opId};
-if(cloudSessionId){
-try{
-var d=await LC.logDrink(cloudSessionId,payload);
-drink.cloudId=d.id;
-saveLiveSessionShadow();
-}catch(e){
-console.error('[lc] cloud logDrink failed — queueing',e);
-enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
-}
-}else{
-enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
-}
-}
 recordDrinkHistory(name);
-updateSessionUI();
+try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI in addDrink',e);}
 if(navigator.vibrate)navigator.vibrate(50);
+// Open the Cheers prompt IMMEDIATELY — no cloud wait
 promptForCheersPhoto(drinks.length-1);
+// Cloud write happens in background. Failure queues to pending ops.
+if(window.LC&&LC.cloud){
+  var payload={name:name,type:type,isNA:!!isNA,_localTime:drink.time,clientOpId:opId};
+  (function backgroundLog(){
+    if(cloudSessionId){
+      LC.logDrink(cloudSessionId,payload)
+        .then(function(d){drink.cloudId=d.id;saveLiveSessionShadow();})
+        .catch(function(e){
+          console.error('[lc] cloud logDrink failed — queueing',e);
+          enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
+        });
+    }else{
+      enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
+    }
+  })();
 }
-async function addDrinkDirect(name){
+}
+function addDrinkDirect(name){
 if(typeof name!=='string'||!name.trim()){console.error('[lc] addDrinkDirect: invalid name',name);return;}
 if(!sessionActive){console.error('[lc] addDrinkDirect: no active session');return;}
-if(_photoInFlight){
-  try{showInvariantToast('Finish your Cheers first — tap Post or Skip.');}catch(_){}
-  return;
-}
+if(_photoInFlight){try{showInvariantToast('Finish your Cheers first — tap Post or Skip.');}catch(_){}return;}
 if(drinkCap>0&&drinks.filter(function(d){return !d.isNA;}).length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
-const drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false};
+window._photoInFlight=true;_photoInFlight=true;setDrinkButtonsDisabled(true);
+var opId=(window.LC&&LC.newOpId&&LC.newOpId())||(Date.now()+'-'+Math.random().toString(36).slice(2,10));
+var drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false,clientOpId:opId};
 drinks.push(drink);
 saveLiveSessionShadow();
-if(window.LC&&LC.cloud){
-var payload={name:name,type:'Custom',_localTime:drink.time};
-if(cloudSessionId){
-try{
-const d=await LC.logDrink(cloudSessionId,payload);
-drink.cloudId=d.id;
-saveLiveSessionShadow();
-}catch(e){
-console.error('[lc] cloud logDrink (direct) failed — queueing',e);
-enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
-}
-}else{
-enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
-}
-}
 recordDrinkHistory(name);
-updateSessionUI();
+try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI in addDrinkDirect',e);}
 if(navigator.vibrate)navigator.vibrate(50);
 promptForCheersPhoto(drinks.length-1);
+if(window.LC&&LC.cloud){
+  var payload={name:name,type:'Custom',_localTime:drink.time,clientOpId:opId};
+  if(cloudSessionId){
+    LC.logDrink(cloudSessionId,payload)
+      .then(function(d){drink.cloudId=d.id;saveLiveSessionShadow();})
+      .catch(function(e){
+        console.error('[lc] cloud logDrink (direct) failed — queueing',e);
+        enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
+      });
+  }else{
+    enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
+  }
+}
 }
 // Set true the moment a Cheers photo prompt is about to appear, cleared
 // when the camera modal is closed (either by Post or Skip). addDrink()
@@ -1636,6 +1666,77 @@ promptForCheersPhoto(drinks.length-1);
 // photo prompt at the end" class of bug where rapid taps bypass the
 // one-drink-one-Cheers flow entirely.
 var _photoInFlight=false;
+window._photoInFlight=false;
+// Visually disable all drink buttons while the Cheers gate is closed so
+// the user has feedback that their tap registered. Toggles pointer-events
+// + opacity. Idempotent — safe to call on every state change.
+function setDrinkButtonsDisabled(disabled){
+  try{
+    var sel='#drinkGrid button, #favDrinks button';
+    var nodes=document.querySelectorAll(sel);
+    for(var i=0;i<nodes.length;i++){
+      nodes[i].disabled=!!disabled;
+      nodes[i].style.opacity=disabled?'.35':'';
+      nodes[i].style.pointerEvents=disabled?'none':'';
+      nodes[i].style.transition='opacity .12s';
+    }
+  }catch(e){console.error('[lc] setDrinkButtonsDisabled',e);}
+}
+// Safety net: if the photo gate gets stuck for any reason (camera throws,
+// user force-closes a modal, etc), auto-release it after 60s so the user
+// is never permanently locked out of adding drinks.
+var _photoGateWatchdog=null;
+function armPhotoGateWatchdog(){
+  clearTimeout(_photoGateWatchdog);
+  _photoGateWatchdog=setTimeout(function(){
+    if(_photoInFlight){
+      console.warn('[lc] photo gate auto-released after 60s watchdog');
+      _photoInFlight=false;window._photoInFlight=false;
+      setDrinkButtonsDisabled(false);
+    }
+  },60000);
+}
+function releasePhotoGate(){
+  clearTimeout(_photoGateWatchdog);
+  _photoInFlight=false;window._photoInFlight=false;
+  setDrinkButtonsDisabled(false);
+}
+// CLOUD STATUS PILL — tiny non-blocking indicator so the user always
+// knows if the app is connected, syncing, degraded, or offline. Never
+// covers tappable UI.
+function setCloudStatus(state){
+  try{
+    var el=document.getElementById('lcCloudStatus');
+    if(!el){
+      el=document.createElement('div');
+      el.id='lcCloudStatus';
+      el.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,20px) + 6px);left:6px;height:20px;padding:0 9px;border-radius:10px;font:700 10px/20px -apple-system,system-ui,sans-serif;z-index:2147483644;pointer-events:none;letter-spacing:.4px;transition:background .2s,opacity .2s;opacity:.7';
+      document.body&&document.body.appendChild(el);
+    }
+    var map={
+      'waiting':    {bg:'#52525B',fg:'#fff',text:'· WAITING'},
+      'syncing':    {bg:'#6366F1',fg:'#fff',text:'⟳ SYNCING'},
+      'connected':  {bg:'#16A34A',fg:'#fff',text:'● ONLINE'},
+      'degraded':   {bg:'#EAB308',fg:'#000',text:'! DEGRADED'},
+      'offline':    {bg:'#B91C1C',fg:'#fff',text:'✕ OFFLINE'}
+    };
+    var m=map[state]||map.waiting;
+    el.style.background=m.bg;
+    el.style.color=m.fg;
+    el.textContent=m.text;
+    // Connected pill auto-fades so it doesn't clutter normal operation.
+    clearTimeout(setCloudStatus._t);
+    if(state==='connected'){
+      el.style.opacity='.7';
+      setCloudStatus._t=setTimeout(function(){el.style.opacity='0';},3000);
+    }else{
+      el.style.opacity='.9';
+    }
+  }catch(e){console.error('[lc] setCloudStatus',e);}
+}
+window.addEventListener('online',function(){setCloudStatus('syncing');});
+window.addEventListener('offline',function(){setCloudStatus('offline');});
+
 // Small non-blocking toast for invariant violations ("do X first"). Shows
 // why the user's tap was ignored so the UI never feels silently broken.
 function showInvariantToast(msg){
@@ -1655,10 +1756,12 @@ function showInvariantToast(msg){
   }catch(e){console.error('[lc] showInvariantToast',e);}
 }
 function promptForCheersPhoto(idx){
-_photoInFlight=true;
+// Gate already set synchronously by the addDrink caller. Arm the
+// watchdog so a failed openCheersCamera can't lock the user out.
+armPhotoGateWatchdog();
 setTimeout(function(){
   try{openCheersCamera(idx);}
-  catch(e){console.error('[lc] openCheersCamera',e);_photoInFlight=false;}
+  catch(e){console.error('[lc] openCheersCamera',e);releasePhotoGate();}
 },100);
 }
 // ========== TAPPABLE PICKER MODAL ==========
@@ -1902,12 +2005,12 @@ if(navigator.vibrate)navigator.vibrate(20);
 function toggleCameraFlash(){if(navigator.vibrate)navigator.vibrate(15);}
 function flipCheersCamera(){if(navigator.vibrate)navigator.vibrate(15);}
 function closeCheersCamera(){
-document.getElementById('cameraModal').style.display='none';
+try{document.getElementById('cameraModal').style.display='none';}catch(e){console.error('[lc] closeCameraModal',e);}
 pendingPhotoIdx=null;
 pendingPhotoDataUrl=null;
 pendingPhotoBlob=null;
 // Release the per-drink photo gate so the user can log the next drink.
-_photoInFlight=false;
+releasePhotoGate();
 }
 function captureCheersPhoto(idx){
 const captionInput=document.getElementById('captionInput');
@@ -1982,12 +2085,24 @@ showPicker('⭐ Rate this drink','How was it?',[
 }
 
 async function endSession(){
-// Can't end while a Cheers photo flow is in flight — the in-memory drink
-// hasn't been finalised yet, and the camera modal is covering the end
-// button visually anyway.
+// End Session MUST always work. If a Cheers is mid-flight:
+//   - First tap: warn and offer to cancel the pending photo
+//   - Second tap (within 2s): force through — nuke the modal, release
+//     the gate, end the session anyway. The user explicitly wants out.
 if(_photoInFlight){
-  try{showInvariantToast('Finish your Cheers first — then tap End Session again.');}catch(_){}
-  return;
+  var now=Date.now();
+  if(endSession._lastNag&&now-endSession._lastNag<2000){
+    // Second tap — force through
+    console.warn('[lc] endSession force-through after double tap');
+    try{document.getElementById('cameraModal').style.display='none';}catch(_){}
+    pendingPhotoIdx=null;pendingPhotoDataUrl=null;pendingPhotoBlob=null;
+    releasePhotoGate();
+    // fall through to the normal end-session flow
+  }else{
+    endSession._lastNag=now;
+    try{showInvariantToast('Cheers is in progress. Tap End Session again to skip the photo and end.');}catch(_){}
+    return;
+  }
 }
 // Concurrency guard: prevents double-tap from creating duplicate rows in
 // allSessions or racing on sessionTimer cleanup.
@@ -2821,33 +2936,36 @@ return '<div onclick="toggleWeekendVote(\''+p.id+'\')" style="padding:10px 0;cur
 async function loadWeekendPlans(){
 var listEl=document.getElementById('weekendPlansList');
 if(!listEl)return;
-// Show an explicit loading state so an empty result never masquerades as
-// "everything loaded fine, you have no plans" when actually we're still
-// fetching or the call failed.
+if(loadWeekendPlans._running)return;
+loadWeekendPlans._running=true;
 if(_weekendPlansCache.length===0){
 listEl.innerHTML='<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">Loading weekend plans…</div>';
 }
 try{
-await LC.getSession();
-var plans=await LC.listWeekendPlans();
-_weekendPlansCache=plans;
-renderWeekendPlansList(plans);
-if(plans.length===0&&!loadWeekendPlans._retried){
+// ABSOLUTE OUTER TIMEOUT — no matter what's happening inside (auth hang,
+// sb.from stall, etc), this function resolves or errors in ≤ 10 s.
+// Previously the plans loader could silently hang forever when the inner
+// withTimeout didn't fire; now every layer is independently bounded.
+var plans=await Promise.race([
+(async function(){
+try{if(LC.getSession)await LC.getSession();}catch(e){console.error('[lc] loadWeekendPlans getSession',e);}
+return await LC.listWeekendPlans();
+})(),
+new Promise(function(_,rej){setTimeout(function(){var e=new Error('Weekend plans load timed out (10s). Cloud is slow or offline.');e.code='LC_OUTER_TIMEOUT';rej(e);},10000);})
+]);
+_weekendPlansCache=plans||[];
+renderWeekendPlansList(_weekendPlansCache);
+if(_weekendPlansCache.length===0&&!loadWeekendPlans._retried){
 loadWeekendPlans._retried=true;
-setTimeout(loadWeekendPlans,2000);
+setTimeout(function(){loadWeekendPlans._retried=false;loadWeekendPlans();},2000);
 }else{
 loadWeekendPlans._retried=false;
 }
 }catch(e){
 console.error('[lc] loadWeekendPlans failed',e);
-// Surface the error with a Retry so the user isn't looking at a blank list.
 var msg=(e&&e.message)||'Network error';
-listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:12px 0;text-align:center">Couldn\'t load plans: '+escapeHtml(msg)+'<br><a href="javascript:loadWeekendPlans()" style="color:var(--primary);text-decoration:underline;font-weight:600">Tap to retry</a></div>';
-if(!loadWeekendPlans._retried){
-loadWeekendPlans._retried=true;
-setTimeout(loadWeekendPlans,3000);
-}
-}
+listEl.innerHTML='<div style="color:var(--red);font-size:12px;padding:12px 0;text-align:center;line-height:1.5">Couldn\'t load plans:<br><span style="font-weight:400">'+escapeHtml(msg)+'</span><br><a href="javascript:void(0)" onclick="loadWeekendPlans()" style="color:var(--primary);text-decoration:underline;font-weight:600">Tap to retry</a></div>';
+}finally{loadWeekendPlans._running=false;}
 }
 
 // HTML-escape a string before inserting it into an innerHTML template.
@@ -4236,76 +4354,75 @@ return;
 document.getElementById('authGate').style.display='none';
 // INSTANT SHADOW RESUME — paint the session UI from localStorage BEFORE
 // any network call. If cloud is slow, offline, or errors out, the user
-// still sees exactly what they left. hydrateFromCloud reconciles after.
+// still sees exactly what they left.
 try{resumeFromShadowImmediately();}catch(e){console.error('[lc] shadow resume threw',e);}
-// Load the user's profile row. Wrapped in try/catch so a transient
-// network error here can't prevent hydrateFromCloud from running below.
-try{await LC.loadMe();}catch(e){console.error('[lc] loadMe failed',e);}
-// Safety net: if public.users row doesn't exist (trigger failed or account
-// was recreated), create it now so LC.me is never null during the session.
-if(!LC.me&&LC.session){
-try{
-const uid=LC.session.user.id;
-const email=LC.session.user.email||'';
-await LC.sb.from('users').upsert({
-id:uid,email:email,display_name:email.split('@')[0]||'Friend'
-},{onConflict:'id'});
-await LC.loadMe();
-}catch(e){console.error('[lc] create missing user row failed',e);}
-}
-// Subscribe to friend activity for live updates. Unsubscribe any prior
-// channels first so we never end up with N duplicate channels (each one
-// firing on every event) after repeated sign-ins or re-hydrations.
-try{if(LC.unsubscribeAll)LC.unsubscribeAll();}catch(e){console.error('[lc] unsubscribeAll',e);}
-try{
-LC.subscribeFriendActivity((payload)=>{
-// Bug 9: skip events generated by the current user's own writes — they
-// cause flicker, wasted DB round-trips, and re-render during interaction.
-var changed=(payload&&(payload.new||payload.old))||{};
-if(changed.user_id&&changed.user_id===LC.userId())return;
-// Friendship changes: re-hydrate circles from cloud + clear friend cache
-if(payload&&payload.table==='friendships'){
-friendInhabitants=null;
-hydrateFromCloud();
-}
-// Bug 3: session change from a friend → invalidate the inhabitants cache
-// so the "You vs. Friends" chart and story ring pick them up immediately.
-if(payload&&payload.table==='sessions'){
-friendInhabitants=null;
-// Force-refresh the story ring right away (it has its own fetch)
-try{renderStoryRing();}catch(e){console.error('[lc] renderStoryRing on realtime',e);}
-}
-// Refresh whichever tab is currently visible
-const active=document.querySelector('.screen.active');
-if(!active)return;
-const id=active.id;
-if(id==='screen-home')updateHome();
-if(id==='screen-social')initSocial();
-});
-}catch(e){console.error('[lc] realtime subscribe failed',e);}
-// Hydrate localStorage from cloud — AWAITED so the UI renders with real data
-await hydrateFromCloud();
-// Process pending invite link (from ?invite=USER_ID)
-try{
-const pendingInvite=localStorage.getItem('lc_pending_invite');
-if(pendingInvite&&LC.userId()&&pendingInvite!==LC.userId()){
-await LC.acceptInvite(pendingInvite);
-localStorage.removeItem('lc_pending_invite');
-// Add inviter to local circles so they appear immediately
-const inviter=await LC.sb.from('users').select('id,display_name,emoji').eq('id',pendingInvite).maybeSingle();
-if(inviter.data&&!inviter.error){
-if(!circles.friends.some(f=>f.cloudId===inviter.data.id)){
-circles.friends.push({name:inviter.data.display_name,emoji:inviter.data.emoji||'🍺',cloudId:inviter.data.id});
-saveCircles();
-renderCircles();
-}
-}
-}else if(pendingInvite&&LC.userId()&&pendingInvite===LC.userId()){
-// Don't invite yourself
-localStorage.removeItem('lc_pending_invite');
-}
-}catch(e){console.warn('invite processing',e);localStorage.removeItem('lc_pending_invite');}
-runDemoInit();
+// INSTANT PAINT — render every tab with whatever local data we have so
+// the app is fully interactive within the first frame. Cloud work runs
+// in the BACKGROUND so a slow/hanging Supabase call can never freeze
+// the UI (the old sequential-await chain stacked to 60s+ worst case).
+try{runDemoInit();}catch(e){console.error('[lc] runDemoInit',e);}
+// ---- BACKGROUND CLOUD WORK (non-blocking) ----
+// Each step is bounded, surfaces its own error, and does NOT stop later
+// steps from running if it fails.
+setCloudStatus('syncing');
+(async function cloudBackground(){
+  // 1. Profile row
+  try{await LC.loadMe();}
+  catch(e){console.error('[lc] loadMe failed',e);}
+  if(!LC.me&&LC.session){
+    try{
+      const uid=LC.session.user.id;
+      const email=LC.session.user.email||'';
+      await LC.withTimeout(
+        LC.sb.from('users').upsert({id:uid,email:email,display_name:email.split('@')[0]||'Friend'},{onConflict:'id'}),
+        8000,'users.upsert'
+      );
+      await LC.loadMe();
+    }catch(e){console.error('[lc] create missing user row failed',e);}
+  }
+  // 2. Realtime subscription — idempotent via unsubscribeAll
+  try{if(LC.unsubscribeAll)LC.unsubscribeAll();}catch(e){console.error('[lc] unsubscribeAll',e);}
+  try{
+    LC.subscribeFriendActivity(function(payload){
+      var changed=(payload&&(payload.new||payload.old))||{};
+      if(changed.user_id&&changed.user_id===LC.userId())return;
+      if(payload&&payload.table==='friendships'){
+        friendInhabitants=null;
+        hydrateFromCloud();
+      }
+      if(payload&&payload.table==='sessions'){
+        friendInhabitants=null;
+        try{renderStoryRing();}catch(e){console.error('[lc] renderStoryRing on realtime',e);}
+      }
+      var active=document.querySelector('.screen.active');
+      if(!active)return;
+      var id=active.id;
+      if(id==='screen-home')updateHome();
+      if(id==='screen-social')initSocial();
+    });
+  }catch(e){console.error('[lc] realtime subscribe failed',e);}
+  // 3. Hydrate from cloud — don't block boot on it
+  try{await hydrateFromCloud();}
+  catch(e){console.error('[lc] hydrateFromCloud failed',e);}
+  // 4. Pending invite
+  try{
+    var pendingInvite=localStorage.getItem('lc_pending_invite');
+    if(pendingInvite&&LC.userId()&&pendingInvite!==LC.userId()){
+      await LC.withTimeout(LC.acceptInvite(pendingInvite),8000,'acceptInvite');
+      localStorage.removeItem('lc_pending_invite');
+      var inviter=await LC.withTimeout(LC.sb.from('users').select('id,display_name,emoji').eq('id',pendingInvite).maybeSingle(),8000,'invite inviter');
+      if(inviter.data&&!inviter.error){
+        if(!circles.friends.some(function(f){return f.cloudId===inviter.data.id;})){
+          circles.friends.push({name:inviter.data.display_name,emoji:inviter.data.emoji||'🍺',cloudId:inviter.data.id});
+          saveCircles();renderCircles();
+        }
+      }
+    }else if(pendingInvite&&LC.userId()&&pendingInvite===LC.userId()){
+      localStorage.removeItem('lc_pending_invite');
+    }
+  }catch(e){console.error('[lc] invite processing failed',e);localStorage.removeItem('lc_pending_invite');}
+  setCloudStatus(LC.me?'connected':'degraded');
+})();
 }
 
 async function hydrateFromCloud(){

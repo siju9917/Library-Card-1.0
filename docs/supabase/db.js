@@ -56,7 +56,10 @@
   // (server overloaded, WebSocket stalled, flaky cell) used to block the
   // entire app silently; now it rejects at 15s and the caller can surface
   // a real error to the user.
-  const DEFAULT_TIMEOUT_MS = 15000;
+  // Aggressive default timeout. Every user-facing cloud call should give up
+  // and show an error in under 8s — previously 15s, which stacked into
+  // 60s+ boot times when multiple calls failed sequentially.
+  const DEFAULT_TIMEOUT_MS = 8000;
   LC.withTimeout = function (promiseOrBuilder, ms, label) {
     ms = ms || DEFAULT_TIMEOUT_MS;
     label = label || 'supabase call';
