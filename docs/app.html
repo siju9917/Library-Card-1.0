@@ -10,7 +10,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="apple-mobile-web-app-title" content="Library">
-<link rel="manifest" href="manifest.json?v=70">
+<link rel="manifest" href="manifest.json?v=71">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -74,7 +74,7 @@
      and force-reload with a cache-busted URL. Self-healing. -->
 <script>
 (function(){
-  var MY_VERSION=70;
+  var MY_VERSION=71;
   window.MY_VERSION=MY_VERSION;
   var urlV=parseInt(new URLSearchParams(window.location.search).get('_v')||'0',10);
   // If URL already has the current version, don't re-check (prevents loops
@@ -125,8 +125,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase/config.js?v=70"></script>
-<script src="supabase/db.js?v=70"></script>
+<script src="supabase/config.js?v=71"></script>
+<script src="supabase/db.js?v=71"></script>
 <style>
 :root{--primary:#E8A317;--primary-light:#F0C050;--accent:#FF6B2B;--green:#22C55E;--red:#EF4444;--orange:#F97316;--yellow:#EAB308;--blue:#3B82F6;--bg:#0A0A0A;--bg2:#141414;--card:#1A1A1C;--card2:#2A2A2E;--text:#FFF;--text2:#A1A1AA;--text3:#52525B;--radius:16px;--radius-sm:12px;--tab-height:80px;--safe-top:env(safe-area-inset-top,20px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -318,7 +318,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="if(confirm('Force refresh will clear the app cache and reload with the newest version from the server. Your signed-in account, active session, and pending sync will all be preserved.\n\nProceed?'))window._lcForceRefresh&&window._lcForceRefresh()"><span class="icon">🔄</span><span class="title">Force Refresh (Pull Latest Build)</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 70</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 71</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -587,13 +587,73 @@ function saveLiveSessionShadow(){
       venueName:pendingVenueName||null,
       cloudId:cloudSessionId||null,
       drinks:(drinks||[]).map(function(d){
-        // Strip large photoDataUrl to avoid quota issues; keep photoUrl only
-        var c={};for(var k in d){if(k!=='photoDataUrl')c[k]=d[k];}return c;
+        // Keep photoDataUrl ONLY for drinks without a cloud photoUrl yet —
+        // that's how a failed-upload photo survives a tab close. Once the
+        // cloud has photoUrl, the local data URL is redundant and we drop
+        // it to keep the shadow small (photoDataUrl is ~100KB compressed).
+        var c={};
+        for(var k in d){
+          if(k==='photoDataUrl'){
+            // Only keep if no cloud URL yet
+            if(!d.photoUrl)c[k]=d[k];
+          }else{
+            c[k]=d[k];
+          }
+        }
+        return c;
       }),
       savedAt:Date.now()
     };
     safeSetItem(LC_LIVE_KEY,JSON.stringify(shadow));
   }catch(e){console.error('[lc] saveLiveSessionShadow',e);}
+}
+// ---------- PHOTO HELPERS ----------
+// Compress a Blob to ~100–300 KB JPEG so it fits comfortably in
+// localStorage. Needed because mobile photos are 2–8 MB and localStorage
+// caps at ~5 MB total.
+function compressPhotoBlob(blob,maxWidth,quality){
+  maxWidth=maxWidth||1024;quality=quality||0.8;
+  return new Promise(function(resolve,reject){
+    try{
+      var img=new Image();
+      var url=URL.createObjectURL(blob);
+      img.onload=function(){
+        try{
+          var canvas=document.createElement('canvas');
+          var scale=Math.min(1,maxWidth/img.width);
+          canvas.width=Math.round(img.width*scale);
+          canvas.height=Math.round(img.height*scale);
+          var ctx=canvas.getContext('2d');
+          ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          canvas.toBlob(function(b){
+            URL.revokeObjectURL(url);
+            if(!b){return reject(new Error('toBlob returned null'));}
+            var reader=new FileReader();
+            reader.onload=function(){resolve({blob:b,dataUrl:reader.result});};
+            reader.onerror=function(){reject(reader.error||new Error('FileReader failed'));};
+            reader.readAsDataURL(b);
+          },'image/jpeg',quality);
+        }catch(e){URL.revokeObjectURL(url);reject(e);}
+      };
+      img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('Image decode failed'));};
+      img.src=url;
+    }catch(e){reject(e);}
+  });
+}
+// Convert data URL back to Blob for re-upload. Needed when a pending_ops
+// retry wakes up and needs to hand the blob back to supabase storage.
+function dataUrlToBlob(dataUrl){
+  try{
+    var parts=dataUrl.split(',');
+    var header=parts[0];
+    var b64=parts[1];
+    var mime=(header.match(/data:(.*?);/)||[])[1]||'image/jpeg';
+    var bin=atob(b64);
+    var len=bin.length;
+    var arr=new Uint8Array(len);
+    for(var i=0;i<len;i++)arr[i]=bin.charCodeAt(i);
+    return new Blob([arr],{type:mime});
+  }catch(e){console.error('[lc] dataUrlToBlob',e);return null;}
 }
 function clearLiveSessionShadow(){try{localStorage.removeItem(LC_LIVE_KEY);}catch(e){}}
 function loadLiveSessionShadow(){
@@ -676,9 +736,69 @@ async function drainPendingOps(){
           await LC.endSession(op.sessionId,op.totals);
         }else if(op.type==='update_drink_rating'){
           await LC.rateDrink(op.drinkId,op.rating);
+        }else if(op.type==='upload_photo'){
+          // Retry a failed photo upload. Convert the data URL back to a
+          // blob, upload, then queue the drink-metadata update so the
+          // cloud drink row points at the stored photo.
+          var blob=dataUrlToBlob(op.dataUrl);
+          if(!blob){throw new Error('upload_photo: dataUrl → Blob failed');}
+          var photoUrl=await LC.uploadPhoto(blob,'jpg');
+          // Drop the heavy dataUrl locally now that cloud has it
+          if(Array.isArray(drinks)){
+            for(var pdi=0;pdi<drinks.length;pdi++){
+              if(drinks[pdi].time===op._localTime){
+                drinks[pdi].photoUrl=photoUrl;
+                drinks[pdi].photoDataUrl=null;
+                break;
+              }
+            }
+            saveLiveSessionShadow();
+          }
+          // Chain the metadata update so cloud drinks.photo_url points to it
+          if(op.cloudDrinkId){
+            try{
+              await LC.withTimeout(
+                LC.sb.from('drinks').update({photo_url:photoUrl,has_photo:true,caption:op.caption||null}).eq('id',op.cloudDrinkId),
+                8000,'upload_photo meta'
+              );
+            }catch(e){
+              console.error('[lc] upload_photo meta update failed — chaining',e);
+              enqueuePendingOp({type:'update_drink_photo',drinkId:op.cloudDrinkId,photoUrl:photoUrl,caption:op.caption||null});
+            }
+          }else{
+            // No cloud drink id yet (e.g., log_drink op also pending). Chain
+            // an update op keyed on _localTime so we can find the drink once
+            // its log_drink has landed and assigned a cloud id.
+            enqueuePendingOp({type:'update_drink_photo_by_time',_localTime:op._localTime,photoUrl:photoUrl,caption:op.caption||null});
+          }
+        }else if(op.type==='update_drink_photo'){
+          if(!op.drinkId)throw new Error('update_drink_photo: missing drinkId');
+          var res3=await LC.withTimeout(
+            LC.sb.from('drinks').update({photo_url:op.photoUrl,has_photo:true,caption:op.caption||null}).eq('id',op.drinkId),
+            8000,'update_drink_photo'
+          );
+          if(res3&&res3.error)throw res3.error;
+        }else if(op.type==='update_drink_photo_by_time'){
+          // Find the drink that corresponds to this _localTime. It should
+          // have been assigned a cloudId by a prior log_drink drain.
+          var target=null;
+          if(Array.isArray(drinks)){
+            for(var qdi=0;qdi<drinks.length;qdi++){
+              if(drinks[qdi].time===op._localTime){target=drinks[qdi];break;}
+            }
+          }
+          if(!target||!target.cloudId){
+            // log_drink hasn't landed yet. Keep this op queued.
+            remaining.push(op);continue;
+          }
+          var res4=await LC.withTimeout(
+            LC.sb.from('drinks').update({photo_url:op.photoUrl,has_photo:true,caption:op.caption||null}).eq('id',target.cloudId),
+            8000,'update_drink_photo_by_time'
+          );
+          if(res4&&res4.error)throw res4.error;
         }else{
           console.warn('[lc pending] unknown op type — discarding',op);
-          continue;// skip unknown types (don't re-enqueue)
+          continue;
         }
         console.log('[lc pending] drained',op.type);
       }catch(e){
@@ -919,7 +1039,8 @@ status:(r.total_drinks||0)+' drinks',
 cheers:r.total_cheers||0,
 live:true,
 photo:r.users?.emoji||'🍻',
-isYou:false
+isYou:false,
+sessionId:r.id// used by openStoryViewer to fetch their photos
 });
 });
 finishStoryRing(el,stories);
@@ -973,7 +1094,7 @@ return '<div onclick="'+action+'" style="flex-shrink:0;display:flex;flex-directi
 // Full-screen story viewer — Instagram-style tap-to-advance
 var _storyViewerIdx=0;
 var _storyPhotoIdx=0;
-function openStoryViewer(storyIdx){
+async function openStoryViewer(storyIdx){
 var story=window._storyData[storyIdx];
 if(!story)return;
 // Get photos for this story
@@ -982,11 +1103,31 @@ if(story.isYou&&sessionActive){
 photos=drinks.filter(function(d){return d.hasPhoto&&(d.photoDataUrl||d.photoUrl);}).map(function(d){
 return{url:d.photoDataUrl||d.photoUrl,caption:d.caption||'',name:d.name||'',time:d.time?new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''};
 });
+}else if(!story.isYou&&story.sessionId&&window.LC&&LC.cloud){
+// Friend story — fetch their session's drinks from cloud. Their photos
+// live at drinks.photo_url; we show the ones that have actually been
+// uploaded. Shows a brief loading indicator while fetching.
+try{
+  showInvariantToast('Loading '+(story.name||'friend')+'\'s Cheers…');
+  var friendDrinks=await LC.listSessionDrinks(story.sessionId);
+  photos=(friendDrinks||[]).filter(function(d){return d.photo_url;}).map(function(d){
+    return{
+      url:d.photo_url,
+      caption:d.caption||'',
+      name:d.name||d.drink_type||'',
+      time:d.logged_at?new Date(d.logged_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''
+    };
+  });
+}catch(e){
+  console.error('[lc] openStoryViewer friend fetch failed',e);
+  alert('Couldn\'t load '+(story.name||'friend')+'\'s Cheers — '+((e&&e.message)||'network error'));
+  return;
+}
 }
 if(photos.length===0){
 if(story.isYou&&sessionActive){alert('No photos yet — take a Cheers to see it here!');}
 else if(story.isYou){promptStartSession();}
-else{alert(story.name+' · '+(story.status||'out tonight')+'\n\n'+story.cheers+' Cheers so far');}
+else{alert((story.name||'Friend')+' · '+(story.status||'out tonight')+'\n\nNo Cheers photos yet — ask them to take one!');}
 return;
 }
 _storyViewerIdx=storyIdx;
@@ -1951,50 +2092,78 @@ if(navigator.vibrate)navigator.vibrate([30,20,30]);
 async function postCheersPhoto(){
 var idx=pendingPhotoIdx;
 if(idx==null||!pendingPhotoDataUrl){closeCheersCamera();return;}
-// Guard against double-post from rapid shutter taps while upload is in flight.
 if(postCheersPhoto._running)return;
 postCheersPhoto._running=true;
 try{
 var captionInput=document.getElementById('captionInput');
 var caption=(captionInput&&captionInput.value.trim())||randomCaption();
-// SAVE references BEFORE closing camera (closeCheersCamera clears them)
 var savedBlob=pendingPhotoBlob;
-var savedDataUrl=pendingPhotoDataUrl;
-// Bounds check — drink may have been removed between tap and upload.
 if(!drinks[idx]){closeCheersCamera();return;}
-// Optimistic: store caption + local data URL so the UI has something to
-// show immediately. hasPhoto is NOT set until the upload actually succeeds
-// (or we explicitly know we'll retry), so we don't show broken img tags.
+// 1. COMPRESS the photo first. Keeps a ~100–300 KB local copy that
+// (a) displays instantly, (b) fits in localStorage for shadow resume,
+// (c) is what we'll re-upload if the network drops later.
+var compressed=null;
+try{
+  if(savedBlob)compressed=await compressPhotoBlob(savedBlob,1024,0.8);
+}catch(e){console.error('[lc] compressPhotoBlob failed',e);}
+// Fall back to the uncompressed data URL if compression failed — still
+// renders, just heavier.
+var localDataUrl=(compressed&&compressed.dataUrl)||pendingPhotoDataUrl;
+var uploadBlob=(compressed&&compressed.blob)||savedBlob;
+// 2. LOCAL COMMIT — drink now has photo locally, survives tab close.
 drinks[idx].caption=caption;
-drinks[idx].photoDataUrl=savedDataUrl;
-drinks[idx].hasPhoto=true;// local UI flag — photoDataUrl is always present here
+drinks[idx].photoDataUrl=localDataUrl;
+drinks[idx].hasPhoto=true;
 addXP(15);
 closeCheersCamera();
 saveLiveSessionShadow();
-updateSessionUI();
+try{updateSessionUI();}catch(e){console.error('[lc] updateSessionUI after photo',e);}
 triggerCheersCelebration();
-// Upload to Supabase Storage. On failure we DON'T leave hasPhoto=true
-// pointing at a missing photoUrl — either the local dataURL renders (fine)
-// or we revert the flag so we don't generate broken image links.
-if(window.LC&&LC.cloud&&LC.userId()&&savedBlob){
-try{
-var url=await LC.uploadPhoto(savedBlob,'jpg');
-drinks[idx].photoUrl=url;
-if(drinks[idx].cloudId){
-try{await LC.sb.from('drinks').update({photo_url:url,has_photo:true,caption:caption}).eq('id',drinks[idx].cloudId);}
-catch(e){console.error('[lc] drink photo meta update failed',e);}
-}
-saveLiveSessionShadow();
-console.log('[lc] photo uploaded:',url);
-}catch(e){
-console.error('[lc] photo upload failed',e);
-// Keep the local data URL so the UI isn't empty, but don't set a
-// photoUrl — when the session ends and the dataURL is stripped,
-// hasPhoto will reflect whether photoUrl survived.
-try{alert('Photo upload failed — we\'ll keep a local copy for now. Try again on a better connection.');}catch(_){}
-}
-}else if(window.LC&&LC.cloud){
-console.error('[lc] photo not uploaded — blob missing');
+// 3. CLOUD UPLOAD — happens in background. On any failure we enqueue
+// an upload_photo pending op so the photo eventually syncs even if
+// the user closes the tab mid-upload.
+if(window.LC&&LC.cloud&&LC.userId()&&uploadBlob){
+  var cloudDrinkId=drinks[idx].cloudId||null;
+  var drinkTime=drinks[idx].time;
+  (async function backgroundUpload(){
+    try{
+      var url=await LC.uploadPhoto(uploadBlob,'jpg');
+      // Find the drink again by time (array index may have shifted if the
+      // user logged more drinks since).
+      var dNow=null;
+      for(var i=0;i<drinks.length;i++){if(drinks[i].time===drinkTime){dNow=drinks[i];break;}}
+      if(dNow){
+        dNow.photoUrl=url;
+        // Now that cloud has the photo, drop the local data URL from shadow
+        dNow.photoDataUrl=null;
+      }
+      // Update the drink row — if this fails, queue the retry
+      var targetId=(dNow&&dNow.cloudId)||cloudDrinkId;
+      if(targetId){
+        try{
+          await LC.withTimeout(
+            LC.sb.from('drinks').update({photo_url:url,has_photo:true,caption:caption}).eq('id',targetId),
+            8000,'drink photo meta update'
+          );
+        }catch(e){
+          console.error('[lc] drink photo meta update failed — queueing',e);
+          enqueuePendingOp({type:'update_drink_photo',drinkId:targetId,photoUrl:url,caption:caption});
+        }
+      }
+      saveLiveSessionShadow();
+      console.log('[lc] photo uploaded:',url);
+    }catch(e){
+      console.error('[lc] photo upload failed — queueing for retry',e);
+      // Queue the full upload so it retries forever until it lands.
+      enqueuePendingOp({
+        type:'upload_photo',
+        dataUrl:localDataUrl,
+        cloudDrinkId:cloudDrinkId,
+        caption:caption,
+        _localTime:drinkTime
+      });
+    }
+  })();
 }
 }finally{postCheersPhoto._running=false;}
 }
