@@ -207,7 +207,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 60</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 61</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -336,7 +336,7 @@ Profile
 // version is newer than what we last loaded, force a hard reload so
 // the PWA (Home Screen app) always runs the latest code.
 (function(){
-var MY_VERSION=60;
+var MY_VERSION=61;
 window.MY_VERSION=MY_VERSION;
 // Check what version the URL says we should be on
 var urlV=new URLSearchParams(window.location.search).get('_v');
@@ -1391,34 +1391,34 @@ if(navigator.vibrate)navigator.vibrate([30,20,30]);
 }
 
 async function postCheersPhoto(){
-const idx=pendingPhotoIdx;
+var idx=pendingPhotoIdx;
 if(idx==null||!pendingPhotoDataUrl){closeCheersCamera();return;}
-const captionInput=document.getElementById('captionInput');
-const caption=(captionInput&&captionInput.value.trim())||randomCaption();
-// Optimistic: mark the drink as having a photo and close immediately
+var captionInput=document.getElementById('captionInput');
+var caption=(captionInput&&captionInput.value.trim())||randomCaption();
+// SAVE references BEFORE closing camera (closeCheersCamera clears them)
+var savedBlob=pendingPhotoBlob;
+var savedDataUrl=pendingPhotoDataUrl;
+// Mark drink locally and close UI
 drinks[idx].hasPhoto=true;
 drinks[idx].caption=caption;
-drinks[idx].photoDataUrl=pendingPhotoDataUrl;
+drinks[idx].photoDataUrl=savedDataUrl;
 addXP(15);
 closeCheersCamera();
 updateSessionUI();
 triggerCheersCelebration();
-// Upload to Supabase Storage in the background if cloud is on
-if(window.LC&&LC.cloud&&LC.userId()&&pendingPhotoBlob){
+// Upload to Supabase Storage in the background
+if(window.LC&&LC.cloud&&LC.userId()&&savedBlob){
 try{
-const url=await LC.uploadPhoto(pendingPhotoBlob,'jpg');
+var url=await LC.uploadPhoto(savedBlob,'jpg');
 drinks[idx].photoUrl=url;
-// If this drink already has a cloud row, patch it with the photo URL
 if(drinks[idx].cloudId){
 await LC.sb.from('drinks').update({photo_url:url,has_photo:true,caption:caption}).eq('id',drinks[idx].cloudId);
 }
+console.log('[lc] photo uploaded:',url);
 }catch(e){console.warn('photo upload failed',e);alert('Photo upload failed: '+(e.message||e));}
-}else{
-console.warn('[lc] photo not uploaded: cloud='+!!(window.LC&&LC.cloud)+' userId='+!!(LC.userId&&LC.userId())+' blob='+!!pendingPhotoBlob);
+}else if(window.LC&&LC.cloud){
+console.warn('[lc] photo not uploaded — blob missing');
 }
-pendingPhotoBlob=null;
-pendingPhotoDataUrl=null;
-pendingPhotoIdx=null;
 }
 
 function openFakeCamera(idx,drink){
