@@ -151,14 +151,15 @@
   };
 
   LC.listFriendsActiveSessions = async function () {
-    // Friends from your circles
+    // Friends from your circles (bidirectional — see listMyFriends)
     const friends = await LC.listMyFriends();
     if (friends.length === 0) return [];
     const ids = friends.map(f => f.friend_id);
-    const { data } = await sb.from('sessions')
+    const { data, error } = await sb.from('sessions')
       .select('*, users!sessions_user_id_fkey(display_name, emoji)')
       .in('user_id', ids)
       .is('end_time', null);
+    if (error) { console.error('[lc] listFriendsActiveSessions error', error); return []; }
     return data || [];
   };
 
@@ -218,12 +219,44 @@
   };
 
   // ---------- FRIENDS / CIRCLES ----------
+  // Bug 7: friendships are stored in two rows (one per direction). When a
+  // peer accepted, both rows should exist — but any mismatch (accept flow
+  // interrupted, old data, manual edits) would leave us blind to them.
+  // We now accept EITHER direction as a valid accepted friendship and
+  // normalize the "other party" into the `friend` field. Deduped by peer id.
   LC.listMyFriends = async function () {
-    const { data } = await sb.from('friendships')
-      .select('*, friend:users!friendships_friend_id_fkey(id, display_name, emoji, email)')
-      .eq('user_id', LC.userId())
-      .eq('status', 'accepted');
-    return data || [];
+    const uid = LC.userId();
+    if (!uid) return [];
+    const [fwdRes, revRes] = await Promise.all([
+      sb.from('friendships')
+        .select('*, friend:users!friendships_friend_id_fkey(id, display_name, emoji, email)')
+        .eq('user_id', uid)
+        .eq('status', 'accepted'),
+      sb.from('friendships')
+        .select('*, friend:users!friendships_user_id_fkey(id, display_name, emoji, email)')
+        .eq('friend_id', uid)
+        .eq('status', 'accepted'),
+    ]);
+    if (fwdRes.error) console.error('[lc] listMyFriends forward', fwdRes.error);
+    if (revRes.error) console.error('[lc] listMyFriends reverse', revRes.error);
+    const byPeer = {};
+    (fwdRes.data || []).forEach(row => {
+      byPeer[row.friend_id] = row;
+    });
+    // Only add reverse-direction rows where we don't already have a forward row.
+    // Normalize the reverse row so downstream code sees the same shape.
+    (revRes.data || []).forEach(row => {
+      const peerId = row.user_id;
+      if (byPeer[peerId]) return;
+      byPeer[peerId] = {
+        user_id: uid,
+        friend_id: peerId,
+        tier: row.tier,
+        status: row.status,
+        friend: row.friend,
+      };
+    });
+    return Object.values(byPeer);
   };
 
   LC.findUserByEmail = async function (email) {
@@ -340,6 +373,16 @@
   };
 
   // ---------- WEEKEND PLANS ----------
+  // Build a YYYY-MM-DD string from local-date parts (NOT toISOString, which
+  // silently shifts the day for users whose timezone offset straddles UTC
+  // midnight — that caused plans to appear/disappear at the boundary).
+  function _localDateStr(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
   LC.listWeekendPlans = async function () {
     await LC.getSession();
     const now = new Date();
@@ -348,11 +391,11 @@
     const monday = new Date(now);
     monday.setDate(now.getDate() + mondayOffset);
     monday.setHours(0, 0, 0, 0);
-    const weekStart = monday.toISOString().split('T')[0];
+    const weekStart = _localDateStr(monday);
 
     try {
       const { data, error } = await sb.from('weekend_plans').select('*').gte('week_start', weekStart).order('created_at');
-      if (error) { console.warn('listWeekendPlans error:', error); return []; }
+      if (error) { console.error('[lc] listWeekendPlans error:', error); return []; }
       const plans = data || [];
       // Fetch votes for all plans in one query
       const planIds = plans.map(function(p){ return p.id; });
@@ -366,7 +409,7 @@
       }
       return plans;
     } catch (e) {
-      console.warn('listWeekendPlans exception:', e);
+      console.error('[lc] listWeekendPlans exception:', e);
       return [];
     }
   };
@@ -386,13 +429,13 @@
       name: name,
       description: description || '',
       emoji: emoji || '📍',
-      week_start: monday.toISOString().split('T')[0],
+      week_start: _localDateStr(monday),
       created_by: uid,
       invited_ids: invitedIds || []
     };
     const { data, error } = await sb.from('weekend_plans').insert(insertObj).select().single();
     if (error) {
-      console.warn('suggestPlan error:', error);
+      console.error('[lc] suggestPlan error:', error);
       throw error;
     }
     return data;

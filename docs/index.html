@@ -157,6 +157,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 </div>
 </div>
 <div id="sessionContent" style="display:none"></div>
+<div id="syncIndicator" style="display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(99,102,241,.95);color:#fff;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:600;z-index:9999;align-items:center;gap:6px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>
 </div>
 
 <!-- STATS SCREEN -->
@@ -207,7 +208,7 @@ h3{font-size:15px;font-weight:600;margin-bottom:8px}
 <div class="nav-link" onclick="alert('🔒 Privacy Policy\n\nThe Library stores your session data, drink logs, and photos in a private Supabase database. Your data is only visible to friends you\'ve accepted.\n\n• We never sell your data\n• You can delete your account anytime\n• Photos are stored privately\n• Location is never tracked in the background')"><span class="icon">🔒</span><span class="title">Privacy Policy</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="alert('📄 Terms of Service\n\nBy using The Library you agree to:\n\n• Be 21+ (or legal drinking age in your area)\n• Use the app responsibly\n• Never use Vibe Check estimates to decide if you can drive\n• Respect other users — no harassment\n• Understand this is a beta for friends only')"><span class="icon">📄</span><span class="title">Terms of Service</span><span class="chevron">›</span></div>
 <div class="nav-link" onclick="runHealthCheck()"><span class="icon">🩺</span><span class="title">Health Check</span><span class="chevron">›</span></div>
-<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 62</div>
+<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px" id="appVersionLabel">The Library v1.0 · build 63</div>
 <div id="resetDemoBtn"></div>
 </div>
 
@@ -386,6 +387,116 @@ let sessionActive=false;
 let sessionStart=null;
 let sessionTimer=null;
 let drinks=[];
+// ========== LIVE SESSION SAFETY NET ==========
+// Cloud is the source of truth, but we mirror the live session to
+// localStorage on every mutation so a crash, tab close, or failed cloud
+// insert can never lose data. On load, hydrateFromCloud reconciles:
+// cloud wins when present; local is used to recover sessions that never
+// made it to cloud and to re-queue drinks logged before cloud was ready.
+const LC_LIVE_KEY='lc_live_session';
+const LC_PENDING_OPS_KEY='lc_pending_ops';
+function saveLiveSessionShadow(){
+  try{
+    if(!sessionActive){localStorage.removeItem(LC_LIVE_KEY);return;}
+    var shadow={
+      active:true,
+      startedAt:sessionStart,
+      venueName:pendingVenueName||null,
+      cloudId:cloudSessionId||null,
+      drinks:(drinks||[]).map(function(d){
+        // Strip large photoDataUrl to avoid quota issues; keep photoUrl only
+        var c={};for(var k in d){if(k!=='photoDataUrl')c[k]=d[k];}return c;
+      }),
+      savedAt:Date.now()
+    };
+    localStorage.setItem(LC_LIVE_KEY,JSON.stringify(shadow));
+  }catch(e){console.error('[lc] saveLiveSessionShadow',e);}
+}
+function clearLiveSessionShadow(){try{localStorage.removeItem(LC_LIVE_KEY);}catch(e){}}
+function loadLiveSessionShadow(){
+  try{var s=localStorage.getItem(LC_LIVE_KEY);return s?JSON.parse(s):null;}
+  catch(e){console.error('[lc] loadLiveSessionShadow',e);return null;}
+}
+function getPendingOps(){
+  try{var s=localStorage.getItem(LC_PENDING_OPS_KEY);return s?JSON.parse(s):[];}
+  catch(e){return [];}
+}
+function setPendingOps(ops){try{localStorage.setItem(LC_PENDING_OPS_KEY,JSON.stringify(ops||[]));}catch(e){console.error('[lc] setPendingOps',e);}}
+function enqueuePendingOp(op){
+  var ops=getPendingOps();
+  op.id=op.id||(Date.now()+'-'+Math.random().toString(36).slice(2,8));
+  op.attempts=0;ops.push(op);setPendingOps(ops);
+  console.log('[lc pending] queued',op.type,op);
+  updateSyncIndicator();
+  // Try to drain immediately; will retry on schedule if it fails
+  scheduleDrainPendingOps(300);
+}
+var _drainTimer=null;
+function scheduleDrainPendingOps(delay){
+  if(_drainTimer)return;
+  _drainTimer=setTimeout(function(){_drainTimer=null;drainPendingOps();},delay||1000);
+}
+async function drainPendingOps(){
+  if(!window.LC||!LC.cloud||!LC.userId())return;
+  var ops=getPendingOps();
+  if(!ops.length){updateSyncIndicator();return;}
+  var remaining=[];
+  for(var i=0;i<ops.length;i++){
+    var op=ops[i];
+    try{
+      if(op.type==='log_drink'){
+        // Requires a cloud session id. If we don't have one yet, keep it queued.
+        var sid=op.sessionId||cloudSessionId;
+        if(!sid){remaining.push(op);continue;}
+        var res=await LC.logDrink(sid,op.payload);
+        // Attach cloudId back onto the in-memory drink if we can find it by local time
+        if(res&&res.id&&Array.isArray(drinks)){
+          for(var di=0;di<drinks.length;di++){
+            if(!drinks[di].cloudId&&drinks[di].time===op.payload._localTime){drinks[di].cloudId=res.id;break;}
+          }
+          saveLiveSessionShadow();
+        }
+      }else if(op.type==='end_session'){
+        await LC.endSession(op.sessionId,op.totals);
+      }else if(op.type==='update_drink_rating'){
+        await LC.rateDrink(op.drinkId,op.rating);
+      }else{
+        console.warn('[lc pending] unknown op',op);
+      }
+      console.log('[lc pending] drained',op.type);
+    }catch(e){
+      op.attempts=(op.attempts||0)+1;
+      op.lastError=String(e&&e.message||e);
+      op.lastAttempt=Date.now();
+      console.warn('[lc pending] op failed (attempt '+op.attempts+'): '+op.type,e);
+      // Keep retrying forever — we don't drop user data. Back off per attempt.
+      remaining.push(op);
+    }
+  }
+  setPendingOps(remaining);
+  updateSyncIndicator();
+  if(remaining.length){
+    // Exponential-ish backoff: 2s, 5s, 10s, 30s, 60s cap
+    var maxAttempts=Math.max.apply(null,remaining.map(function(o){return o.attempts||0;}));
+    var delay=Math.min(2000*Math.pow(2,Math.max(0,maxAttempts-1)),60000);
+    scheduleDrainPendingOps(delay);
+  }
+}
+function updateSyncIndicator(){
+  var el=document.getElementById('syncIndicator');
+  if(!el)return;
+  var n=getPendingOps().length;
+  if(n>0){el.style.display='flex';el.textContent='⟳ Syncing '+n+' '+(n===1?'item':'items')+'…';}
+  else{el.style.display='none';}
+}
+// Drain on focus/online — catches the case where the user backgrounded the
+// app mid-sync and comes back with working network.
+window.addEventListener('online',function(){console.log('[lc] online — draining');drainPendingOps();});
+window.addEventListener('focus',function(){drainPendingOps();});
+// Save shadow on page hide so an abrupt close still has the latest state
+window.addEventListener('pagehide',function(){if(sessionActive)saveLiveSessionShadow();});
+window.addEventListener('beforeunload',function(){if(sessionActive)saveLiveSessionShadow();});
+
 let allSessions=[];try{allSessions=JSON.parse(localStorage.getItem('lc_sessions')||'[]')||[];}catch(e){allSessions=[];}
 let allTimeDrinks=parseInt(localStorage.getItem('lc_alltime')||'0');
 let drinkCap=parseInt(localStorage.getItem('lc_cap')||'0'); // 0 = no cap
@@ -534,7 +645,7 @@ isYou:false
 });
 });
 finishStoryRing(el,stories);
-}).catch(function(){finishStoryRing(el,stories);});
+}).catch(function(err){console.error('[lc] renderStoryRing: listFriendsActiveSessions failed',err);finishStoryRing(el,stories);});
 }else{
 finishStoryRing(el,stories);
 }
@@ -887,6 +998,8 @@ sessionUIBuilt=false;
 lastDrinksLen=-1;
 pendingVenueName=venueName||null;
 cloudSessionId=null;
+// Persist shadow BEFORE we do anything else, so a crash here still recovers
+saveLiveSessionShadow();
 // Show session UI IMMEDIATELY — don't wait for cloud
 var nrm=document.getElementById('homeNormal');
 var sc=document.getElementById('sessionContent');
@@ -897,13 +1010,34 @@ sessionTimer=setInterval(function(){updateSessionUI();},1000);
 updateHome();
 switchTab('home');
 document.getElementById('screenContainer').scrollTop=0;
-// Create cloud session in background (non-blocking)
+// Create cloud session with retries. If it keeps failing, drainPendingOps
+// keeps trying in the background and the shadow on localStorage means we
+// can recover on next load. We never "lose" the session.
 if(window.LC&&LC.cloud&&LC.userId()){
+var attempts=0;var maxAttempts=3;
+while(attempts<maxAttempts&&!cloudSessionId){
+attempts++;
 try{
 var s=await LC.startSession(venueName||null,null);
 cloudSessionId=s.id;
+saveLiveSessionShadow();
 console.log('[lc] cloud session started:',cloudSessionId);
-}catch(e){console.warn('cloud startSession FAILED',e);}
+// Drain any drinks that were queued before the cloud session existed
+scheduleDrainPendingOps(100);
+break;
+}catch(e){
+console.error('[lc] cloud startSession attempt '+attempts+' FAILED',e);
+if(attempts>=maxAttempts){
+// Show the error instead of failing silently. The session is still
+// active locally (shadow persisted), and on next reload we'll try
+// recovery — but the user deserves to know now.
+updateSyncIndicator();
+try{alert('Heads up: your session started but couldn\'t sync to the cloud yet ('+((e&&e.message)||e)+'). We\'ll keep retrying — your drinks are safe on this device and will sync automatically.');}catch(_){}
+break;
+}
+await new Promise(function(r){setTimeout(r,1000*attempts);});
+}
+}
 }
 }finally{startSession._running=false;}
 }
@@ -1089,7 +1223,7 @@ headStart:headStart,
 totalDrinks:r.total_drinks||0,
 };
 });
-}).catch(function(){});
+}).catch(function(err){console.error('[lc] getFriendInhabitants: listFriendsActiveSessions failed',err);});
 }
 return friendInhabitants;
 }
@@ -1184,17 +1318,24 @@ return;
 const name=type;
 const drink={name:name,type:type,time:Date.now(),rating:null,hasPhoto:false,isNA:!!isNA};
 drinks.push(drink);
-// Cloud: log to drinks table
-if(cloudSessionId&&window.LC&&LC.cloud){
-try{var d=await LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA});drink.cloudId=d.id;}catch(e){console.warn('cloud logDrink',e);}
-}else if(window.LC&&LC.cloud){
-// cloudSessionId might still be loading (background call from startSession)
-// Retry once after 2 seconds
-setTimeout(function(){
-if(cloudSessionId&&!drink.cloudId){
-(async function(){try{var d=await LC.logDrink(cloudSessionId,{name:name,type:type,isNA:!!isNA});drink.cloudId=d.id;}catch(e){}})();
+// Persist shadow before we touch the network so a failure can't lose it
+saveLiveSessionShadow();
+// Cloud: log to drinks table with queue fallback
+if(window.LC&&LC.cloud){
+var payload={name:name,type:type,isNA:!!isNA,_localTime:drink.time};
+if(cloudSessionId){
+try{
+var d=await LC.logDrink(cloudSessionId,payload);
+drink.cloudId=d.id;
+saveLiveSessionShadow();
+}catch(e){
+console.error('[lc] cloud logDrink failed — queueing',e);
+enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
 }
-},2000);
+}else{
+// cloudSessionId not set yet (startSession still retrying). Queue and drain later.
+enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
+}
 }
 recordDrinkHistory(name);
 updateSessionUI();
@@ -1205,8 +1346,21 @@ async function addDrinkDirect(name){
 if(drinkCap>0&&drinks.filter(function(d){return !d.isNA;}).length>=drinkCap){alert('You hit your '+drinkCap+'-drink cap! 🛑');return;}
 const drink={name:name,type:'Custom',time:Date.now(),rating:null,hasPhoto:false};
 drinks.push(drink);
-if(cloudSessionId&&window.LC&&LC.cloud){
-try{const d=await LC.logDrink(cloudSessionId,{name:name,type:'Custom'});drink.cloudId=d.id;}catch(e){console.warn('cloud logDrink',e);}
+saveLiveSessionShadow();
+if(window.LC&&LC.cloud){
+var payload={name:name,type:'Custom',_localTime:drink.time};
+if(cloudSessionId){
+try{
+const d=await LC.logDrink(cloudSessionId,payload);
+drink.cloudId=d.id;
+saveLiveSessionShadow();
+}catch(e){
+console.error('[lc] cloud logDrink (direct) failed — queueing',e);
+enqueuePendingOp({type:'log_drink',sessionId:cloudSessionId,payload:payload});
+}
+}else{
+enqueuePendingOp({type:'log_drink',sessionId:null,payload:payload});
+}
 }
 recordDrinkHistory(name);
 updateSessionUI();
@@ -1544,11 +1698,18 @@ if(countResult.count!=null&&countResult.count>0)cloudDrinkCount=Math.max(cloudDr
 }catch(_){}
 console.log('[lc] endSession cloud: local='+drinks.length+' cloudDrinks='+cloudDrinkCount+' cheers='+cloudCheersCount);
 await LC.endSession(cloudSessionId,{totalDrinks:cloudDrinkCount,totalCheers:cloudCheersCount});
-}catch(e){console.warn('cloud endSession FAILED',e);alert('Session saved locally but cloud sync failed. It will sync next time you open the app.');}
+}catch(e){
+console.error('[lc] cloud endSession FAILED — queueing for retry',e);
+// Queue and surface — will retry forever until it lands.
+enqueuePendingOp({type:'end_session',sessionId:cloudSessionId,totals:{totalDrinks:drinks.length,totalCheers:cheersCount}});
+try{alert('Session saved locally — cloud is syncing in the background.');}catch(_){}
+}
 }else{
 console.warn('[lc] endSession — cloudSessionId is null, saving locally only. drinks.length='+drinks.length);
 }
 }
+// Session is done — clear the live shadow (completed sessions live in allSessions)
+clearLiveSessionShadow();
 cloudSessionId=null;
 sessionUIBuilt=false;
 lastDrinksLen=-1;
@@ -2225,12 +2386,13 @@ let myVote=1;
 let _weekendPlansCache=[];
 
 function canSeePlan(plan,myId){
+if(!myId)return false;
 // Creator always sees their own plans
 if(plan.created_by===myId)return true;
-// If invited_ids is empty/null/missing, show to everyone (backward compat for old plans)
 var inv=plan.invited_ids;
-if(!inv||!Array.isArray(inv)||inv.length===0)return true;
-// Otherwise, only show if user is in the invited list
+// Only visible if the user was explicitly invited. No more "empty list =
+// visible to everyone" fallback — private means private.
+if(!inv||!Array.isArray(inv))return false;
 return inv.indexOf(myId)!==-1;
 }
 
@@ -2354,7 +2516,7 @@ await loadWeekendPlans();
 
 async function toggleWeekendVote(planId){
 if(!window.LC||!LC.cloud)return;
-try{await LC.getSession();}catch(e){}
+try{await LC.getSession();}catch(e){console.error('[lc] getSession in vote',e);}
 var myId=LC.userId();
 if(!myId){alert('Sign in first.');return;}
 // Optimistic UI: toggle the vote in cache immediately
@@ -3698,10 +3860,21 @@ await LC.loadMe();
 // Subscribe to friend activity for live updates
 try{
 LC.subscribeFriendActivity((payload)=>{
+// Bug 9: skip events generated by the current user's own writes — they
+// cause flicker, wasted DB round-trips, and re-render during interaction.
+var changed=(payload&&(payload.new||payload.old))||{};
+if(changed.user_id&&changed.user_id===LC.userId())return;
 // Friendship changes: re-hydrate circles from cloud + clear friend cache
 if(payload&&payload.table==='friendships'){
 friendInhabitants=null;
 hydrateFromCloud();
+}
+// Bug 3: session change from a friend → invalidate the inhabitants cache
+// so the "You vs. Friends" chart and story ring pick them up immediately.
+if(payload&&payload.table==='sessions'){
+friendInhabitants=null;
+// Force-refresh the story ring right away (it has its own fetch)
+try{renderStoryRing();}catch(e){console.error('[lc] renderStoryRing on realtime',e);}
 }
 // Refresh whichever tab is currently visible
 const active=document.querySelector('.screen.active');
@@ -3710,7 +3883,7 @@ const id=active.id;
 if(id==='screen-home')updateHome();
 if(id==='screen-social')initSocial();
 });
-}catch(e){console.warn('realtime',e);}
+}catch(e){console.error('[lc] realtime subscribe failed',e);}
 // Hydrate localStorage from cloud — AWAITED so the UI renders with real data
 await hydrateFromCloud();
 // Process pending invite link (from ?invite=USER_ID)
@@ -3738,14 +3911,16 @@ runDemoInit();
 
 async function hydrateFromCloud(){
 if(!LC.userId())return;
+// Drain any pending cloud writes that were queued from the previous session
+scheduleDrainPendingOps(200);
 // Sessions — check for active sessions (end_time=null). If found, RESUME
 // the most recent one instead of closing it. This lets users start a
 // session, close the app, come back hours later, and pick up where they left off.
 try{
 const active=await LC.sb.from('sessions').select('id,start_time,total_drinks,total_cheers,venue_name').eq('user_id',LC.userId()).is('end_time',null).order('start_time',{ascending:false});
 if(active.data&&active.data.length>0){
-// Only resume sessions from the last 12 hours. Auto-close older ones.
-const cutoff=Date.now()-12*3600000;
+// Only resume sessions from the last 24 hours. Auto-close older ones.
+const cutoff=Date.now()-24*3600000;
 const toResume=active.data.find(function(s){return new Date(s.start_time).getTime()>cutoff;});
 const toClose=active.data.filter(function(s){return new Date(s.start_time).getTime()<=cutoff;});
 for(var ci=0;ci<toClose.length;ci++){
@@ -3788,6 +3963,7 @@ caption:d.caption||null,
 cloudId:d.id
 };});
 console.log('[lc] resumed with',drinks.length,'drinks from cloud');
+saveLiveSessionShadow();
 // Switch to session UI
 var nrm=document.getElementById('homeNormal');
 var sc=document.getElementById('sessionContent');
@@ -3802,8 +3978,57 @@ switchTab('home');
 },200);
 }// end shouldResume
 }// end else(toResume)
+}else{
+// Cloud has no active session — but localStorage might have a shadow for
+// a session whose cloud insert never landed. Recover it now.
+try{
+var shadow=loadLiveSessionShadow();
+if(shadow&&shadow.active&&shadow.startedAt&&(Date.now()-shadow.startedAt)<24*3600000){
+console.log('[lc] recovering live session from local shadow (cloud had none)');
+// Re-create the cloud row so everything lines up going forward
+var recoveredId=null;
+try{
+var s=await LC.startSession(shadow.venueName||null,null);
+recoveredId=s.id;
+}catch(e){
+console.error('[lc] cloud recovery startSession failed — will retry in background',e);
+enqueuePendingOp({type:'end_session_recover',payload:{shadow:shadow}});
+}
+// Resume locally regardless of cloud success
+sessionActive=true;
+sessionStart=shadow.startedAt;
+cloudSessionId=recoveredId;
+pendingVenueName=shadow.venueName||null;
+friendInhabitants=null;
+sessionUIBuilt=false;
+lastDrinksLen=-1;
+drinks=(shadow.drinks||[]).slice();
+// Re-queue any drinks that don't have a cloudId yet
+if(recoveredId){
+drinks.forEach(function(d){
+if(!d.cloudId){
+enqueuePendingOp({type:'log_drink',sessionId:recoveredId,payload:{name:d.name,type:d.type,isNA:!!d.isNA,_localTime:d.time}});
+}
+});
+}
+saveLiveSessionShadow();
+var nrm2=document.getElementById('homeNormal');
+var sc2=document.getElementById('sessionContent');
+if(nrm2)nrm2.style.display='none';
+if(sc2){sc2.style.display='block';sc2.innerHTML='';}
+setTimeout(function(){
+sessionTimer=setInterval(function(){updateSessionUI();},1000);
+updateSessionUI();
+updateHome();
+switchTab('home');
+},200);
+}else if(shadow){
+// Stale shadow — clear it
+clearLiveSessionShadow();
+}
+}catch(e){console.error('[lc] shadow recovery failed',e);}
 }// end if(active.data)
-}catch(e){console.warn('resume active session',e);}
+}catch(e){console.error('[lc] resume active session failed',e);}
 try{
 const sessions=await LC.listMySessions(50);
 console.log('[lc] hydrate found',sessions.length,'cloud sessions');
